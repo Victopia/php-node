@@ -1,0 +1,13 @@
+# Deny direct access to this directory
+
+# Use a 404 Not found to mimic non-existance.
+<IfModule mod_rewrite.c>
+	RewriteEngine On
+	
+	RewriteRule .* - [R=404,L]
+</IfModule>
+
+# Use forbidden when mod_rewrite is not available.
+<IfModule !mod_rewrite.c>
+	Deny from All
+</IfModule>
