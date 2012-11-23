@@ -43,12 +43,12 @@ You store and retrieve PHP data with this framework.
 
 What it exactly does, as a cascading logic:
 1. Table level virtualization
-1.1 If a table exists with the name specified in NODE_FIELD_COLLECTION (defaults to '@collection'), use it.
-1.2 Otherwise fallback to NODE_COLLECTION, which defaults to 'Nodes'.
+    1. If a table exists with the name specified in NODE_FIELD_COLLECTION (defaults to '@collection'), use it.
+    2. Otherwise fallback to NODE_COLLECTION, which defaults to 'Nodes'.
 2. Column level virtualization
-2.1 If a column of the same name as that PHP array key exists, use it.
-2.2 If there is other fields left, json encode them and put the result string into the column with the name as NODE_FIELD_VIRTUAL, which defaults to '@contents'.
-2.3 If column NODE_FIELD_VIRTUAL does not exists, those virtual fields are dropped silently.
+    1. If a column of the same name as that PHP array key exists, use it.
+    2. If there is other fields left, json encode them and put the result string into the column with the name as NODE_FIELD_VIRTUAL, which defaults to '@contents'.
+    3. If column NODE_FIELD_VIRTUAL does not exists, those virtual fields are dropped silently.
 
 For all constants, see scripts/framework/constants.php.
 
