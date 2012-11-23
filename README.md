@@ -42,6 +42,7 @@ A cascading mechanism to implement document-like storage into MySQL database (pr
 You store and retrieve PHP data with this framework.
 
 What it exactly does, as a cascading logic:
+
 1. Table level virtualization
     1. If a table exists with the name specified in NODE_FIELD_COLLECTION (defaults to '@collection'), use it.
     2. Otherwise fallback to NODE_COLLECTION, which defaults to 'Nodes'.
