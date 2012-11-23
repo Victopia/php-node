@@ -1,12 +1,19 @@
 <?php
 
+namespace core;
+
+/**
+ * Settings for database connections.
+ *
+ * Must be set before Database can function.
+ */
 class DatabaseOptions {
-	public function DatabaseOptions($driver = null,
-								  	$host = null,
-								  	$port = null,
-								  	$schema = null,
-								  	$username = null,
-								  	$password = null) {
+	public function __construct($driver = null,
+              								$host = null,
+              								$port = null,
+            								 	$schema = null,
+            								 	$username = null,
+            								 	$password = null) {
 		if (!is_null($driver))
 			$this->driver = $driver;
 		
