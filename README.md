@@ -16,7 +16,7 @@ Some of the ideas might seems irrational, feel free to discuss every tiny bit in
 
 ## Usage
 
-This is a (http://en.wikipedia.org/wiki/Front_Controller_pattern)[Front Controller pattern] implementation of PHP using apache's .htaccess file.
+This is a [Front Controller pattern](http://en.wikipedia.org/wiki/Front_Controller_pattern) implementation of PHP using apache's .htaccess file.
 
 All scripts are initialized with gateway and their corresponding resolvers.
 
