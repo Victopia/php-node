@@ -66,18 +66,27 @@ function funcIn($name, array $values, array $args = array(), $strict = FALSE) {
 	};
 }
 
-function remove($name) {
-	// This enables these two patterns:
-	// 1. remove($field1, $field2)
-	// 2. remove(array($field1, $field2))
+function remove($names, &$object) {
+  $names = (array) $names;
+
+  foreach ($names as $name) {
+    unset($object[$name]);
+  }
+}
+
+/**
+ * This function allows these two patterns:
+ * 1. remove($field1, $field2)
+ * 2. remove(array($field1, $field2))
+ */
+function removes($name) {
 	if (!is_array($name)) {
 		$name = func_get_args();
 	}
 
 	return function($object) use($name) {
-		$name = (array) $name;
-		array_walk($name, function($name) use(&$object) { unset($object[$name]); });
-		return $object;
+	  remove($name, $object);
+	  return $object;
 	};
 }
 
@@ -87,15 +96,23 @@ function remove($name) {
 //
 //--------------------------------------------------
 
-function prepend($prefix) {
-	return function($object) use($prefix) {
-		return "$prefix$object";
-	};
+function prepend($prefix, $object) {
+  return "$prefix$object";
 }
 
-function append($suffix) {
+function prepends($prefix) {
+  return function($object) use($prefix) {
+    return prepend($prefix, $object);
+  };
+}
+
+function append($suffix, $object) {
+  return "$object$suffix";
+}
+
+function appends($suffix) {
 	return function($object) use($suffix) {
-		return "$object$suffix";
+		return append($suffix, $object);
 	};
 }
 

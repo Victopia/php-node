@@ -106,8 +106,10 @@ class XMLConverter {
 				if ($reader->value) {
 					$value = $reader->value;
 
-					if (is_numeric($value)) {
-						$value = intval($value);
+					if (is_numeric($value) &&
+					    $value < PHP_INT_MAX &&
+					    strlen($value) < 15) {
+  					$value = floatval($value);
 					}
 					elseif ($value === 'true') {
 						$value = TRUE;

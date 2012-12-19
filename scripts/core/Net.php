@@ -265,7 +265,7 @@ class Net {
 
 		$requestIndex = 0;
 
-		while ( $requestIndex < self::$maximumCalls && $requestIndex < count($options) ) {
+		while ( $requestIndex < self::$maximumCalls && isset($options[$requestIndex]) ) {
 			curl_multi_add_handle( $multiHandle
 													 , $options[$requestIndex++]['handle']
 													 );
@@ -324,7 +324,7 @@ class Net {
 				// Always handler
 				Utility::forceInvoke(@$callbacks['always'], array($curlOption));
 
-				if ($requestIndex < count($options)) {
+				if (isset($options[$requestIndex])) {
 					curl_multi_add_handle( $multiHandle
 															 , $options[$requestIndex++]['handle']
 															 );
