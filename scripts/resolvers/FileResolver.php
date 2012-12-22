@@ -275,7 +275,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 				if ($count > 0 && is_file($opath)) {
 					$mtime = filemtime($opath);
 
-					$ctime = \framework\Cache::get($path);
+					$ctime = \cache::get($path);
 
 					// Whenever orginal source exists and is newer,
 					// udpate minified version.
@@ -284,36 +284,29 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 					// last request failed or not.
 					if (time() - $ctime > 3600 && (!is_file($path) || $mtime > filemtime($path))) {
 						// Store the offset in cache, enabling a waiting time before HTTP retry.
-						\framework\Cache::delete($path);
-						\framework\Cache::set($path, time());
+						\cache::delete($path);
+						\cache::set($path, time());
 
 						$opath = realpath($opath);
 
-						$fh = fopen($path, 'w');
-
-						$ch = curl_init('http://cssminifier.com/raw');
-
-						curl_setopt_array($ch, array(
-							CURLOPT_POSTFIELDS => array( 'input' => file_get_contents($opath) )
-						, CURLOPT_TIMEOUT => 2
-						, CURLOPT_FILE => $fh
-						));
-
-						$status = curl_exec($ch);
-
-						fclose($fh);
-
-						if ($status === TRUE) {
-							$status = curl_getinfo($ch);
-							$status = $status['http_code'] === 200;
-						}
-
-						if ($status === FALSE) {
-							@unlink($path);
-							$path = $opath;
-						}
-
-						curl_close($ch);
+						\core\Net::httpRequest(array(
+						    'url' => 'http://www.cssminifier.com/raw'
+						  , 'type' => 'post'
+						  , 'data' => array( 'input' => file_get_contents($opath) )
+						  , '__curlOpts' => array(
+						      CURLOPT_TIMEOUT => 2
+						    )
+						  , 'callbacks' => array(
+						      'success' => function($response, $request) use($path) {
+  						      if ($response) {
+    						      file_put_contents($path, $response);
+  						      }
+						      }
+						    , 'failure' => function() use($path) {
+    						    @unlink($path);
+  						    }
+						    )
+						  ));
 					}
 
 					if (!is_file($path)) {

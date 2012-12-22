@@ -12,7 +12,7 @@
 
 class TestService {
 
-  function echo($input) {
+  function print($input) {
     return $input;
   }
 

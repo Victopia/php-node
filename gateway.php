@@ -5,17 +5,19 @@
  */
 
 //--------------------------------------------------
-// Bootstrap initialization
+//
+//  Initialization
+//
 //--------------------------------------------------
 require_once('scripts/Initialize.php');
 
-//--------------------------------------------------
-// Flatten mod_rewrite "REDIRECT_" env. var prefixes
-//--------------------------------------------------
+//------------------------------
+//  Environment variables
+//------------------------------
 foreach ($_SERVER as $key => $value) {
 	if ($key == 'REDIRECT_URL') continue;
 
-	$res = preg_replace('/REDIRECT_/', '', $key, -1, $count);
+	$res = preg_replace('/^REDIRECT_/', '', $key, -1, $count);
 
 	if ($count > 0) {
 		unset($_SERVER[$key]);
@@ -31,9 +33,9 @@ if (isset($_SERVER['HTTP_STATUS'])) {
 // Error & Exception handling.
 framework\Exceptions::setHandlers();
 
-//--------------------------------------------------
-// Identify, authenticate accessor
-//--------------------------------------------------
+//------------------------------
+//  Session & Authentication
+//------------------------------
 $sid = NULL;
 
 // Follow variables_order, i.e. POST > GET > COOKIES.
@@ -49,9 +51,7 @@ if (isset($_COOKIE['sid'])) {
 
 // Session ID provided, validate it.
 if ($sid !== NULL) {
-	$session = 'framework\Session';
-
-	$res = $session::ensure($sid);
+	$res = session::ensure($sid);
 
 	if ($res === FALSE) {
 		// Session doesn't exists, delete exsting cookie.
@@ -60,11 +60,11 @@ if ($sid !== NULL) {
 	else if (is_integer($res)) {
 		switch ($res) {
 			// Reserved error code for client use
-			case $session::ERR_EXPIRED:
+			case session::ERR_EXPIRED:
 				redirect('notice/user/expired');
 				break;
 			// Treat as public user.
-			case $session::ERR_INVALID:
+			case session::ERR_INVALID:
 				break;
 		}
 	}
@@ -73,12 +73,24 @@ if ($sid !== NULL) {
 	}
 }
 
-unset($sid);
+unset($sid, $_POST['sid'], $_GET['sid'], $_REQUEST['sid'], $_COOKIE['sid']);
 
 //--------------------------------------------------
-// Resolve request URI
+//
+//  Request handling
+//
 //--------------------------------------------------
-// Directory access control
+
+//------------------------------
+//  Access log
+//------------------------------
+if (FRAMEWORK_ENVIRONMENT == 'debug') {
+  $accessTime = microtime(1);
+}
+
+//------------------------------
+//  Resolve request URI
+//------------------------------
 
 $resolver = 'framework\Resolver';
 
@@ -106,10 +118,21 @@ $fileResolver->cacheExclusions('htm html php');
 
 $resolver::registerResolver($fileResolver, 10);
 
-// 7. Resolve the requesting path
+// Perform resolving
 $response = $resolver::resolve($_SERVER['REQUEST_URI']);
 
 unset($resolver);
+
+//------------------------------
+//  Access log
+//------------------------------
+if (FRAMEWORK_ENVIRONMENT == 'debug') {
+  log::write("$_SERVER[REQUEST_METHOD] $_SERVER[REQUEST_URI]", 'Access', array(
+    'timeElapsed' => round(microtime(1) - $accessTime, 4) . ' secs'
+  ));
+
+  unset($accessTime);
+}
 
 // HTTP status code returned
 if (is_integer($response)) {
@@ -117,9 +140,11 @@ if (is_integer($response)) {
 }
 
 //--------------------------------------------------
-// Functions
+//
+//  Functions
+//
 //--------------------------------------------------
-// Redirection
+
 function redirect($response) {
 	if (is_string($response)) {
 		$self = $_SERVER['REQUEST_URI'];

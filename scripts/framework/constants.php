@@ -21,6 +21,9 @@ define('NODE_RAWQUERY', md5('@@rawQuery'));
 // Required system resources will change exponentially.
 define('NODE_FETCHSIZE', '100');
 
+// Current environment, 'debug' or 'production'
+define('FRAMEWORK_ENVIRONMENT', 'debug');
+
 // Collection of system configurations
 define('FRAMEWORK_COLLECTION_CONFIGURATION', 'Configuration');
 // Collection of Node hirarchy relations
@@ -55,6 +58,12 @@ define('FRAMEWORK_RESPONSE_CACHE_AGE', 108000);
 define('FRAMEWORK_EXTERNAL_UPDATE_DELAY', 18000);
 // Regex pattern to match custom request headers
 define('FRAMEWORK_CUSTOM_HEADER_PATTERN', '/^X\-/');
+// Date format for framework outputs
+define('FRAMEWORK_DATE_FOTMAT', 'd M, H:i');
+// Quick search items limit per type
+define('FRAMEWORK_SEARCH_QUICK_LIMIT', 10);
+// Date format for search
+define('FRAMEWORK_SEARCH_DATE_FORMAT', 'M, Y');
 
 //--------------------------------------------------
 //

@@ -90,19 +90,19 @@ class Net {
 
 			$curlOption = array(
 					CURLOPT_URL => $option['url']
-				, CURLOPT_RETURNTRANSFER => true
-				, CURLOPT_SSL_VERIFYHOST => false
-				, CURLOPT_SSL_VERIFYPEER => false
+				, CURLOPT_RETURNTRANSFER => TRUE
+				, CURLOPT_SSL_VERIFYHOST => FALSE
+				, CURLOPT_SSL_VERIFYPEER => FALSE
 				, CURLOPT_CAINFO => NULL
 				, CURLOPT_CAPATH => NULL
 				);
 
 			// Request method: 'GET', 'POST', 'HEAD'
-			if (!isset($option['type']) && is_array(@$option['data']) || @$option['type'] === 'POST') {
-				$curlOption[CURLOPT_POST] = true;
+			if (!isset($option['type']) && is_array(@$option['data']) || preg_match('/^post$/i', @$option['type'])) {
+				$curlOption[CURLOPT_POST] = TRUE;
 			}
-			elseif (strtoupper(@$option['type']) === 'HEAD') {
-				$curlOption[CULROPT_NOBODY] = true;
+			elseif (preg_match('/^head$/i', @$option['type'])) {
+				$curlOption[CULROPT_NOBODY] = TRUE;
 			}
 
 			// Query data
@@ -112,7 +112,7 @@ class Net {
 				if (is_array($data) && array_reduce($data, function($result, $data) { return $result || is_string($data) && strpos($data, '@') === 0; }, FALSE)) {
 					$data = http_build_query($data);
 
-					$curlOption[CURLOPT_UPLOAD] = true;
+					$curlOption[CURLOPT_UPLOAD] = TRUE;
 				}
 
 				if (@$curlOption[CURLOPT_POST] === TRUE) {
