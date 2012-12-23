@@ -100,19 +100,36 @@ class Net {
 			// Request method: 'GET', 'POST', 'HEAD'
 			if (!isset($option['type']) && is_array(@$option['data']) || preg_match('/^post$/i', @$option['type'])) {
 				$curlOption[CURLOPT_POST] = TRUE;
+				$curlOption[CURLOPT_CUSTOMREQUEST] = 'POST';
+			}
+			elseif (preg_match('/^put$/i', @$option['type'])) {
+  			if (!@$option['file'] || !is_file($option['file'])) {
+    			throw new exceptions\CoreException('Please specify the \'file\' option when using PUT method.');
+  			}
+
+  			$curlOption[CURLOPT_PUT] = TRUE;
+				$curlOption[CURLOPT_CUSTOMREQUEST] = 'PUT';
+
+				$curlOption[CURLOPT_UPLOAD] = TRUE;
+  			$curlOption[CURLOPT_INFILE] = fopen($option['file'], 'r');
+  			$curlOption[CURLOPT_INFILESIZE] = filesize($option['file']);
 			}
 			elseif (preg_match('/^head$/i', @$option['type'])) {
 				$curlOption[CULROPT_NOBODY] = TRUE;
+				$curlOption[CURLOPT_CUSTOMREQUEST] = 'HEAD';
 			}
 
 			// Query data
 			if (@$option['data']) {
 				$data = $option['data'];
 
-				if (is_array($data) && array_reduce($data, function($result, $data) { return $result || is_string($data) && strpos($data, '@') === 0; }, FALSE)) {
-					$data = http_build_query($data);
+				$hasPostFile = is_array($data) &&
+				    array_reduce($data, function($ret, $val) { return $ret || is_string($val) && strpos($val, '@') === 0; }, FALSE);
 
-					$curlOption[CURLOPT_UPLOAD] = TRUE;
+				// Build query regardless of file exists on PHP < 5.2.0, otherwise
+				// only build when there is NOT files to be POSTed.
+				if (version_compare(PHP_VERSION, '5.2.0') < 0 || !$hasPostFile) {
+  				$data = http_build_query($data);
 				}
 
 				if (@$curlOption[CURLOPT_POST] === TRUE) {
