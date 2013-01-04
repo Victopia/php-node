@@ -97,18 +97,16 @@ class Net {
 				, CURLOPT_CAPATH => NULL
 				);
 
-			// Request method: 'GET', 'POST', 'HEAD'
+			// Request method: 'GET', 'POST', 'PUT', 'HEAD', 'DELETE'
 			if (!isset($option['type']) && is_array(@$option['data']) || preg_match('/^post$/i', @$option['type'])) {
-				$curlOption[CURLOPT_POST] = TRUE;
-				$curlOption[CURLOPT_CUSTOMREQUEST] = 'POST';
+				$curlOption[CURLOPT_POST] = TRUE; // $curlOption[CURLOPT_CUSTOMREQUEST] = 'POST';
 			}
 			elseif (preg_match('/^put$/i', @$option['type'])) {
   			if (!@$option['file'] || !is_file($option['file'])) {
     			throw new exceptions\CoreException('Please specify the \'file\' option when using PUT method.');
   			}
 
-  			$curlOption[CURLOPT_PUT] = TRUE;
-				$curlOption[CURLOPT_CUSTOMREQUEST] = 'PUT';
+  			$curlOption[CURLOPT_PUT] = TRUE; // $curlOption[CURLOPT_CUSTOMREQUEST] = 'PUT';
 
 				$curlOption[CURLOPT_UPLOAD] = TRUE;
   			$curlOption[CURLOPT_INFILE] = fopen($option['file'], 'r');
@@ -118,8 +116,11 @@ class Net {
 				$curlOption[CULROPT_NOBODY] = TRUE;
 				$curlOption[CURLOPT_CUSTOMREQUEST] = 'HEAD';
 			}
+			elseif (preg_match('/^delete$/i', @$option['type'])) {
+  			$curlOption[CURLOPT_CUSTOMREQUEST] = 'DELETE';
+			}
 
-			// Query data
+			// Query data, applicable for all request methods.
 			if (@$option['data']) {
 				$data = $option['data'];
 
@@ -128,8 +129,11 @@ class Net {
 
 				// Build query regardless of file exists on PHP < 5.2.0, otherwise
 				// only build when there is NOT files to be POSTed.
-				if (version_compare(PHP_VERSION, '5.2.0') < 0 || !$hasPostFile) {
-  				$data = http_build_query($data);
+
+				// Skip the whole build if $data is not array or object.
+				if ((version_compare(PHP_VERSION, '5.2.0') < 0 || !$hasPostFile) &&
+				    (is_array($data) || is_object($data))) {
+				    $data = http_build_query($data);
 				}
 
 				if (@$curlOption[CURLOPT_POST] === TRUE) {
