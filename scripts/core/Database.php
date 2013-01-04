@@ -80,34 +80,37 @@ class Database {
 		// Escape with column determination.
 		if ( $tables !== NULL ) {
 			// Force array casting.
-			$values = (array)$value;
+			$values = (array) $value;
 
-			$fields = self::getFields($tables);
+			$sourceFields = self::getFields($tables);
 
-			foreach ($values as &$val) {
-				if ( in_array($val, $fields) ) {
-					$val = self::escape($val);
-				}
-			} unset($val);
+			$quotedFields = array_map(function($field) {
+  			return '`' . str_replace('`', '``', $field) . '`';
+			}, $sourceFields);
+
+			$values = array_map(function($value) use($sourceFields, $quotedFields) {
+  			return str_replace($sourceFields, $quotedFields, $value);
+			}, $values);
 
 			// Restore to scalar if it was not an array.
 			if ( !is_array($value) ) {
-				$values = $values[0];
+				$values = reset($values);
 			}
 
 			return $values;
 		}
 
-		// Direct value escape.
+		// Direct value escape, but only on those without space and parentheses.
 		if ( is_array($value) ) {
-			foreach ( $value as $key => &$item ) {
-				$item = self::escape( $item );
-			}
-
-			return $value;
+		  return array_map(function($field) {
+		    return self::escape($field);
+		  }, $value);
+		}
+		elseif (preg_match('/^[^\s\(\)\*]*$/', $value)) {
+  		return '`' . str_replace('`', '``', $value) . '`';
 		}
 		else {
-			return '`' . str_replace('`', '``', $value) . '`';
+			return $value;
 		}
 	}
 
@@ -309,14 +312,14 @@ class Database {
                     , $param = NULL
                     , $fetch_type = \PDO::FETCH_ASSOC
                     , $fetch_argument = NULL ) {
-		// Get fields
+		// Escape fields
 		$fields = self::escape($fields, $tables);
 
 		if ( is_array($fields) ) {
 			$fields = implode($fields, ', ');
 		}
 
-		// Get tables
+		// Escape tables
 		$tables = self::escape( $tables );
 
 		if ( is_array($tables) ) {
