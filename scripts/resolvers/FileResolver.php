@@ -36,7 +36,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 	//------------------------------
 	//  cacheExclusions
 	//------------------------------
-	private static $cacheExclusions = array();
+	private static $cacheExclusions = array('php');
 
 	/**
 	 * Conditional request is disregarded when
@@ -80,6 +80,18 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 		else {
 			$res = $res[0];
 		}
+
+		//------------------------------
+		//  Remove virtual path prefixes
+		//------------------------------
+
+		$scriptDir = dirname($_SERVER['SCRIPT_NAME']);
+
+		if ($scriptDir != '/') {
+  		$res = str_replace($scriptDir, '', $res);
+		}
+
+		unset($scriptDir);
 
 		//------------------------------
 		//  Emulate DirectoryIndex
@@ -167,6 +179,9 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 	private function handle($path) {
 		$mtime = filemtime($path);
 
+		$mime = $this->mimetype($path);
+		$this->sendCacheHeaders($path, $mime !== NULL);
+
 		if (isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) &&
 			strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= $mtime) {
 			redirect(304);
@@ -176,9 +191,6 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 		$_SERVER['SCRIPT_FILENAME'] = realpath($path);
 		$_SERVER['SCRIPT_NAME'] = $_SERVER['REQUEST_URI'];
 		$_SERVER['PHP_SELF'] = $_SERVER['REQUEST_URI'];
-
-		$this->sendCacheHeaders($path);
-		$mime = $this->mimetype($path);
 
 		ob_start();
 
@@ -262,7 +274,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 					// Whenever orginal source exists and is newer,
 					// udpate minified version.
 					if (!is_file($path) || $mtime > filemtime($path)) {
-						$res = `/opt/local/bin/convert -background none $opath $path 2>&1`;
+						$res = `/usr/bin/convert -density 72 -background none $opath $path 2>&1`;
 
 						touch($path, $mtime);
 					}
@@ -337,14 +349,22 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 	/**
 	 * @private
 	 */
-	private function sendCacheHeaders($path) {
+	private function sendCacheHeaders($path, $permanant = FALSE) {
 		if (array_search(pathinfo($path , PATHINFO_EXTENSION),
 			self::$cacheExclusions) !== FALSE) {
 			return;
 		}
 
-		header('Cache-Control: private, max-age=' . FRAMEWORK_RESPONSE_CACHE_AGE . ', must-revalidate', true);
-		header('Last-Modified: ' . date(DATE_RFC1123, filemtime($path)));
+    if ($permanant) {
+      header('Cache-Control: max-age=' . FRAMEWORK_RESPONSE_CACHE_PERMANANT, TRUE);
+      header('Expires: ' . gmdate(DATE_RFC1123, time() + FRAMEWORK_RESPONSE_CACHE_PERMANANT), TRUE);
+      header_remove('Pragma');
+    }
+    else {
+      header('Cache-Control: private, max-age=' . FRAMEWORK_RESPONSE_CACHE_TEMPORARY . ', must-revalidate', TRUE);
+    }
+
+    header('Last-Modified: ' . date(DATE_RFC1123, filemtime($path)), TRUE);
 	}
 
 	/**

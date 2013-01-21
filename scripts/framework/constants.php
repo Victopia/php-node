@@ -53,17 +53,12 @@ define('FRAMEWORK_DATABASE_ENSURE_WRITE_INTERVAL', 0.4);
 // Seconds to wait before sending next core\Net progress event.
 define('FRAMEWORK_NET_PROGRESS_INTERVAL', 0.3);
 // Respose Header - Cache-Control: max-age=
-define('FRAMEWORK_RESPONSE_CACHE_AGE', 108000);
+define('FRAMEWORK_RESPONSE_CACHE_PERMANANT', 31120135);
+define('FRAMEWORK_RESPONSE_CACHE_TEMPORARY', 108000);
 // Seconds to delay before checks for updates on external resources
 define('FRAMEWORK_EXTERNAL_UPDATE_DELAY', 18000);
 // Regex pattern to match custom request headers
 define('FRAMEWORK_CUSTOM_HEADER_PATTERN', '/^X\-/');
-// Date format for framework outputs
-define('FRAMEWORK_DATE_FOTMAT', 'd M, H:i');
-// Quick search items limit per type
-define('FRAMEWORK_SEARCH_QUICK_LIMIT', 10);
-// Date format for search
-define('FRAMEWORK_SEARCH_DATE_FORMAT', 'M, Y');
 
 //--------------------------------------------------
 //
@@ -82,6 +77,9 @@ class_alias('\framework\Session', 'session');
 class_alias('\framework\Process', 'process');
 class_alias('\framework\Service', 'service');
 class_alias('\framework\Message', 'message');
+
+// Template path
+define('FRAMEWORK_TEMPLATE_PATH', 'assets/templates/%s.tpl');
 
 // Session globals
 define('FRAMEWORK_USR_PUBLIC', Session::USR_PUBLIC);

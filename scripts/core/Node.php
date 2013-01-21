@@ -5,20 +5,34 @@ namespace core;
 /**
  * Node entity access class.
  */
-class Node
-{
+class Node {
+
+  //--------------------------------------------------
+  //
+  //  Functions
+  //
+  //--------------------------------------------------
+
   /**
    * Retrieves all nodes with the specified name, as return as an array.
    *
-   * @param $name A string specifying the node name. e.g. User
-   * @param $filter An array of fields to be searched.
-   *        ID  - Integer or array of integers, will be merged into
-   *              the query string to improve performance.
-   *          ... - Any type of node and field names.
-   * @param $fieldsRequired If TRUE, rows must contain all fields
-   *        specified in argument filter to survive.
-   * @param $limit Can be integer specifying the row count from first
-   *        row, or an array specifying the starting row and row count.
+   * @param $filter (mixed) Either:
+   *                        1. An array of fields to be searched,
+   *                          ID  - Integer or array of integers, will
+   *                                be merged into the query string to
+   *                                improve performance.
+   *                          ... - Any type of node and field names.
+   *                        2. Name of target collection, all contents will be
+   *                           fetched.
+   *                        3. ID from the default collection, usually be 'Nodes'.
+   * @param $fieldsRequired (bool) If TRUE, rows must contain all fields
+   *                               specified in argument filter to survive.
+   * @param $limit (mixed) Can be integer specifying the row count from
+   *                       first row, or an array specifying the starting
+   *                       row and row count.
+   * @parma $sorter (array) Optional. 1. fields to be ordered ascending, or
+   *                                  2. Hashmap with fields as keys and boolean values
+   *                                  with TRUE interprets as ascending and FALSE otherwise.
    *
    * @returns Array of filtered data rows.
    */
@@ -82,13 +96,13 @@ class Node
     $columnsFilter = array_select($filter, $columns);
 
     /* Merge $filter into SQL statement. */
-      array_walk($columnsFilter, function(&$contents, $field) use(&$query, &$params) {
+      array_walk($columnsFilter, function(&$contents, $field) use($tableName, &$query, &$params) {
         $contents = \utils::wrapAssoc($contents);
 
         $subQuery = array();
 
-        array_walk($contents, function($content) use($field, &$subQuery, &$params) {
-          $escapedField = Database::escape($field);
+        array_walk($contents, function($content) use($tableName, $field, &$subQuery, &$params) {
+          $escapedField = Database::escape($field, $tableName);
 
           // 1. Boolean comparison: true, false
           if (is_bool($content)) {
@@ -343,13 +357,16 @@ class Node
   /**
    * Upserts one or a set of data.
    *
-   * Important: "timestamp" property in argument $contents will be removed.
+   * Important: All "timestamp" properties in argument $contents will be removed.
    *
    * @param $contents An array of data to be updated, data row will be identified by id.
    * @param $extendExists TRUE means $contents can be partial update, fields not specified
    *        will have their old value retained instead of replacing the whole row.
    *
    * @returns Array of Booleans, TRUE on success of specific row, FALSE otherwises.
+   *
+   * @throws CoreException thrown when more than one row is selected with the provided keys,
+   *                       and $extendExists is TRUE.
    */
   static function
   /* Array */ set($contents = NULL, $extendExists = FALSE) {
@@ -357,9 +374,9 @@ class Node
       return array();
     }
 
-    if (Utility::isAssoc($contents)) {
-      $contents = array($contents);
-    }
+    $isArray = is_array($contents) && !Utility::isAssoc($contents);
+
+    $contents = Utility::wrapAssoc($contents);
 
     $result = array();
 
@@ -443,8 +460,8 @@ class Node
       $result[] = Database::upsert($tableName, $data);
     }
 
-    if ( Count($result) == 1 ) {
-      $result = $result[0];
+    if ( !$isArray ) {
+      $result = Utility::unwrapAssoc($result);
     }
 
     return $result;
@@ -453,7 +470,9 @@ class Node
   /**
    * Delete a data row.
    *
-   * @param $filter
+   * @param $filter (mixed) Uses the same filtering mechanism as get(),
+   *                        then delete all rows retrieved from within.
+   * @param $fieldsRequired (bool) Same as get().
    *
    * @returns The total number of affected rows.
    */

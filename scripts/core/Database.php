@@ -10,477 +10,491 @@ namespace core;
  */
 class Database {
 
-	private static $con;
+  private static $con;
 
-	private static $preparedStatments = array();
+  private static $preparedStatments = array();
 
-	private static /*DatabaseOptions*/ $options;
+  private static /*DatabaseOptions*/ $options;
 
-	//----------------------------------------------------------------------------------------
-	//
-	//  Properties
-	//
-	//----------------------------------------------------------------------------------------
+  //----------------------------------------------------------------------------------------
+  //
+  //  Properties
+  //
+  //----------------------------------------------------------------------------------------
 
-	public static function
-	/* void */ setOptions($options) {
-		if (!($options instanceof DatabaseOptions)) {
-			throw new \PDOException('Options must be an instance of DatabaseOptions class.');
-		}
+  public static function
+  /* void */ setOptions($options) {
+    if (!($options instanceof DatabaseOptions)) {
+      throw new \PDOException('Options must be an instance of DatabaseOptions class.');
+    }
 
-		self::$options = $options;
-	}
+    self::$options = $options;
+  }
 
-	public static function
-	/* DatabaseOptions */ getOptions() {
-		return self::$options;
-	}
+  public static function
+  /* DatabaseOptions */ getOptions() {
+    return self::$options;
+  }
 
-	//----------------------------------------------------------------------------------------
-	//
-	//  Methods
-	//
-	//----------------------------------------------------------------------------------------
+  //----------------------------------------------------------------------------------------
+  //
+  //  Methods
+  //
+  //----------------------------------------------------------------------------------------
 
-	/**
-	 * @private
-	 */
-	private static function
-	/* PDO */ getConnection() {
-		if ( self::$con === NULL ) {
-			if ( self::$options === NULL ) {
-				throw new \PDOException('Please specify connection options with setOptions() before accessing database.');
-			}
+  /**
+   * @private
+   */
+  private static function
+  /* PDO */ getConnection() {
+    if ( self::$con === NULL ) {
+      if ( self::$options === NULL ) {
+        throw new \PDOException('Please specify connection options with setOptions() before accessing database.');
+      }
 
-			if (!(self::$options instanceof DatabaseOptions)) {
-				throw new \PDOException('Options must be an instance of DatabaseOptions class.');
-			}
+      if (!(self::$options instanceof DatabaseOptions)) {
+        throw new \PDOException('Options must be an instance of DatabaseOptions class.');
+      }
 
-			$connectionString = self::$options->driver
-												. ':host=' . self::$options->host
-												. ';port=' . self::$options->port
-												. ';dbname=' . self::$options->schema;
+      $connectionString = self::$options->driver
+                        . ':host=' . self::$options->host
+                        . ';port=' . self::$options->port
+                        . ';dbname=' . self::$options->schema;
 
-			self::$con = new \PDO($connectionString
-													, self::$options->username
-													, self::$options->password
-													, self::$options->driverOptions
-													);
-		}
+      self::$con = new \PDO($connectionString
+                          , self::$options->username
+                          , self::$options->password
+                          , self::$options->driverOptions
+                          );
+    }
 
-		return self::$con;
-	}
+    return self::$con;
+  }
 
-	/**
-	 * Escape a string to be used as table names and field names,
-	 * and should only be used to quote table names and field names.
-	 */
-	public static function
-	/* String */ escape($value, $tables = NULL) {
-		// Escape with column determination.
-		if ( $tables !== NULL ) {
-			// Force array casting.
-			$values = (array) $value;
+  /**
+   * Escape a string to be used as table names and field names,
+   * and should only be used to quote table names and field names.
+   */
+  public static function
+  /* String */ escape($value, $tables = NULL) {
+    // Escape with column determination.
+    if ( $tables !== NULL ) {
+      // Force array casting.
+      $values = (array) $value;
 
-			$sourceFields = self::getFields($tables);
+      $sourceFields = self::getFields($tables);
 
-			$quotedFields = array_map(function($field) {
-  			return '`' . str_replace('`', '``', $field) . '`';
-			}, $sourceFields);
+      $quotedFields = array_map(function($field) {
+        return '`' . str_replace('`', '``', $field) . '`';
+      }, $sourceFields);
 
-			$values = array_map(function($value) use($sourceFields, $quotedFields) {
-  			return str_replace($sourceFields, $quotedFields, $value);
-			}, $values);
+      $values = array_map(function($value) use($sourceFields, $quotedFields) {
+        // TODO: Break string by words, spaces and puncuations be ignored.
 
-			// Restore to scalar if it was not an array.
-			if ( !is_array($value) ) {
-				$values = reset($values);
-			}
+        $matches = preg_split('/[\(\)\s]+/', $value);
 
-			return $values;
-		}
+        if (is_array(@$matches)) {
+          array_walk($matches, function($match) use(&$value, $sourceFields, $quotedFields) {
+            $index = array_search($match, $sourceFields);
+            if (FALSE !== $index) {
+              $value = str_replace($match, $quotedFields[$index], $value);
+            }
+          });
+        }
 
-		// Direct value escape, but only on those without space and parentheses.
-		if ( is_array($value) ) {
-		  return array_map(function($field) {
-		    return self::escape($field);
-		  }, $value);
-		}
-		elseif (preg_match('/^[^\s\(\)\*]*$/', $value)) {
-  		return '`' . str_replace('`', '``', $value) . '`';
-		}
-		else {
-			return $value;
-		}
-	}
+        return $value;
+      }, $values);
 
-	/**
-	 * Gets fields with specified key type.
-	 */
-	public static function
-	/* Array */ getFields($tableName, $key = NULL) {
-		if (!self::hasTable($tableName)) {
-			throw new \PDOException("Table `$tableName` doesn't exists!");
+      // Restore to scalar if it was not an array.
+      if ( !is_array($value) ) {
+        $values = reset($values);
+      }
 
-			return NULL;
-		}
+      return $values;
+    }
 
-		$tableName = self::escape($tableName);
+    // Direct value escape, but only on those without space and parentheses.
+    if ( is_array($value) ) {
+      return array_map(function($field) {
+        return Database::escape($field);
+      }, $value);
+    }
+    elseif (preg_match('/^[^\s\(\)\*]*$/', $value)) {
+      return '`' . str_replace('`', '``', $value) . '`';
+    }
+    else {
+      return $value;
+    }
+  }
 
-		$query = "SHOW COLUMNS FROM $tableName";
+  /**
+   * Gets fields with specified key type.
+   */
+  public static function
+  /* Array */ getFields($tableName, $key = NULL) {
+    $tables = \utils::wrapAssoc($tableName);
 
-		if ($key !== NULL) {
-			$key = (array)$key;
-			$query.= " WHERE `Key` IN ("
-						 . implode(', ', array_fill(0, count($key), '?'))
-						 . ');';
-		}
+    $tables = array_map(function($tableName) use($key) {
+      if (!Database::hasTable($tableName)) {
+        throw new \PDOException("Table `$tableName` doesn't exists!");
+      }
 
-		$query = self::query($query, $key);
+      $query = "SHOW COLUMNS FROM $tableName";
 
-		if ($query === FALSE) {
-			return FALSE;
-		}
+      if ($key !== NULL) {
+        $key = \utils::wrapAssoc($key);
 
-		return $query->fetchAll(\PDO::FETCH_COLUMN, 0);
-	}
+        $query.= ' WHERE `key` IN (' . \utils::fillArray($key) . ')';
+      }
 
-	public static function
-	/* PDOStatement */ prepare($query, $options = array()) {
-		$stmt = &$preparedStatments[$query][json_encode($options)];
+      $query = Database::query($query, $key);
 
-		if (!$stmt instanceof PDOStatement) {
-			$con = self::getConnection();
+      return (array) ($query ? $query->fetchAll(\PDO::FETCH_COLUMN, 0) : NULL);
+    }, $tables);
 
-			$stmt = $con->prepare($query, $options);
-		}
+    $tables = array_reduce($tables, function($result, $input) {
+      return array_merge((array) $result, (array) $input);
+    });
 
-		return $stmt;
-	}
+    return array_unique($tables);
+  }
 
-	/**
-	 * Return the PDOStatement result.
-	 */
-	public static function
-	/* PDOStatement */ query($query, $param = NULL, $options = array()) {
-		$query = self::prepare($query);
+  public static function
+  /* PDOStatement */ prepare($query, $options = array()) {
+    $stmt = &$preparedStatments[$query][json_encode($options)];
 
-		$res = $query->execute($param);
+    if (!$stmt instanceof PDOStatement) {
+      $con = self::getConnection();
 
-		if ($res) {
-			return $query;
-		}
+      $stmt = $con->prepare($query, $options);
+    }
 
-		$errorInfo = $query->errorInfo();
+    return $stmt;
+  }
 
-		$ex = new \PDOException($errorInfo[2]);
+  /**
+   * Return the PDOStatement result.
+   */
+  public static function
+  /* PDOStatement */ query($query, $param = NULL, $options = array()) {
+    $query = self::prepare($query);
 
-		$ex->errorInfo = $errorInfo;
+    $res = $query->execute($param);
 
-		throw $ex;
+    if ($res) {
+      return $query;
+    }
 
-		return FALSE;
-	}
+    $errorInfo = $query->errorInfo();
 
-	/**
-	 * Fetch the result set as a two-deminsional array.
-	 */
-	public static function
-	/* Array */ fetchArray( $query
-	                    	, $param = NULL
-	                    	, $fetch_type = \PDO::FETCH_ASSOC
-	                    	, $fetch_argument = NULL ) {
-		$res = self::query($query, $param);
+    $ex = new \PDOException($errorInfo[2]);
 
-		if ($res === FALSE) {
-			return FALSE;
-		}
-		elseif ($fetch_argument === NULL) {
-			return $res->fetchAll($fetch_type);
-		}
-		else {
-			return $res->fetchAll($fetch_type, $fetch_argument);
-		}
-	}
+    $ex->errorInfo = $errorInfo;
 
-	/**
-	 * Fetch the first row as an associative array or indexed array.
-	 */
-	public static function
-	/* Array */ fetchRow( $query
-	                   	, $param = NULL
-	                   	, $fetch_offset = 0
-	                   	, $fetch_type = \PDO::FETCH_ASSOC ) {
-		/* Note by Eric @ 8.Nov.2012
-			 As of PHP 5.4.8, this shit is still not supported by SQLite and MySQL.
+    throw $ex;
 
-		$res = self::query($query, $param, array(
-				\PDO::ATTR_CURSOR => \PDO::CURSOR_SCROLL
-			));
+    return FALSE;
+  }
 
-		$row = $res->fetch($fetch_type, \PDO::FETCH_ORI_ABS, $fetch_offset);
-		*/
+  /**
+   * Fetch the result set as a two-deminsional array.
+   */
+  public static function
+  /* Array */ fetchArray( $query
+                        , $param = NULL
+                        , $fetch_type = \PDO::FETCH_ASSOC
+                        , $fetch_argument = NULL ) {
+    $res = self::query($query, $param);
 
-		$res = self::query($query, $param);
+    if ($res === FALSE) {
+      return FALSE;
+    }
+    elseif ($fetch_argument === NULL) {
+      return $res->fetchAll($fetch_type);
+    }
+    else {
+      return $res->fetchAll($fetch_type, $fetch_argument);
+    }
+  }
 
-		// fetch whatever I don't care.
-		while ($fetch_offset-- > 0 && $res->fetch());
+  /**
+   * Fetch the first row as an associative array or indexed array.
+   */
+  public static function
+  /* Array */ fetchRow( $query
+                      , $param = NULL
+                      , $fetch_offset = 0
+                      , $fetch_type = \PDO::FETCH_ASSOC ) {
+    /* Note by Eric @ 8.Nov.2012
+       As of PHP 5.4.8, this shit is still not supported by SQLite and MySQL.
 
-		$row = $res->fetch($fetch_type);
+    $res = self::query($query, $param, array(
+        \PDO::ATTR_CURSOR => \PDO::CURSOR_SCROLL
+      ));
 
-		$res->closeCursor();
+    $row = $res->fetch($fetch_type, \PDO::FETCH_ORI_ABS, $fetch_offset);
+    */
 
-		return $row;
-	}
+    $res = self::query($query, $param);
 
-	/**
-	 * Fetch a single field from the first row.
-	 */
-	public static function
-	/* Mixed */ fetchField( $query
-	                     	, $param = NULL
-	                     	, $field_offset = 0
-	                     	, $fetch_offset = 0 ) {
-		$res = self::query($query, $param);
+    // fetch whatever I don't care.
+    while ($fetch_offset-- > 0 && $res->fetch());
 
-		// fetch whatever I don't care.
-		while ($fetch_offset-- > 0 && $res->fetch());
+    $row = $res->fetch($fetch_type);
 
-		$field = $res->fetchColumn($field_offset);
+    $res->closeCursor();
 
-		$res->closeCursor();
+    return $row;
+  }
 
-		return $field;
-	}
+  /**
+   * Fetch a single field from the first row.
+   */
+  public static function
+  /* Mixed */ fetchField( $query
+                        , $param = NULL
+                        , $field_offset = 0
+                        , $fetch_offset = 0 ) {
+    $res = self::query($query, $param);
 
-	/**
-	 * Check whether specified table exists or not.
-	 *
-	 * @param $table String that carrries the name of target table.
-	 *
-	 * @returns TRUE on table exists, FALSE otherwise.
-	 */
-	public static function
-	/* Boolean */ hasTable($table) {
-		$res = self::fetchArray('SHOW TABLES LIKE ?', array($table));
+    // fetch whatever I don't care.
+    while ($fetch_offset-- > 0 && $res->fetch());
 
-		return count($res) > 0;
-	}
+    $field = $res->fetchColumn($field_offset);
 
-	/**
-	 * Begin transaction, lock table.
-	 */
-	public static function
-	/* Boolean */ beginTransaction() {
-		$con = self::getConnection();
+    $res->closeCursor();
 
-		return $con->beginTransaction();
-	}
+    return $field;
+  }
 
-	/**
-	 * Commit changes.
-	 */
-	public static function
-	/* Boolean */ commit() {
-		$con = self::getConnection();
+  /**
+   * Check whether specified table exists or not.
+   *
+   * @param $table String that carrries the name of target table.
+   *
+   * @returns TRUE on table exists, FALSE otherwise.
+   */
+  public static function
+  /* Boolean */ hasTable($table) {
+    $res = self::fetchArray('SHOW TABLES LIKE ?', array($table));
 
-		return $con->commit();
-	}
+    return count($res) > 0;
+  }
 
-	/**
-	 * Rollback changes.
-	 */
-	public static function
-	/* Boolean */ rollback() {
-		$con = self::getConnection();
+  /**
+   * Begin transaction, lock table.
+   */
+  public static function
+  /* Boolean */ beginTransaction() {
+    $con = self::getConnection();
 
-		return $con->rollBack();
-	}
+    return $con->beginTransaction();
+  }
 
-	/**
-	 * Getter function.
-	 *
-	 * @param $tables Array of the target table names, or string on single target.
-	 * @param $fields Array of field names or string, direct application into query when string is given.
-	 * @param $criteria String of WHERE and ORDER BY clause, as well as GROUP BY statments.
-	 * @param $param Array of parameters to be passed in to the prepared statement.
-	 */
-	public static function
-	/* Array */ select( $tables
+  /**
+   * Commit changes.
+   */
+  public static function
+  /* Boolean */ commit() {
+    $con = self::getConnection();
+
+    return $con->commit();
+  }
+
+  /**
+   * Rollback changes.
+   */
+  public static function
+  /* Boolean */ rollback() {
+    $con = self::getConnection();
+
+    return $con->rollBack();
+  }
+
+  /**
+   * Getter function.
+   *
+   * @param $tables Array of the target table names, or string on single target.
+   * @param $fields Array of field names or string, direct application into query when string is given.
+   * @param $criteria String of WHERE and ORDER BY clause, as well as GROUP BY statments.
+   * @param $param Array of parameters to be passed in to the prepared statement.
+   */
+  public static function
+  /* Array */ select( $tables
                     , $fields = '*'
                     , $criteria = NULL
                     , $param = NULL
                     , $fetch_type = \PDO::FETCH_ASSOC
                     , $fetch_argument = NULL ) {
-		// Escape fields
-		$fields = self::escape($fields, $tables);
+    // Escape fields
+    $fields = self::escape($fields, $tables);
 
-		if ( is_array($fields) ) {
-			$fields = implode($fields, ', ');
-		}
+    if ( is_array($fields) ) {
+      $fields = implode($fields, ', ');
+    }
 
-		// Escape tables
-		$tables = self::escape( $tables );
+    // Escape tables
+    $tables = self::escape( $tables );
 
-		if ( is_array($tables) ) {
-			$tables = implode($tables, ', ');
-		}
+    if ( is_array($tables) ) {
+      $tables = implode($tables, ', ');
+    }
 
-		$res = "SELECT $fields FROM $tables" . ($criteria ? " $criteria" : '');
+    $res = "SELECT $fields FROM $tables" . ($criteria ? " $criteria" : '');
 
-		return self::fetchArray($res, $param, $fetch_type, $fetch_argument);
-	}
+    return self::fetchArray($res, $param, $fetch_type, $fetch_argument);
+  }
 
-	/**
-	 * Upsert function.
-	 *
-	 * @param $table Target table name.
-	 * @param $fields Key-value pairs of field names and values.
-	 *
-	 * @returns True on update succeed, insertId on a row inserted, false on failure.
-	 */
-	public static function
-	/* Mixed */ upsert($table, $fields = array()) {
-		$columns = self::getFields($table, 'PRI');
+  /**
+   * Upsert function.
+   *
+   * @param $table Target table name.
+   * @param $fields Key-value pairs of field names and values.
+   *
+   * @returns True on update succeed, insertId on a row inserted, false on failure.
+   */
+  public static function
+  /* Mixed */ upsert($table, $fields = array()) {
+    $columns = self::getFields($table, 'PRI');
 
-		$keys = array();
+    $keys = array();
 
-		// Setup keys.
-		foreach ($fields as $field => $value) {
-			if (in_array($field, $columns)) {
-				$keys[$field] = $value;
+    // Setup keys.
+    foreach ($fields as $field => $value) {
+      if (in_array($field, $columns)) {
+        $keys[$field] = $value;
 
-				unset($fields[$field]);
-			}
-		}
+        unset($fields[$field]);
+      }
+    }
 
-		$values = array_merge(array_values($keys), array_values($fields), array_values($fields));
+    $values = array_merge(array_values($keys), array_values($fields), array_values($fields));
 
-		$table = self::escape( $table );
-		$keys = self::escape( array_merge(array_keys($keys), array_keys($fields)) );
+    $table = self::escape( $table );
+    $keys = self::escape( array_merge(array_keys($keys), array_keys($fields)) );
 
-		// Setup fields.
-		foreach ($fields as $field => $value) {
-			$fields["`$field` = ?"] = $value;
+    // Setup fields.
+    foreach ($fields as $field => $value) {
+      $fields["`$field` = ?"] = $value;
 
-			unset($fields[$field]);
-		}
+      unset($fields[$field]);
+    }
 
-		$res = 'INSERT INTO ' . $table . ' (' . implode(', ', $keys) . ') VALUES (' .
-				implode(', ', array_fill(0, count($keys), '?')) . ') ON DUPLICATE KEY UPDATE ';
+    $res = 'INSERT INTO ' . $table . ' (' . implode(', ', $keys) . ') VALUES (' .
+        implode(', ', array_fill(0, count($keys), '?')) . ') ON DUPLICATE KEY UPDATE ';
 
-		/* Performs upsert here. */
-		if (is_array($fields) && count($fields) > 0) {
-			$res.= implode(', ', array_keys($fields));
-		}
-		else {
-			foreach ($keys as $key => $column) {
-				$keys[$key] = "$column = $column";
-			}
+    /* Performs upsert here. */
+    if (is_array($fields) && count($fields) > 0) {
+      $res.= implode(', ', array_keys($fields));
+    }
+    else {
+      foreach ($keys as $key => $column) {
+        $keys[$key] = "$column = $column";
+      }
 
-			$res.= implode($keys, ', ');
-		}
+      $res.= implode($keys, ', ');
+    }
 
-		$res = self::query($res, $values);
+    $res = self::query($res, $values);
 
-		if ( $res !== FALSE ) {
-			$res->closeCursor();
+    if ( $res !== FALSE ) {
+      $res->closeCursor();
 
-			// Inserted, return the new ID.
-			if ( $res->rowCount() == 1 ) {
-				// Note: mysql_insert_id() doesn't do UNSIGNED ZEROFILL!
-				$res = self::getConnection()->lastInsertId();
-				//$res = self::fetchField("SELECT MAX(ID) FROM `$table`;");
-			}
-			// Updated, return TRUE.
-			// rowCount() should be 2 here as long as it stays in MySQL driver.
-			else {
-				$res = TRUE;
-			}
-		}
+      // Inserted, return the new ID.
+      if ( $res->rowCount() == 1 ) {
+        // Note: mysql_insert_id() doesn't do UNSIGNED ZEROFILL!
+        $res = self::getConnection()->lastInsertId();
+        //$res = self::fetchField("SELECT MAX(ID) FROM `$table`;");
+      }
+      // Updated, return TRUE.
+      // rowCount() should be 2 here as long as it stays in MySQL driver.
+      else {
+        $res = TRUE;
+      }
+    }
 
-		return $res;
-	}
+    return $res;
+  }
 
-	/**
-	 * Delete function.
-	 *
-	 * @param $table Target table name.
-	 * @param $keys Array of keys to be deleted.
-	 *       This can be multiple keys, use a two-dimensional array in such case.
-	 *
-	 * @returns The total number of affected rows.
-	 */
-	public static function
-	/* void */ delete($table, $keys) {
-		$columns = self::getFields($table, array('PRI', 'UNI'));
+  /**
+   * Delete function.
+   *
+   * @param $table Target table name.
+   * @param $keys Array of keys to be deleted.
+   *       This can be multiple keys, use a two-dimensional array in such case.
+   *
+   * @returns The total number of affected rows.
+   */
+  public static function
+  /* void */ delete($table, $keys) {
+    $columns = self::getFields($table, array('PRI', 'UNI'));
 
-		$table = self::escape($table);
+    $table = self::escape($table);
 
-		foreach ($columns as &$column) {
-			if (array_key_exists($column, $keys)) {
-				$column = self::escape($column) . ' = ?';
-			}
-			else {
-				$column = NULL;
-			}
-		}
+    foreach ($columns as &$column) {
+      if (array_key_exists($column, $keys)) {
+        $column = self::escape($column) . ' = ?';
+      }
+      else {
+        $column = NULL;
+      }
+    }
 
-		$columns = array_filter($columns);
+    $columns = array_filter($columns);
 
-		if (!is_array($keys) || (count($keys) > 0 && \utils::isAssoc($keys))) {
-			$keys = array($keys);
-		}
+    if (!is_array($keys) || (count($keys) > 0 && \utils::isAssoc($keys))) {
+      $keys = array($keys);
+    }
 
-		$res = "DELETE FROM $table WHERE " . implode(' AND ', $columns);
+    $res = "DELETE FROM $table WHERE " . implode(' AND ', $columns);
 
-		$affectedRows = 0;
+    $affectedRows = 0;
 
-		foreach ($keys as $key) {
-			if (!is_array($key)) {
-				$key = array($key);
-			}
-			else {
-				$key = array_values($key);
-			}
+    foreach ($keys as $key) {
+      if (!is_array($key)) {
+        $key = array($key);
+      }
+      else {
+        $key = array_values($key);
+      }
 
-			$res_1 = self::query($res, $key);
+      $res_1 = self::query($res, $key);
 
-			if ( $res_1 === FALSE ) {
-				return FALSE;
-			}
+      if ( $res_1 === FALSE ) {
+        return FALSE;
+      }
 
-			$affectedRows += $res_1->rowCount();
-		}
+      $affectedRows += $res_1->rowCount();
+    }
 
-		return $affectedRows;
-	}
+    return $affectedRows;
+  }
 
-	public static function
-	/* int */ lastInsertId() {
-		return self::getConnection()->lastInsertId();
-	}
+  public static function
+  /* int */ lastInsertId() {
+    return self::getConnection()->lastInsertId();
+  }
 
-	public static function
-	/* Array */ lastError() {
-		return self::getConnection()->errorInfo();
-	}
+  public static function
+  /* Array */ lastError() {
+    return self::getConnection()->errorInfo();
+  }
 
-	public static function
-	/* void */ lockTables($tables) {
-		$tables = (array) $tables;
+  public static function
+  /* void */ lockTables($tables) {
+    $tables = (array) $tables;
 
-		foreach ($tables as &$table) {
-			if (!preg_match('/(?:READ|WRITE)\s*$/', $table)) {
-				$table.= ' WRITE';
-			}
-		}
+    foreach ($tables as &$table) {
+      if (!preg_match('/(?:READ|WRITE)\s*$/', $table)) {
+        $table.= ' WRITE';
+      }
+    }
 
-		self::query('LOCK TABLES ' . implode(', ', $tables));
-	}
+    self::query('LOCK TABLES ' . implode(', ', $tables));
+  }
 
-	public static function
-	/* void */ unlockTables() {
-		self::query('UNLOCK TABLES');
-	}
+  public static function
+  /* void */ unlockTables() {
+    self::query('UNLOCK TABLES');
+  }
 }
