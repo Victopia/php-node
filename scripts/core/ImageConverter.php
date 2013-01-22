@@ -12,6 +12,8 @@ class ImageConverter {
 
   private $image = NULL;
 
+  private $mime = NULL;
+
   //--------------------------------------------------
   //
   //  Constructor
@@ -38,7 +40,6 @@ class ImageConverter {
    * Open an image file.
    */
   function open($file) {
-
     $stat = \utils::getInfo($file, FILEINFO_MIME_TYPE);
 
     switch ($stat) {
@@ -78,6 +79,8 @@ class ImageConverter {
     imageinterlace($image, 1);
 
     $this->image = $image;
+
+    $this->mime = $stat;
   }
 
   /**
@@ -91,9 +94,13 @@ class ImageConverter {
     }
   }
 
-  function getImage($mime = 'image/jpeg', $quality = 85) {
+  function getImage($mime = NULL, $quality = 85) {
     if (!is_resource($this->image)) {
       return NULL;
+    }
+
+    if ($mime === NULL) {
+      $mime = $this->mime;
     }
 
     ob_start();
@@ -131,16 +138,32 @@ class ImageConverter {
   }
 
   /**
-   * Resize an image with the dimensions provided.
+   * Resize an image with or within the dimensions provided.
    *
    * @param $width (int) Width of the image in pixels.
+   *
    * @param $height (int) Height of the image in pixels.
+   *
    * @param $keepRatio (Optional) (bool) TRUE to resize
    *        the image within the dimension provided.
    *
+   * @param $ratioPicker (Optional) (callable) A function
+   *        that returns either width ratio or height ratio
+   *        when resizing an image. Defaults to php native
+   *        min(), that picks the smaller one to resize within
+   *        target bounds.
+   *        Beware that if you put 'max' here, image will not
+   *        crop but instead resize to *at least* the size
+   *        you specified, for cropping, see the next parameter.
+   *
+   * @param $cropToBounds (Optional) (bool) Whether the image
+   *        should be cropped when result is bigger than specified
+   *        dimensions, this has no meaning when using the default
+   *        min() ratio picker.
+   *
    * @returns (bool) TRUE on success, FALSE otherwise.
    */
-  function resizeTo($width, $height, $keepRatio = FALSE) {
+  function resizeTo($width, $height, $keepRatio = FALSE, $ratioPicker = 'min', $cropToBounds = FALSE) {
     $this->checkImage();
 
     $srcWidth  = imagesx($this->image);
@@ -151,25 +174,32 @@ class ImageConverter {
 
     // Set scale ratio identical to maintain aspect ratio.
     if ($keepRatio) {
-      $ratioX = $ratioY = min($ratioX, $ratioY);
+      $ratioX = $ratioY = call_user_func_array($ratioPicker, array($ratioX, $ratioY));
     }
 
-    $width = round($srcWidth * $ratioX);
-    $height = round($srcHeight * $ratioY);
+    // image fill rect.
+    $dstWidth = round($srcWidth * $ratioX);
+    $dstHeight = round($srcHeight * $ratioY);
 
-    $image = imagecreatetruecolor($width, $height);
+    // image bounds
+    if ($cropToBounds) {
+      $image = imagecreatetruecolor($width, $height);
+    }
+    else {
+      $image = imagecreatetruecolor($dstWidth, $dstHeight);
+    }
 
     // Creates an image with transparent background.
     imagefilledrectangle($image
       , 0, 0
       , $width, $height
-      , imagecolorallocatealpha($image, 0, 0, 0, 0)
+      , imagecolorallocatealpha($image, 0, 0, 0, 127)
       );
 
     // Perform resample and copy
     imagecopyresampled($image, $this->image
       , 0, 0, 0, 0
-      , $width, $height, $srcWidth, $srcHeight
+      , $dstWidth, $dstHeight, $srcWidth, $srcHeight
       );
 
     // Destroy the old image
