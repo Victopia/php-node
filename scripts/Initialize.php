@@ -134,6 +134,9 @@ function redirect($response) {
       case 405:
         header("$statusPrefix 405 Method Not Allowed", true, 405);
         break;
+      case 412:
+        header("$statusPrefix 412 Precondition Failed", true, 412);
+        break;
       case 500:
         header("$statusPrefix 500 Internal Server Error", true, 500);
         break;

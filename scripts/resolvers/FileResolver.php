@@ -7,412 +7,514 @@
 namespace resolvers;
 
 class FileResolver implements \framework\interfaces\IRequestResolver {
-	//--------------------------------------------------
-	//
-	//  Properties
-	//
-	//--------------------------------------------------
+  //--------------------------------------------------
+  //
+  //  Properties
+  //
+  //--------------------------------------------------
 
-	//------------------------------
-	//  directoryIndex
-	//------------------------------
-	private static $directoryIndex;
+  //------------------------------
+  //  directoryIndex
+  //------------------------------
+  private static $directoryIndex;
 
-	/**
-	 * Emulate DirectoryIndex chain
-	 */
-	public function directoryIndex($value = NULL) {
-		if ($value === NULL) {
-			return self::$directoryIndex;
-		}
+  /**
+   * Emulate DirectoryIndex chain
+   */
+  public function directoryIndex($value = NULL) {
+    if ($value === NULL) {
+      return self::$directoryIndex;
+    }
 
-		if (is_string($value)) {
-			$value = explode(' ', $value);
-		}
+    if (is_string($value)) {
+      $value = explode(' ', $value);
+    }
 
-		self::$directoryIndex = $value;
-	}
+    self::$directoryIndex = $value;
+  }
 
-	//------------------------------
-	//  cacheExclusions
-	//------------------------------
-	private static $cacheExclusions = array('php');
+  //------------------------------
+  //  cacheExclusions
+  //------------------------------
+  private static $cacheExclusions = array('php');
 
-	/**
-	 * Conditional request is disregarded when
-	 * requested file contains these extensions.
-	 *
-	 * Related HTTP server headers are:
-	 * 1. Last Modified
-	 * 2. ETag
-	 *
-	 * Related HTTP client headers are:
-	 * 1. If-Modified-Since
-	 * 2. If-None-Match
-	 */
-	public function cacheExclusions($value = NULL) {
-		if ($value === NULL) {
-			return self::$cacheExclusions;
-		}
+  /**
+   * Conditional request is disregarded when
+   * requested file contains these extensions.
+   *
+   * Related HTTP server headers are:
+   * 1. Last Modified
+   * 2. ETag
+   *
+   * Related HTTP client headers are:
+   * 1. If-Modified-Since
+   * 2. If-None-Match
+   */
+  public function cacheExclusions($value = NULL) {
+    if ($value === NULL) {
+      return self::$cacheExclusions;
+    }
 
-		if (is_string($value)) {
-			$value = explode(' ', $value);
-		}
+    if (is_string($value)) {
+      $value = explode(' ', $value);
+    }
 
-		self::$cacheExclusions = $value;
-	}
+    self::$cacheExclusions = $value;
+  }
 
-	//--------------------------------------------------
-	//
-	//  Methods: IPathResolver
-	//
-	//--------------------------------------------------
+  //--------------------------------------------------
+  //
+  //  Methods: IPathResolver
+  //
+  //--------------------------------------------------
 
-	public
-	/* Boolean */ function resolve($path) {
-		$res = explode('?', $path, 2);
+  public
+  /* Boolean */ function resolve($path) {
+    $res = explode('?', $path, 2);
 
-		$queryString = isset($res[1]) ? $res[1] : '';
+    $queryString = isset($res[1]) ? $res[1] : '';
 
-		if (@$res[0][0] === '/') {
-			$res = ".$res[0]";
-		}
-		else {
-			$res = $res[0];
-		}
+    if (@$res[0][0] === '/') {
+      $res = ".$res[0]";
+    }
+    else {
+      $res = $res[0];
+    }
 
-		//------------------------------
-		//  Remove virtual path prefixes
-		//------------------------------
+    $res = urldecode($res);
 
-		$scriptDir = dirname($_SERVER['SCRIPT_NAME']);
+    //------------------------------
+    //  Emulate DirectoryIndex
+    //------------------------------
+    if (is_dir($res)) {
 
-		if ($scriptDir != '/') {
-  		$res = str_replace($scriptDir, '', $res);
-		}
+      // apache_lookup_uri($path)
+      if (false && function_exists('apache_lookup_uri')) {
+        $res = apache_lookup_uri($path);
+        $res = $_SERVER['DOCUMENT_ROOT'] . $res->uri;
 
-		unset($scriptDir);
+        // $_SERVER[REDIRECT_URL]
+        if (!is_file($res)) {
+          $res = "./$path" . basename($_SERVER['REDIRECT_URL']);
+        }
+      }
 
-		//------------------------------
-		//  Emulate DirectoryIndex
-		//------------------------------
-		if (is_dir($res)) {
+      if (!is_file($res)) {
+        $files = $this->directoryIndex();
 
-			// apache_lookup_uri($path)
-			if (false && function_exists('apache_lookup_uri')) {
-				$res = apache_lookup_uri($path);
-				$res = $_SERVER['DOCUMENT_ROOT'] . $res->uri;
+        foreach ($files as $file) {
+          $file = $this->resolve("$res$file");
 
-				// $_SERVER[REDIRECT_URL]
-				if (!is_file($res)) {
-					$res = "./$path" . basename($_SERVER['REDIRECT_URL']);
-				}
-			}
+          // Not a fully resolved path at the moment,
+          // starts resolve sub-chain.
+          if ($file !== FALSE) {
+            return $file;
+          }
+        }
+      }
 
-			if (!is_file($res)) {
-				$files = $this->directoryIndex();
+    }
 
-				foreach ($files as $file) {
-					$file = $this->resolve("$res$file");
+    //------------------------------
+    //  Virtual file handling
+    //------------------------------
+    $this->chainResolve($res);
 
-					// Not a fully resolved path at the moment,
-					// starts resolve sub-chain.
-					if ($file !== FALSE) {
-						return $file;
-					}
-				}
-			}
+    if (!is_file($res)) {
+      return FALSE;
+    }
 
-		}
+    $this->handle($res);
 
-		//------------------------------
-		//  Virtual file handling
-		//------------------------------
-		$this->chainResolve($res);
+  }
 
-		if (!is_file($res)) {
-			return FALSE;
-		}
+  //--------------------------------------------------
+  //
+  //  Methods: Serializable
+  //
+  //--------------------------------------------------
 
-		$this->handle($res);
+  public
+  /* String */ function serialize() {
+    return serialize($this);
+  }
 
-	}
+  public
+  /* void */ function unserialize($serial) {
+    return unserialize($this);
+  }
 
-	//--------------------------------------------------
-	//
-	//  Methods: Serializable
-	//
-	//--------------------------------------------------
+  //--------------------------------------------------
+  //
+  //  Methods
+  //
+  //--------------------------------------------------
 
-	public
-	/* String */ function serialize() {
-		return serialize($this);
-	}
+  private function handles($file) {
+    // Ignore hidden files
+    if (preg_match('/^\..*$/', basename($file))) {
+      return FALSE;
+    }
 
-	public
-	/* void */ function unserialize($serial) {
-		return unserialize($this);
-	}
+    return TRUE;
+  }
 
-	//--------------------------------------------------
-	//
-	//  Methods
-	//
-	//--------------------------------------------------
+  /**
+   * Primary task when including PHP is that we need
+   * to change $_SERVER variables to match target file.
+   *
+   * Q: Possible to make an internal request through Apache?
+   * A: Not realistic, too much configuration.
+   */
+  private function handle($path) {
+    $mtime = filemtime($path);
 
-	private function handles($file) {
-		// Ignore hidden files
-		if (preg_match('/^\..*$/', basename($file))) {
-			return FALSE;
-		}
+    $mime = $this->mimetype($path);
+    $this->sendCacheHeaders($path, $mime !== NULL);
 
-		return TRUE;
-	}
+    if (isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) &&
+      strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= $mtime) {
+      throw new \framework\exceptions\ResolverException(304);
+    }
 
-	/**
-	 * Primary task when including PHP is that we need
-	 * to change $_SERVER variables to match target file.
-	 *
-	 * Q: Possible to make an internal request through Apache?
-	 * A: Not realistic, too much configuration.
-	 */
-	private function handle($path) {
-		$mtime = filemtime($path);
+    $eTag = $this->fileETag($path);
 
-		$mime = $this->mimetype($path);
-		$this->sendCacheHeaders($path, $mime !== NULL);
+    /* Note by Eric @ 24 Jan, 2013
 
-		if (isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) &&
-			strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= $mtime) {
-			redirect(304);
-		}
+       CAUTION: If-Modified-Since take precedence!
 
-		// $_SERVER field mapping
-		$_SERVER['SCRIPT_FILENAME'] = realpath($path);
-		$_SERVER['SCRIPT_NAME'] = $_SERVER['REQUEST_URI'];
-		$_SERVER['PHP_SELF'] = $_SERVER['REQUEST_URI'];
+       It's damn complicated on If-None-Match ... see RFC2616 section 14.26 If-None-Match for more details.
+       http://www.w3.org/Protocols/rfc2616/rfc2616-sec14.html
 
-		ob_start();
+       Particularly, the following sentences give hints that we should pay attention to,
+       1. The requesting resources
+       2. The request method
 
-		if (preg_match('/^image/', $mime)) {
-			readfile($path);
-		}
-		else {
-			// TODO: Pure include_once at beta stage.
-			include_once($path);
-		}
+       If any of the entity tags match the entity tag of the entity that would have been returned in the
+       response to a similar GET request (without the If-None-Match header) on that resource, or if "*"
+       is given and any current entity exists for that resource, then the server MUST NOT perform the
+       requested method, unless required to do so because the resource's modification date fails to match
+       that supplied in an If-Modified-Since header field in the request. Instead, if the request method
+       was GET or HEAD, the server SHOULD respond with a 304 (Not Modified) response, including the cache-
+       related header fields (particularly ETag) of one of the entities that matched. For all other request
+       methods, the server MUST respond with a status of 412 (Precondition Failed).
 
-		$contentLength = ob_get_length();
+    */
+    if (!isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) && isset($_SERVER['HTTP_IF_NONE_MATCH'])) {
+      // Exists but not GET or HEAD
+      switch (@$_SERVER['REQUEST_METHOD']) {
+        case 'GET': case 'HEAD':
+          break;
 
-		$response = ob_get_clean();
+        default:
+          throw new \framework\exceptions\ResolverException(412);
+          break;
+      }
 
-		// Send HTTP header Content-Length according to the output buffer if it is not sent.
-		$headers = headers_list();
-		$contentLengthSent = FALSE;
-		foreach ($headers as $header) {
-			if (stripos($header, 'Content-Length') !== FALSE) {
-				$contentLengthSent = TRUE;
-				break;
-			}
-		}
-		unset($headers, $header);
+      /* Note by Eric @ 24 Jan, 2013
+         If-None-Match means 304 when target resources exists.
+      */
+      if ($_SERVER['HTTP_IF_NONE_MATCH'] === '*' && $eTag) {
+        throw new \framework\exceptions\ResolverException(304);
+      }
 
-		if ($mime !== NULL) {
-			header("Content-Type: $mime", true);
-		}
+      preg_match_all('/(?:^\*$|("[^\*"]+")(?:\s*,\s*("[^\*"]+")))$/', $_SERVER['HTTP_IF_NONE_MATCH'], $eTags);
 
-		if (!$contentLengthSent) {
-			header("Content-Length: $contentLength", true);
-		}
+      if (@$eTags[1] && in_array($eTag, (array) $eTags[1])) {
+        throw new \framework\exceptions\ResolverException(304);
+      }
+    }
 
-		echo $response;
-	}
+    /* Note by Vicary @ 24 Jan, 2013
 
-	/**
-	 * @private
-	 */
-	private function chainResolve(&$path) {
-		switch (pathinfo($path , PATHINFO_EXTENSION)) {
-			case 'js':
-				// When requesting *.min.js, minify it from the original source.
-				$opath = preg_replace('/\.min(\.js)$/', '\\1', $path, -1, $count);
+       CAUTION: If-Modified-Since take precedence!
 
-				if (true && $count > 0 && is_file($opath)) {
-					$mtime = filemtime($opath);
+       According to RFC2616 section 14.24 If-Match, ...
+       If the request would, without the If-Match header field, result in anything other
+       than a 2xx or 412 status, then the If-Match header MUST be ignored.
 
-					// Whenever orginal source exists and is newer,
-					// udpate minified version.
-					if (!is_file($path) || $mtime > filemtime($path)) {
-						$output = `cat $opath | .private/uglifyjs -o $path 2>&1`;
+       And since section 14.26 If-None-Match contains no conflicting sentence over this,
+       HTTP header If-None-Match should take precedence over this.
 
-						if ($output) {
-							$output = "[uglifyjs] $output.";
-						}
-						elseif (!file_exists($path)) {
-							$output = "[uglifyjs] Error writing output file $path.";
-						}
+    */
+    if (!isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) && isset($_SERVER['HTTP_IF_MATCH'])) {
+      // Exists but not GET or HEAD
+      switch (@$_SERVER['REQUEST_METHOD']) {
+        case 'GET': case 'HEAD':
+          break;
 
-						if ($output) {
-							\log::write($output, 'Warning');
+        default:
+          throw new \framework\exceptions\ResolverException(412);
+          break;
+      }
 
-							// Error caught when minifying javascript, rollback to original.
-							$path = $opath;
-						}
-						else {
-							touch($path, $mtime);
-						}
-					}
-				}
-				break;
-			case 'png':
-				// When requesting *.png, we search for svg for conversion.
-				$opath = preg_replace('/\.png$/', '.svg', $path, -1, $count);
+      /* Note by Eric @ 24 Jan, 2013
+         Normally this framework would not generate 412 with *,
+         all existing files has an entity tag with md5 hashing.
 
-				if ($count > 0 && is_file($opath)) {
-					$mtime = filemtime($opath);
+         One single condition is that md5_file() fails to generate
+         a hash from target file, which is normally an exception.
+         In such cases, a 500 Internal Server Error sholud be
+         generated instead of this.
 
-					// Whenever orginal source exists and is newer,
-					// udpate minified version.
-					if (!is_file($path) || $mtime > filemtime($path)) {
-						$res = `/usr/bin/convert -density 72 -background none $opath $path 2>&1`;
+         But anyways ... let's follow the spec.
+      */
+      if ($_SERVER['HTTP_IF_MATCH'] === '*' && !$eTag) {
+        throw new \framework\exceptions\ResolverException(412);
+      }
 
-						touch($path, $mtime);
-					}
-				}
-				break;
-			case 'css':
-				// When requesting *.min.css, minify it from the original source.
-				$opath = preg_replace('/\.min(\.css)$/', '\\1', $path, -1, $count);
+      preg_match_all('/(?:^\*$|(:?"([^\*"]+)")(?:\s*,\s*(:?"([^\*"]+)")))$/', $_SERVER['HTTP_IF_MATCH'], $eTags);
 
-				if ($count > 0 && is_file($opath)) {
-					$mtime = filemtime($opath);
+      // 412 Precondition Failed when nothing matches.
+      if (@$eTags[1] && !in_array($eTag, (array) $eTags[1])) {
+        throw new \framework\exceptions\ResolverException(412);
+      }
 
-					$ctime = \cache::get($path);
+      unset($eTags);
+    }
 
-					// Whenever orginal source exists and is newer,
-					// udpate minified version.
+    unset($eTag);
 
-					// Wait for a time before re-download, no matter the
-					// last request failed or not.
-					if (time() - $ctime > 3600 && (!is_file($path) || $mtime > filemtime($path))) {
-						// Store the offset in cache, enabling a waiting time before HTTP retry.
-						\cache::delete($path);
-						\cache::set($path, time());
+    // $_SERVER field mapping
+    $_SERVER['SCRIPT_FILENAME'] = realpath($path);
+    $_SERVER['SCRIPT_NAME'] = $_SERVER['REQUEST_URI'];
+    $_SERVER['PHP_SELF'] = $_SERVER['REQUEST_URI'];
 
-						$opath = realpath($opath);
+    ob_start();
 
-						\core\Net::httpRequest(array(
-						    'url' => 'http://www.cssminifier.com/raw'
-						  , 'type' => 'post'
-						  , 'data' => array( 'input' => file_get_contents($opath) )
-						  , '__curlOpts' => array(
-						      CURLOPT_TIMEOUT => 2
-						    )
-						  , 'callbacks' => array(
-						      'success' => function($response, $request) use($path) {
-  						      if ($response) {
-    						      file_put_contents($path, $response);
-  						      }
-						      }
-						    , 'failure' => function() use($path) {
-    						    @unlink($path);
-  						    }
-						    )
-						  ));
-					}
+    if (preg_match('/^image/', $mime)) {
+      readfile($path);
+    }
+    else {
+      // TODO: Pure include_once at beta stage.
+      include_once($path);
+    }
 
-					if (!is_file($path)) {
-						$path = $opath;
-					}
-				}
-				break;
-			case 'csv':
-				header('Content-Disposition: attachment;', true);
-				break;
-			default:
-				// Extension-less
-				if (!is_file($path) &&
-					preg_match('/^[^\.]+$/', basename($path))) {
-					$files = glob("./$path.*");
+    $contentLength = ob_get_length();
 
-					foreach ($files as &$file) {
-						if (is_file($file) && $this->handles($file)) {
-							$path = $file;
-							return;
-						}
-					}
-				}
-				break;
-		}
-	}
+    $response = ob_get_clean();
 
-	/**
-	 * @private
-	 */
-	private function sendCacheHeaders($path, $permanant = FALSE) {
-		if (array_search(pathinfo($path , PATHINFO_EXTENSION),
-			self::$cacheExclusions) !== FALSE) {
-			return;
-		}
+    // Send HTTP header Content-Length according to the output buffer if it is not sent.
+    $headers = headers_list();
+    $contentLengthSent = FALSE;
+    foreach ($headers as $header) {
+      if (stripos($header, 'Content-Length') !== FALSE) {
+        $contentLengthSent = TRUE;
+        break;
+      }
+    }
+    unset($headers, $header);
+
+    if ($mime !== NULL) {
+      header("Content-Type: $mime", true);
+    }
+
+    if (!$contentLengthSent) {
+      header("Content-Length: $contentLength", true);
+    }
+
+    // Almost confirm 200 at this point
+    @redirect(200);
+
+    echo $response;
+  }
+
+  /**
+   * @private
+   */
+  private function chainResolve(&$path) {
+    switch (pathinfo($path , PATHINFO_EXTENSION)) {
+      case 'js':
+        // When requesting *.min.js, minify it from the original source.
+        $opath = preg_replace('/\.min(\.js)$/', '\\1', $path, -1, $count);
+
+        if (true && $count > 0 && is_file($opath)) {
+          $mtime = filemtime($opath);
+
+          // Whenever orginal source exists and is newer,
+          // udpate minified version.
+          if (!is_file($path) || $mtime > filemtime($path)) {
+            $output = `cat $opath | .private/uglifyjs -o $path 2>&1`;
+
+            if ($output) {
+              $output = "[uglifyjs] $output.";
+            }
+            elseif (!file_exists($path)) {
+              $output = "[uglifyjs] Error writing output file $path.";
+            }
+
+            if ($output) {
+              \log::write($output, 'Warning');
+
+              // Error caught when minifying javascript, rollback to original.
+              $path = $opath;
+            }
+            else {
+              touch($path, $mtime);
+            }
+          }
+        }
+        break;
+      case 'png':
+        // When requesting *.png, we search for svg for conversion.
+        $opath = preg_replace('/\.png$/', '.svg', $path, -1, $count);
+
+        if ($count > 0 && is_file($opath)) {
+          $mtime = filemtime($opath);
+
+          // Whenever orginal source exists and is newer,
+          // udpate minified version.
+          if (!is_file($path) || $mtime > filemtime($path)) {
+            $res = `/usr/bin/convert -density 72 -background none $opath $path 2>&1`;
+
+            touch($path, $mtime);
+          }
+        }
+        break;
+      case 'css':
+        // When requesting *.min.css, minify it from the original source.
+        $opath = preg_replace('/\.min(\.css)$/', '\\1', $path, -1, $count);
+
+        if ($count > 0 && is_file($opath)) {
+          $mtime = filemtime($opath);
+
+          $ctime = \cache::get($path);
+
+          // Whenever orginal source exists and is newer,
+          // udpate minified version.
+
+          // Wait for a time before re-download, no matter the
+          // last request failed or not.
+          if (time() - $ctime > 3600 && (!is_file($path) || $mtime > filemtime($path))) {
+            // Store the offset in cache, enabling a waiting time before HTTP retry.
+            \cache::delete($path);
+            \cache::set($path, time());
+
+            $opath = realpath($opath);
+
+            \core\Net::httpRequest(array(
+                'url' => 'http://www.cssminifier.com/raw'
+              , 'type' => 'post'
+              , 'data' => array( 'input' => file_get_contents($opath) )
+              , '__curlOpts' => array(
+                  CURLOPT_TIMEOUT => 2
+                )
+              , 'callbacks' => array(
+                  'success' => function($response, $request) use($path) {
+                    if ($response) {
+                      file_put_contents($path, $response);
+                    }
+                  }
+                , 'failure' => function() use($path) {
+                    @unlink($path);
+                  }
+                )
+              ));
+          }
+
+          if (!is_file($path)) {
+            $path = $opath;
+          }
+        }
+        break;
+      case 'csv':
+        header('Content-Disposition: attachment;', true);
+        break;
+      default:
+        // Extension-less
+        if (!is_file($path) &&
+          preg_match('/^[^\.]+$/', basename($path))) {
+          $files = glob("./$path.*");
+
+          foreach ($files as &$file) {
+            if (is_file($file) && $this->handles($file)) {
+              $path = $file;
+              return;
+            }
+          }
+        }
+        break;
+    }
+  }
+
+  /**
+   * @private
+   */
+  private function sendCacheHeaders($path, $permanant = FALSE) {
+    if (array_search(pathinfo($path , PATHINFO_EXTENSION),
+      self::$cacheExclusions) !== FALSE) {
+      return;
+    }
 
     if ($permanant) {
+      header_remove('Pragma');
       header('Cache-Control: max-age=' . FRAMEWORK_RESPONSE_CACHE_PERMANANT, TRUE);
       header('Expires: ' . gmdate(DATE_RFC1123, time() + FRAMEWORK_RESPONSE_CACHE_PERMANANT), TRUE);
-      header_remove('Pragma');
+      header('ETag: "' . $this->fileETag($path) . '"', TRUE); // Strong ETag
     }
     else {
       header('Cache-Control: private, max-age=' . FRAMEWORK_RESPONSE_CACHE_TEMPORARY . ', must-revalidate', TRUE);
+      header('ETag: W/"' . $this->fileETag($path) . '"', TRUE); // Weak ETag
     }
 
+    // TODO: Generates an ETag base on target mime type.
+
     header('Last-Modified: ' . date(DATE_RFC1123, filemtime($path)), TRUE);
-	}
+  }
 
-	/**
-	 * @private
-	 */
-	private function mimetype($path) {
-		$mime = new \finfo(FILEINFO_MIME_TYPE);
-		$mime = $mime->file($path);
+  /**
+   * @private
+   */
+  private function fileETag($path) {
+    return md5_file($path);
+  }
 
-		switch (pathinfo($path , PATHINFO_EXTENSION)) {
-			case 'css':
-				$mime = 'text/css; charset=utf-8';
-				break;
-			case 'js':
-				$mime = 'text/javascript; charset=utf-8';
-				break;
-			case 'pdf':
-				$mime = 'application/pdf';
-				break;
-			case 'php':
-			case 'phps':
-			case 'html':
-				$mime = NULL;
-				break;
-			case 'ttf':
-				$mime = 'application/x-font-ttf';
-				break;
-			case 'woff':
-				$mime = 'application/x-font-woff';
-				break;
-			case 'eot':
-				$mime = 'applicaiton/vnd.ms-fontobject';
-				break;
-			case 'otf':
-				$mime = 'font/otf';
-				break;
-			case 'svgz':
-				header('Content-Encoding: gzip');
-			case 'svg':
-				$mime = 'image/svg+xml; charset=utf-8';
-				break;
-			default:
-				if (!preg_match('/(^image|pdf$)/', $mime)) {
-					$mime = NULL;
-				}
-				break;
-		}
+  /**
+   * @private
+   */
+  private function mimetype($path) {
+    $mime = new \finfo(FILEINFO_MIME_TYPE);
+    $mime = $mime->file($path);
 
-		return $mime;
-	}
+    switch (pathinfo($path , PATHINFO_EXTENSION)) {
+      case 'css':
+        $mime = 'text/css; charset=utf-8';
+        break;
+      case 'js':
+        $mime = 'text/javascript; charset=utf-8';
+        break;
+      case 'pdf':
+        $mime = 'application/pdf';
+        break;
+      case 'php':
+      case 'phps':
+      case 'html':
+        $mime = NULL;
+        break;
+      case 'ttf':
+        $mime = 'application/x-font-ttf';
+        break;
+      case 'woff':
+        $mime = 'application/x-font-woff';
+        break;
+      case 'eot':
+        $mime = 'applicaiton/vnd.ms-fontobject';
+        break;
+      case 'otf':
+        $mime = 'font/otf';
+        break;
+      case 'svgz':
+        header('Content-Encoding: gzip');
+      case 'svg':
+        $mime = 'image/svg+xml; charset=utf-8';
+        break;
+      default:
+        if (!preg_match('/(^image|pdf$)/', $mime)) {
+          $mime = NULL;
+        }
+        break;
+    }
+
+    return $mime;
+  }
 }

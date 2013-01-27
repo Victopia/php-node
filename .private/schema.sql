@@ -50,31 +50,6 @@ CREATE TABLE `File` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
--- Table structure for table `Item`
---
-
-DROP TABLE IF EXISTS `Item`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!40101 SET character_set_client = utf8 */;
-CREATE TABLE `Item` (
-  `ID` bigint(20) unsigned NOT NULL,
-  `token` varchar(255) NOT NULL,
-  `site` smallint(5) unsigned NOT NULL,
-  `flags` set('AttributesEdited','AttributesError','FitmentsEdited','FitmentsError') NOT NULL DEFAULT '',
-  `CategoryID` bigint(20) unsigned NOT NULL,
-  `SKU` varchar(255) NOT NULL DEFAULT '',
-  `ListingType` enum('Auction','FixedPriceItem','PersonalOffer','Unknown') NOT NULL,
-  `ListingStatus` enum('Active','Completed','Ended') NOT NULL,
-  `EndTime` datetime DEFAULT NULL,
-  `@contents` longtext NOT NULL,
-  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`ID`),
-  KEY `idx_CategoryID` (`CategoryID`),
-  KEY `idx_token` (`token`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8;
-/*!40101 SET character_set_client = @saved_cs_client */;
-
---
 -- Table structure for table `Log`
 --
 
@@ -83,7 +58,7 @@ DROP TABLE IF EXISTS `Log`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `Log` (
   `ID` bigint(20) unsigned zerofill NOT NULL AUTO_INCREMENT,
-  `type` enum('Access','Information','Notice','Warning','Exception','Error') COLLATE utf8_unicode_ci NOT NULL DEFAULT 'Information',
+  `type` enum('Access','Information','Notice','Warning','Exception','Error','Debug') COLLATE utf8_unicode_ci NOT NULL DEFAULT 'Information',
   `subject` varchar(255) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
   `action` varchar(78) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
   `@contents` longtext COLLATE utf8_unicode_ci NOT NULL,
