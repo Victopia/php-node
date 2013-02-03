@@ -96,13 +96,13 @@ class Node {
     $columnsFilter = array_select($filter, $columns);
 
     /* Merge $filter into SQL statement. */
-      array_walk($columnsFilter, function(&$contents, $field) use($tableName, &$query, &$params) {
+      array_walk($columnsFilter, function(&$contents, $field) use(&$query, &$params) {
         $contents = \utils::wrapAssoc($contents);
 
         $subQuery = array();
 
-        array_walk($contents, function($content) use($tableName, $field, &$subQuery, &$params) {
-          $escapedField = Database::escape($field, $tableName);
+        array_walk($contents, function($content) use($field, &$subQuery, &$params) {
+          $escapedField = Database::escape($field);
 
           // 1. Boolean comparison: true, false
           if (is_bool($content)) {
@@ -236,16 +236,15 @@ class Node {
 
         /* Start filtering. */
         foreach ($filter as $field => $expr) {
-          $expr = \utils::wrapAssoc($expr);
-
-          array_walk_recursive($expr, 'Node::filterWalker', array(
-              'row' => &$row,
+          // Reuse $expr as it's own result here, do not confuse with the name.
+          $expr = self::filterWalker($expr, array(
+              'row' => $row,
               'field' => $field,
               'fieldsRequired' => $fieldsRequired
             ));
 
-          // Break out when row is set NULL, which means dropped.
-          if (!$row) {
+          if (!$expr) {
+            $row = NULL;
             break;
           }
         }
@@ -278,40 +277,66 @@ class Node {
     return $result;
   }
 
-  private static function filterWalker($content, $key, $data) {
+  private static function filterWalker($content, $data) {
     $field = $data['field'];
     $required = $data['fieldsRequired'];
 
     // Just skip the field on optional matcher.
+    // Return TURE to include those fields, FALSE to drop them.
     if ( !$required && !isset($data['row'][$field]) ) {
-      return;
+      return TRUE;
     }
 
     $value = &$data['row'][$field];
 
-    // For required fields.
-    if ($required && !isset($value) ||
-    // Boolean comparison: true, false
-        ( Is_Bool($content) && $content !== (bool) $value ) ||
-    // NULL type: NULL
-        ( is_null($content) && $value !== $content ) ||
-    // Array type: direct comparison
-        ( is_array($content) && $value == $content ) ||
-    // Numeric comparison: <10, >=20, ==3.5 ... etc
-        ( preg_match('/^(<|<=|==|>=|>)\s*\d+$/', $content, $matches) && !eval('return $value' . $content . ';') ) ||
-    // Datetime comparison: <'2010-07-31', >='1989-06-21' ... etc
-        ( preg_match('/^(<|<=|==|>=|>)\'([0-9- :]+)\'$/', $content, $matches ) &&
-          !eval('return strtotime($value)' . $matches[1] . strtotime($matches[2]) . ';')) ||
-    // Regexp matching: "/^AB\d+/"
-        ( preg_match('/^\/.+\/g?i?$/i', $content, $matches) ? preg_match( $content, $value ) == 0 :
-    // NULL type: ==NULL, !=NULL, ===NULL, !==NULL
-          ( preg_match('/^((?:==|!=)=?)\s*NULL\s*$/i', $content, $matches) && !eval('return $value' . $content . ';') ) ||
-    // Plain string
-    // This was "count($matches) > 0", find out why.
-          ( count($matches) == 0 && is_string($content) && $content !== $value )
-        ))
-    {
-      $data['row'] = NULL;
+    if (is_array($content)) {
+      // OR operation here.
+
+      $content = array_map(function($content) use($data) {
+        return self::filterWalker($content, $data);
+      }, $content);
+
+      return in_array(TRUE, $content, TRUE);
+    }
+    else {
+      // Normalize numeric values into exact match.
+      if (is_numeric($content)) {
+        $content = "==$content";
+      }
+
+      // For required fields.
+      if ($required && !isset($value) ||
+      // Boolean comparison: true, false
+          ( is_bool($content) && $content !== (bool) $value ) ||
+      // NULL type: NULL
+          ( is_null($content) && $value !== $content ) ||
+
+      /* Quoted by Eric @ 1 Jan, 2013
+         This will make inconsistency between real and virtual columns.
+
+      // Array type: direct comparison
+          // ( is_array($content) && $value == $content ) ||
+      */
+
+      // Numeric comparison: <10, >=20, ==3.5 ... etc
+          ( preg_match('/^(<|<=|==|>=|>)\s*\d+$/', $content, $matches) && !eval('return $value' . $content . ';') ) ||
+      // Datetime comparison: <'2010-07-31', >='1989-06-21' ... etc
+          ( preg_match('/^(<|<=|==|>=|>)\'([0-9- :]+)\'$/', $content, $matches ) &&
+            !eval('return strtotime($value)' . $matches[1] . strtotime($matches[2]) . ';')) ||
+      // Regexp matching: "/^AB\d+/"
+          ( preg_match('/^\/.+\/g?i?$/i', $content, $matches) ? preg_match( $content, $value ) == 0 :
+      // NULL type: ==NULL, !=NULL, ===NULL, !==NULL
+            ( preg_match('/^((?:==|!=)=?)\s*NULL\s*$/i', $content, $matches) && !eval('return $value' . $content . ';') ) ||
+      // Plain string
+      // This was "count($matches) > 0", find out why.
+            ( count($matches) == 0 && is_string($content) && FALSE == preg_match('/^(<|<=|==|>=|>)/', $content) && $content !== $value )
+          ))
+      {
+        // $data['row'] = NULL;
+        return FALSE;
+      }
+
+      return TRUE;
     }
   }
 
@@ -374,9 +399,9 @@ class Node {
       return array();
     }
 
-    $isArray = is_array($contents) && !Utility::isAssoc($contents);
-
-    $contents = Utility::wrapAssoc($contents);
+    if (Utility::isAssoc($contents)) {
+      $contents = array($contents);
+    }
 
     $result = array();
 
@@ -454,14 +479,20 @@ class Node {
       // Encode the rest columns and put inside virtual field.
       // Skip the whole action when `@contents` columns doesn't exists.
       if (in_array(NODE_FIELD_VIRTUAL, $cols)) {
-        $data[NODE_FIELD_VIRTUAL] = json_encode($row);
+        // Silently swallow json_encode() errors.
+        $data[NODE_FIELD_VIRTUAL] = @json_encode($row);
+
+        // Store nothing on encode error, or there is nothing to be stored.
+        if (!$data[NODE_FIELD_VIRTUAL]) {
+          unset($data[NODE_FIELD_VIRTUAL]);
+        }
       }
 
       $result[] = Database::upsert($tableName, $data);
     }
 
-    if ( !$isArray ) {
-      $result = Utility::unwrapAssoc($result);
+    if ( count($result) == 1 ) {
+      $result = $result[0];
     }
 
     return $result;

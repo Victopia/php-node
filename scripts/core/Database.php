@@ -89,20 +89,17 @@ class Database {
       }, $sourceFields);
 
       $values = array_map(function($value) use($sourceFields, $quotedFields) {
-        // TODO: Break string by words, spaces and puncuations be ignored.
+        $fields = explode(' ', $value);
 
-        $matches = preg_split('/[\(\)\s]+/', $value);
+        foreach ($fields as &$field) {
+          $index = array_search($field, $sourceFields);
 
-        if (is_array(@$matches)) {
-          array_walk($matches, function($match) use(&$value, $sourceFields, $quotedFields) {
-            $index = array_search($match, $sourceFields);
-            if (FALSE !== $index) {
-              $value = str_replace($match, $quotedFields[$index], $value);
-            }
-          });
-        }
+          if ($index !== FALSE) {
+            $field = $quotedFields[$index];
+          }
+        } unset($field);
 
-        return $value;
+        return implode(' ', $fields);
       }, $values);
 
       // Restore to scalar if it was not an array.
