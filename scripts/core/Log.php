@@ -13,6 +13,7 @@ class Log {
 			case 'Access':
 			case 'Information':
 			case 'Notice':
+			case 'Debug':
 				$message = array('remarks' => $message);
 				break;
 			default:

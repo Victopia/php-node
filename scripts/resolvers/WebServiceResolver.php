@@ -39,7 +39,12 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
 
 		$instance = new $classname();
 
-		if (!method_exists($classname, $function) && !is_callable($instance, $function)) {
+		// Why instanceof fails on interfaces? God fucking knows!
+		if (!is_a($instance, 'framework\interfaces\IWebService')) {
+  		return FALSE;
+		}
+
+		if (!method_exists($classname, $function) && !is_callable(array($instance, $function))) {
 			throw new \framework\exceptions\ResolverException( 501 );
 		}
 
@@ -47,23 +52,100 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
 			$parameters = explode('/', substr($matches[3], 1));
 		}
 		else {
-			$parameters = Array();
+			$parameters = array();
 		}
 
 		unset($matches);
 
-		// Access log
-		\log::write("WebService: $classname->$function, parameters: " . print_r($parameters, 1), 'Access');
+		// Allow constants and primitive values on REST requests
+		$parameters = array_map(function($value) {
+		  if (preg_match('/^\:([\d\w]+)$/', $value, $matches)) {
+		    if (strcasecmp(@$matches[1], 'true') == 0) {
+  		    $value = TRUE;
+		    }
+		    elseif (strcasecmp(@$matches[1], 'false') == 0) {
+  		    $value = FALSE;
+		    }
+		    elseif (strcasecmp(@$matches[1], 'null') == 0) {
+  		    $value = NULL;
+		    }
+		    elseif (!defined(@$matches[1])) {
+  		    throw new \framework\exceptions\ResolverException('Error resolving web service parameters, undefined constant ' . $matches[1]);
+		    }
+		    else {
+  		    $value = constant(@$matches[1]);
+		    }
+		  }
+
+		  return $value;
+		}, $parameters);
+
+		// Allow constants and primitive values on $_GET parameters,
+		// map on both keys and values.
+
+		/* Note by Eric @ 14 Feb, 2013
+		   CAUTION: Should really prevent NODE_FIELD_RAWQUERY, serious security problem!
+		            These constant things are originally designed for an OR search upon
+		            eBay items.
+		*/
+		array_walk($_GET, function(&$value, $key) {
+		  if (is_array($value)) {
+  		  return;
+		  }
+
+		  if (preg_match('/^\:([\d\w+]+)$/', $value, $matches)) {
+		    if (strcasecmp(@$matches[1], 'true') == 0) {
+      		$value = TRUE;
+    		}
+		    elseif (strcasecmp(@$matches[1], 'false') == 0) {
+  		    $value = FALSE;
+		    }
+		    elseif (strcasecmp(@$matches[1], 'null') == 0) {
+  		    $value = NULL;
+		    }
+		    elseif (!defined(@$matches[1])) {
+  		    throw new \framework\exceptions\ResolverException('Error resolving web service parameters, undefined constant ' . $matches[1]);
+		    }
+		    else {
+  		    $value = constant(@$matches[1]);
+		    }
+		  }
+
+  		if (preg_match('/^\:([\d\w+]+)$/', $key, $matches)) {
+  		  unset($_GET[$key]);
+
+    		if (!defined(@$matches[1])) {
+  		    throw new \framework\exceptions\ResolverException('Error resolving web service parameters, undefined constant ' . $matches[1]);
+		    }
+		    else {
+		      $_GET[constant(@$matches[1])] = $value;
+		    }
+  		}
+		});
 
 		// Shooto!
 		$response = \service::call($classname, $function, $parameters);
 
-		unset($instance); unset($function); unset($parameters);
+		// Access log
+		\log::write("[WebService] $classname->$function", 'Access', array(
+		    'parameters' => $parameters
+		  , 'response' => $response
+		  ));
 
-		header('Content-Type: application/json; charset=utf-8', true);
+		// unset($instance); unset($function); unset($parameters);
 
-		// JSON encode the result and response to client.
-		echo json_encode($response);
+		// Return nothing when the service function returns nothing,
+		// this favors file download and other non-JSON outputs.
+		if ($response !== NULL) {
+  		header('Content-Type: application/json; charset=utf-8', true);
+
+  		// JSON encode the result and response to client.
+  		/* Note by Eric @ 11 Dec, 2012
+  		    Do not use JSON_NUMERIC_CHECK option, this might corrupt
+  		    values. Should ensure numeric on insertion instead.
+  		*/
+  		echo json_encode($response);
+		}
 	}
 
 	//--------------------------------------------------

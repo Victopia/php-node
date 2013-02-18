@@ -85,7 +85,12 @@ class Net {
         $option = array( 'url' => $option );
       }
       elseif (!@$option['url']) {
-        throw new \Exception('No URL set!');
+        throw new \framework\exceptions\CoreException('No URL set!');
+      }
+
+      // Auto prepend http, default protocol.
+      if (preg_match('/^(\/\/)/', $option['url'])) {
+        $option['url'] = "http:" . $option['url'];
       }
 
       $curlOption = array(
