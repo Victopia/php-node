@@ -78,7 +78,6 @@ class XMLConverter {
 
             $attr[$attrName] = $reader->value;
           }
-
           $currentNode['@attributes'] = &$attr;
         }
 
@@ -91,11 +90,8 @@ class XMLConverter {
 
           if (self::walkXML($reader, $currentNode) !== TRUE) {
             // Root cleanup
-            if (count($node) == 1) {
-              unset($node['@value']);
-              $node[$nodeName] = $_value[$nodeName][0];
-            }
-
+            unset($node['@value']);
+            $node[$nodeName] = $_value[$nodeName][0];
             return;
           }
         }
@@ -107,23 +103,21 @@ class XMLConverter {
 
       case \XMLReader::TEXT:                   // #3
       case \XMLReader::CDATA:                  // #4
-        if ($reader->value) {
-          $value = $reader->value;
+        $value = $reader->value;
 
-          if (is_numeric($value) &&
-              $value < PHP_INT_MAX &&
-              strlen($value) < 15) {
-            $value = floatval($value);
-          }
-          elseif ($value === 'true') {
-            $value = TRUE;
-          }
-          elseif ($value === 'false') {
-            $value = FALSE;
-          }
-
-          $_value[] = $value;
+        if (is_numeric($value) &&
+            $value < PHP_INT_MAX &&
+            strlen($value) < 15) {
+          $value = floatval($value);
         }
+        elseif ($value === 'true') {
+          $value = TRUE;
+        }
+        elseif ($value === 'false') {
+          $value = FALSE;
+        }
+
+        $_value[] = $value;
 
         $reader->read();
         break;
@@ -143,41 +137,45 @@ class XMLConverter {
       case \XMLReader::END_ELEMENT:            // #15
         if (is_array($_value)) {
           // Flatten numeric arrays with one element.
-          $_value = Utility::unwrapAssoc($_value);
+          if (!Utility::isAssoc($_value)) {
 
-          // Empty string as value (last resort), when element has no value (self-closing).
-          if (!$_value) {
-            $_value = '';
+            switch (count($_value)) {
+              case 0:
+                $_value = '';
+                break;
+              case 1:
+                $_value = $_value[0];
+                break;
+            }
           }
 
           // Flatten name-value pairs with their content as single element array.
           if (is_array($_value)) {
-            $_value = array_map(array('core\\Utility', 'unwrapAssoc'), $_value);
+            foreach ($_value as $key => &$value) {
+              if (is_array($value) && count($value) == 1) {
+                $value = $value[0];
+              }
+            }
           }
         }
 
-        // Directly use the contents when there is no attributes in the XML.
-        /* Note by Eric @ 8 Jan, 2013
-           Property @value is set by default, so there must be @value when count($node) == 1.
-        */
-        // "count($node) == 1" allows more than attributes in metadata in future.
-        if (count($node) == 1) {
+        if (count($node) === 1) {
           unset($node['@value']);
 
           $node = $_value;
         }
         else {
           foreach ($node as $key => &$value) {
-            if (is_array($value)) {
-              switch (count($value)) {
-                case 0:
-                  unset($node[$key], $value);
-                  break;
-                case 1:
-                  $value = Utility::unwrapAssoc($value);
-                  break;
-              }
+            if (count($value) === 0) {
+              unset($value);
             }
+            elseif (is_array($value) &&
+                count($value) === 1 &&
+                isset($value[0])) {
+              $value = $value[0];
+            }
+
+            continue;
           }
         }
 

@@ -114,7 +114,7 @@ class Relation {
 	}
 
 	static function deleteObjects($collection, $subject) {
-		return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `Subject` = ?', array($object))->rowCount();
+		return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `Subject` = ?', array($subject))->rowCount();
 	}
 
 	static function delete($collection, $object) {

@@ -16,7 +16,7 @@ class Utility {
   static function letIfaces() {
     switch (strtoupper(PHP_OS)) {
       case 'DARWIN': // MAC OS X
-        $ifaces = `ifconfig | expand | cut -c1-8 | sort | uniq -u | awk -F: '{print $1;}'`;
+        $ifaces = @`ifconfig | expand | cut -c1-8 | sort | uniq -u | awk -F: '{print $1;}'`;
         $ifaces = preg_split('/\s+/', $ifaces);
         return $ifaces;
 
@@ -34,6 +34,24 @@ class Utility {
   }
 
   /**
+   * Returns whether current request is made by local redirect.
+   */
+  static function isLocalRedirect() {
+    return @$_SERVER['HTTP_REFERER'] == gethostname();
+  }
+
+  /**
+   * Shorthand function for either isCLI() or isLocalRedirect().
+   *
+   * Service methods should normally allow this no matter what,
+   * unless user accessible data range must be enforced. Functions
+   * should then implement a way to indicate target user.
+   */
+  static function isLocal() {
+    return self::isCLI() || self::isLocalRedirect();
+  }
+
+  /**
    * Get callee of the current script.
    */
   static function getCallee($level = 2) {
@@ -41,6 +59,28 @@ class Utility {
 
     if (count($backtrace) <= $level) {
       $level = count($backtrace) - 1;
+    }
+
+    /* Added by Eric @ 23 Dec, 2012
+        This script should:
+        1. try its best to search until there is a file, and
+        2. stop before framework scripts are reached.
+    */
+    if (!@$backtrace[$level]['file']) {
+      for ( $level = count($backtrace);
+            $level-- && !@$backtrace[$level]['file'];
+          );
+    }
+
+    // Framework scripts are:
+    // - resolvers
+    // to be added ...
+    while (strrchr(dirname(@$backtrace[$level]['file']), '/') == '/resolvers') {
+      $level--;
+    }
+
+    if ($level < 0) {
+      $level = 0;
     }
 
     return @$backtrace[$level];
@@ -174,7 +214,7 @@ class Utility {
    * Null is returned if input array is empty.
    */
   static function unwrapAssoc($list) {
-    if (is_array($list) && !self::isAssoc($list)) {
+    if ($list && is_array($list) && !self::isAssoc($list)) {
       return reset($list);
     }
 
@@ -259,6 +299,57 @@ class Utility {
 
     return date($pattern, $date);
   }
+
+  /* Added and Quoted by Eric @ 17 Feb, 2013
+
+
+  /**
+   * Make a "in ... (time unit)" string, compared between the input times.
+   *
+   * @param (uint) $target The target time to be compared against.
+   * @param (uint) $since Optional, the relative start time to compare. Defaults to current time.
+  public static function composeDateString($target, $since = NULL) {
+    if ($since === NULL) {
+      $since = time();
+    }
+
+    // Already past
+    if ($target > $since) {
+      return 'expired';
+    }
+
+    if ($target > strtotime('+1 year', $since)) {
+      $target = $target - $since + EPOACH;
+      $target = intval( date('Y', $target) );
+
+      return "in $target " . ($target > 1 ? 'years' : 'year');
+    }
+
+    if ($target > strtotime('+1 month', $since)) {
+      $target = $target - $since + EPOACH;
+      $target = intval( date('n', $target) );
+
+      return "in $target " . ($target > 1 ? 'months' : 'month');
+    }
+
+    if ($target > strtotime('+1 week', $since)) {
+      $target = $target - $since + EPOACH;
+      $target = intval( date('N', $target) );
+
+      return "in $target " . ($target > 1 ? 'weeks' : 'week');
+    }
+
+    // return "warn" in 3 days
+    if ($target < strtotime('+3 days', $since)) {
+      return 'warn';
+    }
+
+    $target = $target - $since + EPOACH;
+    $target = intval( date('j', $target) );
+
+    return "in $target " . ($tmp > 1 ? 'days' : 'day');
+  }
+  */
 
   /**
    * Sanitize the value to be an integer.

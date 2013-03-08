@@ -351,11 +351,25 @@ class Net {
 
         // Failure handler
         else {
+          $errorNumber = curl_errno($info['handle']);
+          $errorMessage = curl_error($info['handle']);
+
+          // libcurl errors, try to parse it.
+          if ($errorNumber === 0) {
+            if (preg_match('/errno: (\d+)/', $errorMessage, $matches) ) {
+              $curlErrors = unserialize(FRAMEWORK_NET_CURL_ERRORS);
+
+              $errorMessage = "curl error #$matches[1]: " . @$curlErrors[$matches[1]];
+            }
+          }
+
           Utility::forceInvoke(@$callbacks['failure'], array(
-              curl_errno($info['handle'])
-            , curl_error($info['handle'])
+              $errorNumber
+            , $errorMessage
             , $curlOption
             ));
+
+          unset($errorNumber, $errorMessage);
         }
 
         // Always handler

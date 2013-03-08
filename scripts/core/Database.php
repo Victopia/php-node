@@ -29,6 +29,9 @@ class Database {
     }
 
     self::$options = $options;
+
+    self::$con = NULL;
+    self::$preparedStatments = array();
   }
 
   public static function
@@ -57,18 +60,29 @@ class Database {
       }
 
       $connectionString = self::$options->driver
-                        . ':host=' . self::$options->host
-                        . ';port=' . self::$options->port
-                        . ';dbname=' . self::$options->schema;
+        . ':host=' . self::$options->host
+        . ';port=' . self::$options->port
+        . ';dbname=' . self::$options->schema;
 
-      self::$con = new \PDO($connectionString
-                          , self::$options->username
-                          , self::$options->password
-                          , self::$options->driverOptions
-                          );
+      try {
+        self::$con = new \PDO($connectionString
+          , self::$options->username
+          , self::$options->password
+          , self::$options->driverOptions
+          );
+      } catch(\PDOException $e) {
+        throw new exceptions\CoreException('Unable to connect to database.', 0);
+
+        self::$con = NULL;
+      }
     }
 
     return self::$con;
+  }
+
+  public static function
+  /* bool */ isConnected() {
+    return @self::getConnection() !== NULL;
   }
 
   /**
@@ -400,7 +414,7 @@ class Database {
       // Inserted, return the new ID.
       if ( $res->rowCount() == 1 ) {
         // Note: mysql_insert_id() doesn't do UNSIGNED ZEROFILL!
-        $res = self::getConnection()->lastInsertId();
+        $res = (int) self::getConnection()->lastInsertId();
         //$res = self::fetchField("SELECT MAX(ID) FROM `$table`;");
       }
       // Updated, return TRUE.

@@ -282,12 +282,29 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
     ob_start();
 
-    if (preg_match('/^image/', $mime)) {
-      readfile($path);
-    }
-    else {
-      // TODO: Pure include_once at beta stage.
-      include_once($path);
+    switch($mime) {
+      // mime-types that we output directly.
+      case 'application/pdf':
+      case 'application/octect-stream':
+      case 'image/jpeg':
+      case 'image/jpg':
+      case 'image/gif':
+      case 'image/png':
+      case 'image/bmp':
+      case 'image/vnd.wap.wbmp':
+      case 'image/tif':
+      case 'image/tiff':
+      case 'text/plain':
+      default:
+        readfile($path);
+        break;
+
+      // mime-types that possibly be PHP script.
+      case 'text/html':
+      case 'text/x-php':
+      case NULL: // ... ahem
+        include_once($path);
+        break;
     }
 
     $contentLength = ob_get_length();
@@ -312,9 +329,6 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     if (!$contentLengthSent) {
       header("Content-Length: $contentLength", true);
     }
-
-    // Almost confirm 200 at this point
-    @redirect(200);
 
     echo $response;
   }

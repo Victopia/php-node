@@ -60,6 +60,10 @@ class Node {
 
     $tableName = self::resolveCollection(@$filter[NODE_FIELD_COLLECTION]);
 
+    $selectField = isset($filter[NODE_FIELD_SELECT]) ? $filter[NODE_FIELD_SELECT] : '*';
+
+    unset($filter[NODE_FIELD_SELECT]);
+
     $queryString = '';
 
     $query = array();
@@ -69,8 +73,8 @@ class Node {
     $columns = Database::query("SHOW COLUMNS FROM $tableName;");
     $columns = $columns->fetchAll(\PDO::FETCH_COLUMN, 0);
 
-    if (isset($filter[NODE_RAWQUERY])) {
-      $rawQuery = (array) $filter[NODE_RAWQUERY];
+    if (isset($filter[NODE_FIELD_RAWQUERY])) {
+      $rawQuery = (array) $filter[NODE_FIELD_RAWQUERY];
 
       array_walk($rawQuery,
         function($value, $key) use(&$query, &$params) {
@@ -89,7 +93,7 @@ class Node {
           }
         });
 
-      unset($filter[NODE_RAWQUERY], $rawQuery);
+      unset($filter[NODE_FIELD_RAWQUERY], $rawQuery);
     }
 
     // Pick real columns for SQL merging
@@ -217,7 +221,7 @@ class Node {
     $result = array();
 
     while ($rowCount > 0 && ($limit === NULL || $limit[1] > 0)) {
-      $res = Database::select($tableName, '*', "$queryString LIMIT $rowOffset, " . NODE_FETCHSIZE, $params);
+      $res = Database::select($tableName, $selectField, "$queryString LIMIT $rowOffset, " . NODE_FETCHSIZE, $params);
 
       foreach ($res as $key => &$row) {
         if (isset($row[NODE_FIELD_VIRTUAL])) {
@@ -414,8 +418,8 @@ class Node {
             Should discuss whether we should use trigger_error
             instead of throwing exceptions in all non-fatal cases.
         */
-        trigger_error('Data object must specify a collection with property "'.NODE_FIELD_COLLECTION.'".', E_USER_WARNING);
-        // throw new exceptions\CoreException('Data object must specify a collection with property "'.NODE_FIELD_COLLECTION.'".');
+        // trigger_error('Data object must specify a collection with property "'.NODE_FIELD_COLLECTION.'".', E_USER_WARNING);
+        throw new exceptions\CoreException('Data object must specify a collection with property "'.NODE_FIELD_COLLECTION.'".');
         continue;
       }
 

@@ -67,8 +67,11 @@ class Exceptions {
       $type = 'Exception';
     }
 
-    // Log the error
-    \log::write("Gateway:: uncaught \"$eS\" #$eN, on $eF:$eL.", $type, $eC);
+    // Prevent recursive errors on logging when database fails to connect.
+    if (\core\Database::isConnected()) {
+      // Log the error
+      \log::write("Gateway:: uncaught \"$eS\" #$eN, on $eF:$eL.", $type, $eC);
+    }
 
     $output = array(
         'error' => $eS
@@ -82,8 +85,10 @@ class Exceptions {
 
     $output = ob_get_clean() . json_encode($output);
 
-    header('Content-Type: application/json; charset=utf-8');
-    header('Content-Length: ' . strlen($output));
+    if (!\utils::isCLI()) {
+      header('Content-Type: application/json; charset=utf-8');
+      header('Content-Length: ' . strlen($output));
+    }
 
     // Display error message
     echo $output;
