@@ -127,10 +127,10 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
 		$response = \service::call($classname, $function, $parameters);
 
 		// Access log
-		\log::write("[WebService] $classname->$function", 'Access', array(
+		\log::write("[WebService] $classname->$function", 'Access', array_filter(array(
 		    'parameters' => $parameters
 		  , 'response' => $response
-		  ));
+		  )));
 
 		// unset($instance); unset($function); unset($parameters);
 
@@ -144,7 +144,14 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
   		    Do not use JSON_NUMERIC_CHECK option, this might corrupt
   		    values. Should ensure numeric on insertion instead.
   		*/
-  		echo json_encode($response);
+  		$response = json_encode($response);
+
+  		// JSONP request, do it so.
+  		if (@$_GET['callback']) {
+    		$response = "$_GET[callback]($response)";
+  		}
+
+  		echo $response;
 		}
 	}
 

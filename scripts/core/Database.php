@@ -142,10 +142,10 @@ class Database {
    * Gets fields with specified key type.
    */
   public static function
-  /* Array */ getFields($tableName, $key = NULL) {
+  /* Array */ getFields($tableName, $key = NULL, $nameOnly = TRUE) {
     $tables = \utils::wrapAssoc($tableName);
 
-    $tables = array_map(function($tableName) use($key) {
+    $tables = array_map(function($tableName) use($key, $nameOnly) {
       if (!Database::hasTable($tableName)) {
         throw new \PDOException("Table `$tableName` doesn't exists!");
       }
@@ -160,14 +160,35 @@ class Database {
 
       $query = Database::query($query, $key);
 
-      return (array) ($query ? $query->fetchAll(\PDO::FETCH_COLUMN, 0) : NULL);
+      return (array) ($query ?
+          ( $nameOnly ?
+            $query->fetchAll(\PDO::FETCH_COLUMN, 0) :
+            $query->fetchAll(\PDO::FETCH_ASSOC) )
+          : NULL
+          );
     }, $tables);
 
     $tables = array_reduce($tables, function($result, $input) {
+      foreach ($input as &$field) {
+        switch ($field) {
+          case 'YES':
+            $field = TRUE;
+            break;
+
+          case 'NO':
+            $field = FALSE;
+            break;
+        }
+      }
+
       return array_merge((array) $result, (array) $input);
     });
 
-    return array_unique($tables);
+    if ($nameOnly) {
+      $tables = array_unique($tables);
+    }
+
+    return $tables;
   }
 
   public static function

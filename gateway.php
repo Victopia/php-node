@@ -30,9 +30,6 @@ if (isset($_SERVER['HTTP_STATUS'])) {
 	redirect(intval($_SERVER['HTTP_STATUS']));
 }
 
-// Error & Exception handling.
-framework\Exceptions::setHandlers();
-
 //------------------------------
 //  Session & Authentication
 //------------------------------
@@ -55,7 +52,7 @@ if ($sid !== NULL) {
 
 	if ($res === FALSE) {
 		// Session doesn't exists, delete exsting cookie.
-		setcookie('sid', '', time() - 3600, '/');
+		setcookie('sid', '', time() - 3600);
 	}
 	else if (is_integer($res)) {
 		switch ($res) {
@@ -127,9 +124,11 @@ unset($resolver);
 //  Access log
 //------------------------------
 if (FRAMEWORK_ENVIRONMENT == 'debug') {
-  log::write("$_SERVER[REQUEST_METHOD] $_SERVER[REQUEST_URI]", 'Access', array(
-    'timeElapsed' => round(microtime(1) - $accessTime, 4) . ' secs'
-  ));
+  log::write("$_SERVER[REQUEST_METHOD] $_SERVER[REQUEST_URI]", 'Debug', array_filter(array(
+      'origin' => @$_SERVER['HTTP_REFERER']
+    , 'userAgent' => \utils::cascade(@$_SERVER['USER_AGENT'], 'Unknown')
+    , 'timeElapsed' => round(microtime(1) - $accessTime, 4) . ' secs'
+    )));
 
   unset($accessTime);
 }

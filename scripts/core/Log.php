@@ -8,60 +8,61 @@ namespace core;
 
 class Log {
 
-	static function write($message, $type = 'Notice', $context = NULL) {
-		switch ($type) {
-			case 'Access':
-			case 'Information':
-			case 'Notice':
-			case 'Debug':
-				$message = array('remarks' => $message);
-				break;
-			default:
-				$message = array('reason' => $message);
-		}
+  static function write($message, $type = 'Notice', $context = NULL) {
+    // Skip debug logs on production environment.
+    if (FRAMEWORK_ENVIRONMENT != 'debug' && $type == 'Debug') {
+      return;
+    }
 
-		// Try to backtrace the callee, performance impact at this point.
-		$backtrace = \utils::getCallee();
+    switch ($type) {
+      case 'Access':
+      case 'Information':
+      case 'Notice':
+      case 'Debug':
+        $message = array('remarks' => $message);
+        break;
+      default:
+        $message = array('reason' => $message);
+    }
 
-		if (!@$backtrace['file']) {
-			$backtrace = array( 'file' => __FILE__, 'line' => 0 );
-		}
+    // Try to backtrace the callee, performance impact at this point.
+    $backtrace = \utils::getCallee();
 
-		$backtrace['file'] = str_replace(getcwd(), '', basename($backtrace['file'], '.php'));
+    if (!@$backtrace['file']) {
+      $backtrace = array( 'file' => __FILE__, 'line' => 0 );
+    }
 
-		$message['subject'] = '['.getmypid()."@$backtrace[file]:$backtrace[line]]";
-		$message['action'] = @"$backtrace[class]$backtrace[type]$backtrace[function]";
+    $backtrace['file'] = str_replace(getcwd(), '', basename($backtrace['file'], '.php'));
 
-		if ($context !== NULL) {
-			$message['context'] = $context;
-		}
+    $message['subject'] = '['.getmypid()."@$backtrace[file]:$backtrace[line]]";
+    $message['action'] = @"$backtrace[class]$backtrace[type]$backtrace[function]";
 
-		$message['type'] = $type;
+    if ($context !== NULL) {
+      $message['context'] = $context;
+    }
 
-		$message[NODE_FIELD_COLLECTION] = FRAMEWORK_COLLECTION_LOG;
+    $message['type'] = $type;
 
-		return Node::set($message);
-	}
+    $message[NODE_FIELD_COLLECTION] = FRAMEWORK_COLLECTION_LOG;
 
-	static function sessionWrite($sid, $identifier, $action, $remarks = NULL) {
-		$res = '0';
+    return Node::set($message);
+  }
 
-		if ($sid !== NULL && \framework\Session::ensure($sid)) {
-			$res = \framework\Session::currentUser();
-			$res = intval($res['ID']);
-		}
+  static function sessionWrite($sid, $action, $remarks = NULL) {
+    $userId = '0';
 
-		$res = Utility::sanitizeInt($res);
+    if ($sid !== NULL && \session::ensure($sid)) {
+      $userId = \session::currentUser('ID');
+    }
 
-		$identifier = Utility::sanitizeString($identifier);
+    $userId = intval($userId);
 
-		$remarks = Utility::sanitizeString($remarks);
-
-		return Node::set(array(
-    	NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_LOG
-    , 'subject' => "User#$res"
-    , 'action' => $identifier . '->' . Utility::sanitizeString($action)
-    , 'remarks' => $remarks
-    ));
-	}
+    return Node::set(array(
+        NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_LOG
+      , 'type' => 'Information'
+      , 'subject' => "User#$userId"
+      , 'action' => Utility::sanitizeString($action)
+      , 'remarks' => $remarks
+      ));
+  }
 }

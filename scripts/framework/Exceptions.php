@@ -88,6 +88,11 @@ class Exceptions {
     if (!\utils::isCLI()) {
       header('Content-Type: application/json; charset=utf-8');
       header('Content-Length: ' . strlen($output));
+
+      // JSONP support
+      if (@$_GET['callback']) {
+        $output = "$_GET[callback]($output)";
+      }
     }
 
     // Display error message

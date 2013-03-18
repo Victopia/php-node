@@ -12,48 +12,56 @@ require_once('scripts/framework/constants.php');
 date_default_timezone_set('Asia/Hong_Kong');
 
 // Setup class autoloading on-demand.
-function __autoload($name)
-{
-	// Namespace fix
-	$name = str_replace('\\', '/', $name);
+function __autoload($name) {
+  // Namespace fix
+  $name = str_replace('\\', '/', $name);
 
-	// Look up current folder
-	if (file_exists("./$name.php")) {
-		require_once("./$name.php");
-	}
+  // Look up current folder
+  if (file_exists("./$name.php")) {
+    require_once("./$name.php");
+  }
 
-	// Loop up script folder
-	else {
-		$scriptName = dirname(__FILE__);
-		$scriptName = realpath("$scriptName/../scripts/$name.php");
+  // Loop up script folder
+  else {
+    $scriptName = dirname(__FILE__);
+    $scriptName = realpath("$scriptName/../scripts/$name.php");
 
-		if (file_exists($scriptName)) {
-			require_once($scriptName);
-		}
+    if (file_exists($scriptName)) {
+      // Risk of exception "Too many open files"
+      try {
+       require_once($scriptName);
+      }
+      catch (ErrorException $e) {
+        log::write('Error occurred when requiring PHP dependency.', 'Error', $e);
+      }
+    }
 
-		// Then look for services
-		else {
-			$scriptName = dirname(__FILE__);
-			$serviceName = realpath("$scriptName/../services/$name.php");
+    // Then look for services
+    else {
+      $scriptName = dirname(__FILE__);
+      $serviceName = realpath("$scriptName/../services/$name.php");
 
-			if (file_exists($serviceName)) {
-				require_once($serviceName);
-			}
-		}
-	}
+      if (file_exists($serviceName)) {
+        require_once($serviceName);
+      }
+    }
+  }
 }
+
+// Error & Exception handling.
+framework\Exceptions::setHandlers();
 
 // Database options
 $options = new core\DatabaseOptions(
-	'mysql', null, null,
-	'cometolist', 'cometolist', 'RBdukzzw8KfBoQndzGhn'
+  'mysql', null, null,
+  'database', 'db_username', 'db_password'
 );
 
 $options->driverOptions = Array(
-		PDO::ATTR_PERSISTENT => true
-	, PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true
-	, PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8;'
-	);
+    PDO::ATTR_PERSISTENT => true
+  , PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true
+  , PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8;'
+  );
 
 core\Database::setOptions($options);
 
@@ -71,7 +79,7 @@ require_once('scripts/framework/environment.php');
 // eBay site by custom request header
 /*
 if (@$_REQUEST['HEADERS']['X-EBAY-API-SITEID']) {
-	EBayAPI::site(intval($_REQUEST['HEADERS']['X-EBAY-API-SITEID']));
+  EBayAPI::site(intval($_REQUEST['HEADERS']['X-EBAY-API-SITEID']));
 }
 */
 
@@ -82,18 +90,19 @@ if (@$_REQUEST['HEADERS']['X-EBAY-API-SITEID']) {
 //--------------------------------------------------
 
 function authorize($status, $rejectTarget = '/Login') {
-	if ($status && session::checkStatus($status) === FALSE) {
-		// Already logged in, redirect to restricted.
-		if (session::currentUser()) {
-			$rejectTarget = '/tool/user/restricted';
-		}
+  if ($status && session::checkStatus($status) === FALSE) {
+    // Already logged in, redirect to restricted.
+    if (session::currentUser()) {
+      $rejectTarget = '/tool/user/restricted';
+    }
 
-		if ($_SERVER['REQUEST_URI']) {
-			$rejectTarget.= "?returnUrl=$_SERVER[REQUEST_URI]";
-		}
+    if ($_SERVER['REQUEST_URI']) {
+      $rejectTarget.= "?returnUrl=$_SERVER[REQUEST_URI]";
+    }
 
-		redirect("$rejectTarget");
-	}
+    redirect("$rejectTarget");
+    die;
+  }
 }
 
 function redirect($response) {
