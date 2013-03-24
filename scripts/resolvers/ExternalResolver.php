@@ -68,22 +68,6 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
 
 	//--------------------------------------------------
 	//
-	//  Methods: Serializable
-	//
-	//--------------------------------------------------
-
-	public
-	/* String */ function serialize() {
-		return serialize($this);
-	}
-
-	public
-	/* void */ function unserialize($serial) {
-		return unserialize($serial);
-	}
-
-	//--------------------------------------------------
-	//
 	//  Methods
 	//
 	//--------------------------------------------------

@@ -9,43 +9,45 @@
 namespace resolvers;
 
 class ResourceResolver implements \framework\interfaces\IRequestResolver {
-	//--------------------------------------------------
-	//
-	//  Methods: IPathResolver
-	//
-	//--------------------------------------------------
 
-	public
-	/* String */ function resolve($path) {
-		$res = sprintf(FRAMEWORK_TEMPLATE_PATH, $path);
+  //--------------------------------------------------
+  //
+  //  Constructor
+  //
+  //--------------------------------------------------
 
-		if (!file_exists($res)) {
-			return FALSE;
-		}
+  public function __construct($pathPrefix) {
+    if (!$pathPrefix) {
+      throw new \framework\exceptions\ResolverException('Please provide a proper path prefix for ResourceResolver.');
+    }
 
-		$res = file_get_contents($res);
+    $this->pathPrefix = $pathPrefix;
+  }
 
-		$res = new Template($res);
+  //--------------------------------------------------
+  //
+  //  Properties
+  //
+  //--------------------------------------------------
 
-		//TODO: Data/View
-		$res = Data::getView(\framework\Session::current());
+  private $pathPrefix = NULL;
 
-		$res->render();
-	}
+  //--------------------------------------------------
+  //
+  //  Methods: IPathResolver
+  //
+  //--------------------------------------------------
 
-	//--------------------------------------------------
-	//
-	//  Methods: Serializable
-	//
-	//--------------------------------------------------
+  public
+  /* String */ function resolve($path) {
+    // Request URI must start with the specified path prefix. e.g. /:resource/.
+    if (!$this->pathPrefix || 0 !== strpos($path, $this->pathPrefix)) {
+      return FALSE;
+    }
 
-	public
-	/* String */ function serialize() {
-		return NULL;
-	}
+    $path = substr($path, strlen($this->pathPrefix));
 
-	public
-	/* void */ function unserialize($serial) {
-		return new ResourceResolver();
-	}
+    echo $path;
+  }
+
 }

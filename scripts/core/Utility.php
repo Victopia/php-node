@@ -34,6 +34,77 @@ class Utility {
   }
 
   /**
+   * Parse the command line args into a single array.
+   *
+   * Logic port from node-optimist, read the docs there
+   * https://github.com/substack/node-optimist.
+   */
+  static function parseOptions($alias = array()) {
+    global $argv;
+
+    $args = $argv;
+
+    // Remove until the script itself.
+    if (@$_SERVER['PHP_SELF']) {
+      while ($args && array_shift($args) != $_SERVER['PHP_SELF']);
+    }
+
+    $result = array();
+
+    // Parsing logics:
+    // 1. When plain string is placed after option name, place under that name. i.e. --site 0
+    // 2. When plain string alone, place under underscore '_'
+    // 3. When option name alone, set to TRUE.
+
+    $currentNode = NULL;
+
+    array_walk($args, function($value) use(&$alias, &$result, &$currentNode) {
+      if (preg_match('/^\-\-?(\w+)(\[\])?(?:=(.*))?$/', $value, $matches)) {
+        $currentNode = $matches[1];
+
+        if (isset($alias[$currentNode])) {
+          $currentNode = $alias[$currentNode];
+        }
+
+        $target = &$result[$currentNode];
+        $value = @$matches[3] !== NULL ? $matches[3] : TRUE;
+
+        if (isset($matches[2])) {
+          @$target[] = $value;
+        }
+        else {
+          $target = $value;
+        }
+      }
+      elseif (@$currentNode) {
+        $target = &$result[$currentNode];
+
+        if (is_array($target)) {
+          // Override last TRUE
+          if (end($target) === TRUE) {
+            $target = &$target[key($target)];
+          }
+          else {
+            $target = &$target[count($target)];
+          }
+
+          $target = $value;
+        }
+        else {
+          $target = $value;
+
+          $currentNode = NULL;
+        }
+      }
+      else {
+        @$result['_'][] = $value;
+      }
+    });
+
+    return $result;
+  }
+
+  /**
    * Returns whether current request is made by local redirect.
    */
   static function isLocalRedirect() {
@@ -198,6 +269,68 @@ class Utility {
     $keys = array_map('strtolower', array_keys($haystack));
 
     return array_search(strtolower($needle), $keys);
+  }
+
+  /**
+   * Flatten an array, concatenating keys with specified delimiter.
+   */
+  static function flattenArray(&$input, $delimiter = '.', $flattenNumeric = TRUE) {
+    if (!is_array($input)) {
+      return $input;
+    }
+
+    // Could have a single layer solution,
+    // can't think of it at the moment so leave it be.
+    if (\utils::isAssoc($input) || $flattenNumeric) {
+      foreach ($input as $key1 => $value) {
+        $value = self::flattenArray($value, $delimiter, $flattenNumeric);
+
+        if (is_array($value) && ($flattenNumeric || \utils::isAssoc($value))) {
+          foreach ($value as $key2 => $val) {
+            $input["$key1$delimiter$key2"] = $val;
+          }
+
+          unset($input[$key1]);
+        }
+      }
+    }
+
+    return $input;
+  }
+
+  /**
+   * Reconstruct an array by breaking the keys with $delimiter, reverse of flattenArray().
+   */
+  static function unflattenArray($input, $delimiter = '.') {
+    if (!is_array($input)) {
+      return $input;
+    }
+
+    $result = $input;
+
+    if (self::isAssoc($input)) {
+      foreach ($input as $key => $value) {
+        $keyPath = explode($delimiter, $key);
+
+        // Skip if it is just the same.
+        if ($keyPath == (array) $key) {
+          continue;
+        }
+
+        $valueNode = &$result;
+
+        while ($keyPath) {
+          $valueNode = &$valueNode[array_shift($keyPath)];
+        }
+
+        // Saves memory
+        unset($input[$key], $result[$key]);
+
+        $valueNode = $value;
+      }
+    }
+
+    return $result;
   }
 
   /**

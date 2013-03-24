@@ -95,13 +95,13 @@ $resolver = 'framework\Resolver';
 $resolver::registerResolver(new resolvers\WebServiceResolver(), 60);
 
 // Cache resolver
-$resolver::registerResolver(new resolvers\CacheResolver(), 50);
+$resolver::registerResolver(new resolvers\CacheResolver('/:cache/'), 50);
 
 // Template resolver
 $resolver::registerResolver(new resolvers\TemplateResolver(), 40);
 
 // Database resources
-$resolver::registerResolver(new resolvers\ResourceResolver(), 30);
+$resolver::registerResolver(new resolvers\ResourceResolver('/:resource/'), 30);
 
 // External URL
 $resolver::registerResolver(new resolvers\ExternalResolver(), 20);

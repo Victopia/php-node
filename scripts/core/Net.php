@@ -167,7 +167,7 @@ class Net {
 
       $curlOption = (array) @$option['__curlOpts'] + $curlOption;
 
-      if (FRAMEWORK_ENVIRONMENT) {
+      if (FRAMEWORK_ENVIRONMENT == 'debug') {
         log::write('Net ' . $curlOption[CURLOPT_CUSTOMREQUEST] . ' to ' . $curlOption[CURLOPT_URL], 'Debug', $curlOption);
       }
 
@@ -379,6 +379,9 @@ class Net {
           curl_multi_add_handle( $multiHandle
                                , $options[$requestIndex++]['handle']
                                );
+
+          // Keep the loop alive.
+          $active = TRUE;
         }
 
         curl_multi_remove_handle( $multiHandle

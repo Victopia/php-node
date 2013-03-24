@@ -1,19 +1,20 @@
 <?php
 /*! IPathResolver | Path resolver interface
  *
- *  Resolvers must implements this interface before it can be 
+ *  Resolvers must implements this interface before it can be
  *  added to the resolvers chain in the request gateway.
  */
 
 namespace framework\interfaces;
 
-interface IRequestResolver extends \Serializable {
+interface IRequestResolver {
+
 	//--------------------------------------------------
 	//
 	//  Methods
-	//	
+	//
 	//--------------------------------------------------
-	
+
 	/**
 	 * Process and prints the layout.
 	 *
@@ -23,4 +24,5 @@ interface IRequestResolver extends \Serializable {
 	 */
 	public
 	/* Boolean */ function resolve($path);
+
 }
