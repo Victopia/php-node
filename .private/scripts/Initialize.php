@@ -23,26 +23,20 @@ function __autoload($name) {
 
   // Loop up script folder
   else {
-    $scriptName = dirname(__FILE__);
-    $scriptName = realpath("$scriptName/../scripts/$name.php");
+    $lookupPaths = array(
+        '.private/scripts' // Script files, meant to be included on initialize.
+      );
 
-    if (file_exists($scriptName)) {
-      // Risk of exception "Too many open files"
-      try {
-       require_once($scriptName);
-      }
-      catch (ErrorException $e) {
-        log::write('Error occurred when requiring PHP dependency.', 'Error', $e);
-      }
-    }
+    foreach ($lookupPaths as $lookupPath) {
+      $lookupPath = FRAMEWORK_PATH_ROOT . "/$lookupPath/$name.php";
 
-    // Then look for services
-    else {
-      $scriptName = dirname(__FILE__);
-      $serviceName = realpath("$scriptName/../services/$name.php");
-
-      if (file_exists($serviceName)) {
-        require_once($serviceName);
+      if (file_exists($lookupPath)) {
+        try {
+          require_once($lookupPath);
+        }
+        catch (ErrorException $e) {
+          log::write('Error occurred when loading PHP dependency.', 'Error', $e);
+        }
       }
     }
   }
@@ -54,7 +48,7 @@ framework\Exceptions::setHandlers();
 // Database options
 $options = new core\DatabaseOptions(
   'mysql', null, null,
-  'database', 'db_username', 'db_password'
+  'fashionboo_magazine', 'fashionboo', 'lo23e'
 );
 
 $options->driverOptions = Array(
@@ -68,20 +62,7 @@ core\Database::setOptions($options);
 unset($options);
 
 // Ensure base functionalities
-require_once('scripts/framework/environment.php');
-
-//--------------------------------------------------
-//
-//  eBay related settings
-//
-//--------------------------------------------------
-
-// eBay site by custom request header
-/*
-if (@$_REQUEST['HEADERS']['X-EBAY-API-SITEID']) {
-  EBayAPI::site(intval($_REQUEST['HEADERS']['X-EBAY-API-SITEID']));
-}
-*/
+require_once(__DIR__ . '/framework/environment.php');
 
 //--------------------------------------------------
 //
@@ -91,11 +72,13 @@ if (@$_REQUEST['HEADERS']['X-EBAY-API-SITEID']) {
 
 function authorize($status, $rejectTarget = '/Login') {
   if ($status && session::checkStatus($status) === FALSE) {
-    // Already logged in, redirect to restricted.
+    // Already logged in but user doesn't have specified status,
+    // redirect to restricted page, defaults to 405 error page.
     if (session::currentUser()) {
-      $rejectTarget = '/tool/user/restricted';
+      $rejectTarget = 405;
     }
 
+    // Append redirect target when successfully logged in.
     if ($_SERVER['REQUEST_URI']) {
       $rejectTarget.= "?returnUrl=$_SERVER[REQUEST_URI]";
     }

@@ -9,7 +9,7 @@
 //  Initialization
 //
 //--------------------------------------------------
-require_once('scripts/Initialize.php');
+require_once('.private/scripts/Initialize.php');
 
 //------------------------------
 //  Environment variables
@@ -58,7 +58,7 @@ if ($sid !== NULL) {
 		switch ($res) {
 			// Reserved error code for client use
 			case session::ERR_EXPIRED:
-				redirect('notice/user/expired');
+				throw new framework\exceptions\ServiceException('Current user is restricted.');
 				break;
 			// Treat as public user.
 			case session::ERR_INVALID:
@@ -92,7 +92,7 @@ if (FRAMEWORK_ENVIRONMENT == 'debug') {
 $resolver = 'framework\Resolver';
 
 // Web Services
-$resolver::registerResolver(new resolvers\WebServiceResolver(), 60);
+$resolver::registerResolver(new resolvers\WebServiceResolver('/:service/'), 60);
 
 // Cache resolver
 $resolver::registerResolver(new resolvers\CacheResolver('/:cache/'), 50);

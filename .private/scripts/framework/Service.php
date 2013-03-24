@@ -5,12 +5,24 @@ namespace framework;
 
 class Service {
 
+  //--------------------------------------------------
+  //
+  //  Variables
+  //
+  //--------------------------------------------------
+
   private static $defaultHttpOptions = array(
     'type' => 'GET'
   , 'headers' => array(
       "Host: {gethostname()}"
     )
   );
+
+  //--------------------------------------------------
+  //
+  //  Methods
+  //
+  //--------------------------------------------------
 
   /**
    * @beta
@@ -88,6 +100,8 @@ class Service {
    * not able by local redirection without the PHPSESSID hack.
    */
   static function call($service, $method, $parameters = array()) {
+    self::requireService($service);
+
     $service = new $service();
 
     if (!\utils::isCLI() &&
@@ -106,5 +120,25 @@ class Service {
     return $method->invokeArgs($service, $parameters);
     */
     return \utils::forceInvoke(array($service, $method), $parameters);
+  }
+
+  /**
+   * Independent service path resolve mechanism for web services.
+   *
+   * This is currently isolated from the __autoLoad() method resides in
+   * scripts/Initialize.php, this is to avoid (or possibly allows) name
+   * conflicts with internal classes.
+   *
+   * While it is best to avoid using identical names between services and
+   * internal classes, it still allows so, but only when used with care.
+   */
+  static function requireService($service) {
+    $servicePath = realpath(FRAMEWORK_PATH_ROOT . '/' . FRAMEWORK_PATH_SERVICES . "/$service");
+
+    if (!file_exists($servicePath)) {
+      throw new framework\exceptions\ServiceException('Target service file not found.');
+    }
+
+    requrie_once($service);
   }
 }
