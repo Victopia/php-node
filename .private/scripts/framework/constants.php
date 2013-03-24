@@ -40,7 +40,7 @@ define('FRAMEWORK_COLLECTION_RELATION', 'Relation');
 // Collection of system logs
 define('FRAMEWORK_COLLECTION_LOG', 'Log');
 // Collection of processes
-define('FRAMEWORK_COLLECTION_PROCESS', 'Processes');
+define('FRAMEWORK_COLLECTION_PROCESS', 'ProcessQueue');
 // Collection of users
 define('FRAMEWORK_COLLECTION_USER', 'User');
 // Collection of user data

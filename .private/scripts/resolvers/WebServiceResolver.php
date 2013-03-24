@@ -37,7 +37,7 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
 
   //--------------------------------------------------
   //
-  //  Methods: IPathResolver
+  //  Methods: IRequestResolver
   //
   //--------------------------------------------------
 

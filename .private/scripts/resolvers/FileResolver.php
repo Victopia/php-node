@@ -124,28 +124,6 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
       return FALSE;
     }
 
-    //------------------------------
-    //  Browser blocking
-    //------------------------------
-    /* Note by Eric @ 20 Dec, 2012
-        Fucking dirty code insertion here, breaks the framework.
-        But who cares? Just make it works.
-    */
-    // Prevent other browsers from accessing the site.
-    if (!\utils::isCLI() && isset($_SERVER['HTTP_USER_AGENT']) &&
-        !preg_match('/webkit/i', $_SERVER['HTTP_USER_AGENT']) &&
-        !preg_match('/ebay\.com/i', @$_SERVER['HTTP_REFERER']) &&
-        !isset($_SESSION['notSupport'])) {
-      $_SESSION['notSupport'] = true;
-
-      $target = \conf::get('misc.Compatibility::notSupported');
-
-      if ($target) {
-        header("Location: $target", true);
-        die;
-      }
-    }
-
     $this->handle($res);
 
   }

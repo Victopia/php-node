@@ -10,6 +10,19 @@
 //
 //--------------------------------------------------
 
+// Align current directory and REQUEST_URI
+if (@$_SERVER['DOCUMENT_ROOT'] && strpos(getcwd(), $_SERVER['DOCUMENT_ROOT']) === 0) {
+  $basePath = substr(getcwd(), strlen($_SERVER['DOCUMENT_ROOT']));
+
+  $reqUri = @$_SERVER['REQUEST_URI'];
+
+  if (strpos($reqUri, $basePath) === 0) {
+    $_SERVER['REQUEST_URI'] = substr($reqUri, strlen($basePath));
+  }
+
+  unset($reqUri);
+}
+
 // CRYPT_SHA512
 if (CRYPT_SHA512 !== 1) {
 	throw new Exception('CRYPT_SHA512 method is not supported, please enable it on your system.');

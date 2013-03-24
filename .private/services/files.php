@@ -8,6 +8,12 @@
 
 class files implements framework\interfaces\IAuthorizableWebService {
 
+  //--------------------------------------------------
+  //
+  //  Methods: IAuthorizableWebService
+  //
+  //--------------------------------------------------
+
   public function authorizeMethod($name, $args = NULL) {
     // Only allow deletion from file owners.
     // Two ways:

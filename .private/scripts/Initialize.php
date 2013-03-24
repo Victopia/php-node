@@ -42,7 +42,12 @@ function __autoload($name) {
   }
 }
 
-// Ensure basic functionalities
+//--------------------------------------------------
+//
+//  Environment setup
+//
+//--------------------------------------------------
+
 require_once(__DIR__ . '/framework/environment.php');
 
 //--------------------------------------------------

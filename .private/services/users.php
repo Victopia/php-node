@@ -1,7 +1,14 @@
 <?php
-/* users.php | RESTful interface to users. */
+/*! users.php | Service interface to users. */
 
 class users implements framework\interfaces\IAuthorizableWebService {
+
+  //--------------------------------------------------
+  //
+  //  Methods : IAuthorizableWebService
+  //
+  //--------------------------------------------------
+
   public function
   /* boolean */ authorizeMethod($name, $args = NULL) {
     switch ($name) {
@@ -15,6 +22,12 @@ class users implements framework\interfaces\IAuthorizableWebService {
         return TRUE;
     }
   }
+
+  //--------------------------------------------------
+  //
+  //  Methods
+  //
+  //--------------------------------------------------
 
   /**
    * Get target user with $username provided, if $username is omitted,
@@ -169,62 +182,49 @@ class users implements framework\interfaces\IAuthorizableWebService {
 
   public function
   /* boolean */ create($username, $password, $customFields = array()) {
-    return func_get_args();
+    $hash = $this->hash($username, $password);
+
+    $res = node::get(array(
+        NODE_FIELD_COLLECTION => 'User'
+      , 'username' => $username
+      ));
+
+    if (count($res) > 0) {
+      throw new Exception('User already exists.');
+    }
+
+    $res = array(
+        NODE_FIELD_COLLECTION => 'User'
+      , 'status' => session::USR_NORMAL
+      , 'username' => $username
+      , 'password' => $hash
+      );
+
+    $res = array_merge($customFields, $res);
+
+    return node::set($res);
   }
 
   //--------------------------------------------------
   //
-  //  Message related
+  //  Private Methods
   //
   //--------------------------------------------------
 
-  public function
-  /* array */ message($username = '~') {
-    $user = $this->get($username);
+  /**
+   * TODO: Make this alterable, pay attention to key-strenthening.
+   */
+  private function hash($username, $password) {
+    $hash = sha1(time() + mt_rand());
+    $hash = md5("$username:$hash");
+    $hash = substr($hash, 16);
 
-    // Update message stack
-    if ($_POST) {
-      /*core\Database::lockTables(array(
-          FRAMEWORK_COLLECTION_LOG
-        , FRAMEWORK_COLLECTION_USER
-        , FRAMEWORK_COLLECTION_SESSION
-        ));
-      */
+    // CRYPT_SHA512
+    $hash = '$6$rounds=10000$' . $hash;
 
-      $messages = \utils::wrapAssoc((array) @$_POST['messages']);
+    $hash = crypt($password, $hash);
 
-      $res = FALSE;
-
-      if (isset($_POST['clearall'])) {
-        $user = node::get(array(
-            NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_USER
-          , 'ID' => $user['ID']
-          ));
-
-        $user = utils::unwrapAssoc($user);
-
-        unset($user['messages']);
-
-        $res = node::set($user);
-      }
-      elseif ($messages) {
-        array_walk($messages, function($contents) use(&$user) {
-          @$user['messages'][$contents['code']] = array(
-              'contents' => $contents['message']
-            , 'count' => intval(@$message['count']) + 1
-            );
-        });
-
-        $res = node::set($user, TRUE);
-      }
-
-      // core\Database::unlockTables();
-
-      return $res;
-    }
-
-    // return messages
-    return (array) @$user['messages'];
+    return $hash;
   }
 
 }

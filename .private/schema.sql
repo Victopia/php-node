@@ -67,7 +67,7 @@ CREATE TABLE `Nodes` (
 -- Table structure for table `Processes`
 --
 
-DROP TABLE IF EXISTS `Processes`;
+DROP TABLE IF EXISTS `ProcessQueue`;
 
 CREATE TABLE `Processes` (
   `ID` bigint(20) NOT NULL AUTO_INCREMENT,
