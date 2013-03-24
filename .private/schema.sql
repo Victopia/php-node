@@ -58,15 +58,15 @@ DROP TABLE IF EXISTS `Log`;
 /*!40101 SET character_set_client = utf8 */;
 CREATE TABLE `Log` (
   `ID` bigint(20) unsigned zerofill NOT NULL AUTO_INCREMENT,
-  `type` enum('Access','Information','Notice','Warning','Exception','Error','Debug') COLLATE utf8_unicode_ci NOT NULL DEFAULT 'Information',
-  `subject` varchar(255) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
-  `action` varchar(78) COLLATE utf8_unicode_ci NOT NULL DEFAULT '',
-  `@contents` longtext COLLATE utf8_unicode_ci NOT NULL,
+  `type` enum('Access','Information','Notice','Warning','Exception','Error','Debug') NOT NULL DEFAULT 'Information',
+  `subject` char(255) NOT NULL DEFAULT '',
+  `action` char(78) NOT NULL DEFAULT '',
+  `@contents` longtext NOT NULL,
   `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`ID`),
   KEY `Log_INDEX` (`subject`,`action`),
   FULLTEXT KEY `Log_FULLTEXT` (`@contents`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='This table should not have update actions performed upon.';
+) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='This table should not have update actions performed upon.'
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
@@ -152,6 +152,25 @@ CREATE TABLE `Session` (
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 --
+-- Table structure for table `User
+--
+
+DROP TABLE IF EXISTS `User`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!40101 SET character_set_client = utf8 */;
+CREATE TABLE `User` (
+  `ID` bigint(20) unsigned zerofill NOT NULL AUTO_INCREMENT,
+  `username` char(255) NOT NULL DEFAULT '',
+  `password` char(119) NOT NULL DEFAULT '',
+  `status` smallint(6) NOT NULL DEFAULT '2',
+  `@contents` longtext NOT NULL,
+  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`ID`),
+  KEY `idx_credentials` (`username`,`password`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci
+/*!40101 SET character_set_client = @saved_cs_client */;
+
+--
 -- Table structure for table `UserData`
 --
 
@@ -163,7 +182,7 @@ CREATE TABLE `UserData` (
   `name` varchar(255) NOT NULL,
   `value` varchar(16383) NOT NULL DEFAULT '',
   PRIMARY KEY (`UserID`,`name`)
-) ENGINE=MEMORY DEFAULT CHARSET=utf8;
+) ENGINE=MEMORY DEFAULT CHARSET=utf8
 /*!40101 SET character_set_client = @saved_cs_client */;
 
 -- Dump completed on 2012-11-23 13:59:28
