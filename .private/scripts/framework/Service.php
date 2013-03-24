@@ -133,7 +133,11 @@ class Service {
    * internal classes, it still allows so, but only when used with care.
    */
   static function requireService($service) {
-    $servicePath = DIRECTORY_SEPARATOR . str_replace('\\', DIRECTORY_SEPARATOR, $service) . '.php';
+    $servicePath = str_replace('\\', DIRECTORY_SEPARATOR, $service) . '.php';
+
+    if (strpos($servicePath, DIRECTORY_SEPARATOR) !== 0) {
+      $servicePath = DIRECTORY_SEPARATOR . $servicePath;
+    }
 
     $servicePath = realpath(FRAMEWORK_PATH_ROOT . FRAMEWORK_PATH_SERVICES . $servicePath);
 

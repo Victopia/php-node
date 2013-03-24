@@ -42,8 +42,33 @@ function __autoload($name) {
   }
 }
 
-// Error & Exception handling.
+// Ensure basic functionalities
+require_once(__DIR__ . '/framework/environment.php');
+
+//--------------------------------------------------
+//
+//  Functional programming
+//
+//--------------------------------------------------
+
+require_once(__DIR__ . '/framework/functions.php');
+
+//--------------------------------------------------
+//
+//  Error & Exception handling.
+//
+//--------------------------------------------------
+
 framework\Exceptions::setHandlers();
+
+//--------------------------------------------------
+//
+//  Database initialization
+//
+//--------------------------------------------------
+
+/* Note by Vicary @ 24 Mar, 2013
+   Uncomment this section and enter database connection criteria.
 
 // Database options
 $options = new core\DatabaseOptions(
@@ -60,9 +85,7 @@ $options->driverOptions = Array(
 core\Database::setOptions($options);
 
 unset($options);
-
-// Ensure base functionalities
-require_once(__DIR__ . '/framework/environment.php');
+*/
 
 //--------------------------------------------------
 //
@@ -152,11 +175,3 @@ function redirect($response) {
   // Further HTML has no meaning when a redirect header is present, exit.
   die;
 }
-
-//--------------------------------------------------
-//
-//  Functional programming
-//
-//--------------------------------------------------
-
-require_once(__DIR__ . '/framework/functions.php');

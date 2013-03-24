@@ -29,9 +29,9 @@ define('FRAMEWORK_ENVIRONMENT', 'debug');
 // Document root to this framework
 define('FRAMEWORK_PATH_ROOT', realpath(__DIR__ . '/../../..'));
 // Path to internal scripts
-define('FRAMEWORK_PATH_SCRIPTS', '.private/scripts');
+define('FRAMEWORK_PATH_SCRIPTS', '/.private/scripts');
 // Path to services
-define('FRAMEWORK_PATH_SERVICES', '.private/services');
+define('FRAMEWORK_PATH_SERVICES', '/.private/services');
 
 // Collection of system configurations
 define('FRAMEWORK_COLLECTION_CONFIGURATION', 'Configuration');

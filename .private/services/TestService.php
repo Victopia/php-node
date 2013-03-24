@@ -10,9 +10,9 @@
 
 */
 
-class TestService {
+class TestService implements framework\interfaces\IWebService {
 
-  function print($input) {
+  function testMethod($input) {
     return $input;
   }
 

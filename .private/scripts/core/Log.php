@@ -9,6 +9,12 @@ namespace core;
 class Log {
 
   static function write($message, $type = 'Notice', $context = NULL) {
+    // Skip Logging if database is not connected.
+    // TODO: Fallback to file based logging.
+    if (!Database::isConnected()) {
+      return;
+    }
+
     // Skip debug logs on production environment.
     if (FRAMEWORK_ENVIRONMENT != 'debug' && $type == 'Debug') {
       return;

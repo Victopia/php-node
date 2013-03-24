@@ -52,7 +52,13 @@ class Database {
   /* PDO */ getConnection() {
     if ( self::$con === NULL ) {
       if ( self::$options === NULL ) {
-        throw new \PDOException('Please specify connection options with setOptions() before accessing database.');
+        if (error_reporting()) {
+          debug_print_backtrace();
+          throw new \PDOException('Please specify connection options with setOptions() before accessing database.');
+        }
+        else {
+          return NULL;
+        }
       }
 
       if (!(self::$options instanceof DatabaseOptions)) {
