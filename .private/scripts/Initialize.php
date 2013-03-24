@@ -6,7 +6,7 @@
 //------------------------------------------------------------
 
 // Global system constants
-require_once('scripts/framework/constants.php');
+require_once(__DIR__ . '/framework/constants.php');
 
 // Sets default Timezone
 date_default_timezone_set('Asia/Hong_Kong');
@@ -48,7 +48,7 @@ framework\Exceptions::setHandlers();
 // Database options
 $options = new core\DatabaseOptions(
   'mysql', null, null,
-  'fashionboo_magazine', 'fashionboo', 'lo23e'
+  'database', 'db_username', 'db_password'
 );
 
 $options->driverOptions = Array(
@@ -159,4 +159,4 @@ function redirect($response) {
 //
 //--------------------------------------------------
 
-require_once('scripts/framework/functions.php');
+require_once(__DIR__ . '/framework/functions.php');

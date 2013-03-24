@@ -133,12 +133,14 @@ class Service {
    * internal classes, it still allows so, but only when used with care.
    */
   static function requireService($service) {
-    $servicePath = realpath(FRAMEWORK_PATH_ROOT . '/' . FRAMEWORK_PATH_SERVICES . "/$service");
+    $servicePath = DIRECTORY_SEPARATOR . str_replace('\\', DIRECTORY_SEPARATOR, $service) . '.php';
+
+    $servicePath = realpath(FRAMEWORK_PATH_ROOT . FRAMEWORK_PATH_SERVICES . $servicePath);
 
     if (!file_exists($servicePath)) {
-      throw new framework\exceptions\ServiceException('Target service file not found.');
+      throw new \framework\exceptions\ServiceException('Target service file not found.');
     }
 
-    requrie_once($service);
+    require_once($servicePath);
   }
 }

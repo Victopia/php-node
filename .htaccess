@@ -1,4 +1,4 @@
-# come2list.com | Apache control on root
+# Apache control on root
 #
 
 #
@@ -18,10 +18,10 @@ SetEnvIfNoCase ^Authorization$ "(.+)" HTTP_AUTHORIZATION=$1
 # This is a workaround for the unpredictable behavior between
 # ErrorDocument and rewrite_module Directives.
 #
-SetEnvIf Request_URI "^/(scripts|assets/errordocs)" HTTP_STATUS=404
+#SetEnvIf Request_URI "^\/assets\/errordocs" HTTP_STATUS=404
 
 #
-# Redirects all access from /tool to gateway.php.
+# Redirects all access to gateway.php.
 #
 <IfModule rewrite_module>
 
@@ -38,14 +38,13 @@ SetEnvIf Request_URI "^/(scripts|assets/errordocs)" HTTP_STATUS=404
 
 	#
 	# Restrict access to certein directories
+
+	# 1. Restrict access to .private folder
 	RewriteCond %{REQUEST_URI} \.private
 	RewriteCond %{REMOTE_ADDR} %{SERVER_ADDR}
 	RewriteRule .* - [R=404,L]
 
 	#
-	# Fallback to apache handler for Markdowns (\.md$)
-	RewriteCond %{REQUEST_URI} !\.md$
-	RewriteCond %{REQUEST_URI} !\.ini$
 	# Prevent redirection loops
 	RewriteCond %{REQUEST_URI} !gateway.php$ [NC]
 	# Start redirecting to gateway

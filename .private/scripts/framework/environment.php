@@ -19,16 +19,18 @@ if (CRYPT_SHA512 !== 1) {
 if (!utils::isCLI()) {
 	session_start();
 
-	// Parse custom headers
-	$_REQUEST['HEADERS'] = array();
+	if (function_exists('getallheaders')) {
+  	// Parse custom headers
+  	$_REQUEST['HEADERS'] = array();
 
-	foreach(getallheaders() as $key => $value) {
-		if (preg_match(FRAMEWORK_CUSTOM_HEADER_PATTERN, $key)) {
-			$_REQUEST['HEADERS'][$key] = $value;
-		}
-	} unset($key, $value);
+  	foreach(getallheaders() as $key => $value) {
+  		if (preg_match(FRAMEWORK_CUSTOM_HEADER_PATTERN, $key)) {
+  			$_REQUEST['HEADERS'][$key] = $value;
+  		}
+  	} unset($key, $value);
 
-	if (!$_REQUEST['HEADERS']) {
-		unset($_REQUEST['HEADERS']);
+  	if (!$_REQUEST['HEADERS']) {
+  		unset($_REQUEST['HEADERS']);
+  	}
 	}
 }

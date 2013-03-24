@@ -63,7 +63,7 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
     $classname = '\\' . $matches[1];
     $function = $matches[2];
 
-    Service::requireService($classname);
+    \service::requireService($classname);
 
     if (!class_exists($classname)) {
       return FALSE;
