@@ -74,11 +74,11 @@ framework\ExceptionsHandler::setHandlers();
 
 /* Note by Vicary @ 24 Mar, 2013
    Uncomment this section and enter database connection criteria.
-*/
+
 // Database options
 $options = new core\DatabaseOptions(
   'mysql', null, null,
-  'cometolist', 'root', 'Passw0rd!12340000'
+  'database', 'db_username', 'db_password'
 );
 
 $options->driverOptions = Array(
@@ -90,7 +90,7 @@ $options->driverOptions = Array(
 core\Database::setOptions($options);
 
 unset($options);
-
+*/
 
 //--------------------------------------------------
 //
