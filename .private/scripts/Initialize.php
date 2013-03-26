@@ -64,7 +64,7 @@ require_once(__DIR__ . '/framework/functions.php');
 //
 //--------------------------------------------------
 
-framework\Exceptions::setHandlers();
+framework\ExceptionsHandler::setHandlers();
 
 //--------------------------------------------------
 //
@@ -74,11 +74,11 @@ framework\Exceptions::setHandlers();
 
 /* Note by Vicary @ 24 Mar, 2013
    Uncomment this section and enter database connection criteria.
-
+*/
 // Database options
 $options = new core\DatabaseOptions(
   'mysql', null, null,
-  'database', 'db_username', 'db_password'
+  'cometolist', 'root', 'Passw0rd!12340000'
 );
 
 $options->driverOptions = Array(
@@ -90,7 +90,7 @@ $options->driverOptions = Array(
 core\Database::setOptions($options);
 
 unset($options);
-*/
+
 
 //--------------------------------------------------
 //

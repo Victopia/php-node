@@ -28,6 +28,8 @@ define('FRAMEWORK_ENVIRONMENT', 'debug');
 
 // Document root to this framework
 define('FRAMEWORK_PATH_ROOT', realpath(__DIR__ . '/../../..'));
+// Define web directories
+define('FRAMEWORK_PATH_VIRTUAL', '/');
 // Path to internal scripts
 define('FRAMEWORK_PATH_SCRIPTS', '/.private/scripts');
 // Path to services
@@ -195,7 +197,6 @@ class_alias('\framework\Cache',   'cache');
 class_alias('\framework\Session', 'session');
 class_alias('\framework\Process', 'process');
 class_alias('\framework\Service', 'service');
-class_alias('\framework\Message', 'message');
 
 // Template path
 define('FRAMEWORK_TEMPLATE_PATH', 'assets/templates/%s.tpl');

@@ -77,7 +77,7 @@ class Database {
           , self::$options->driverOptions
           );
       } catch(\PDOException $e) {
-        throw new exceptions\CoreException('Unable to connect to database.', 0);
+        throw new exceptions\CoreException('Unable to connect to database.', 0, $e);
 
         self::$con = NULL;
       }

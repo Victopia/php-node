@@ -10,17 +10,16 @@
 //
 //--------------------------------------------------
 
-// Align current directory and REQUEST_URI
-if (@$_SERVER['DOCUMENT_ROOT'] && strpos(getcwd(), $_SERVER['DOCUMENT_ROOT']) === 0) {
-  $basePath = substr(getcwd(), strlen($_SERVER['DOCUMENT_ROOT']));
+// Align current directory and REQUEST_URI,
+// this approach does not cater any virtual directories, kinda bad.
+if (isset($_SERVER['REQUEST_URI']) && realpath(FRAMEWORK_PATH_VIRTUAL)) {
+  $virtualPath = realpath('/' . FRAMEWORK_PATH_VIRTUAL);
 
-  $reqUri = @$_SERVER['REQUEST_URI'];
-
-  if (strpos($reqUri, $basePath) === 0) {
-    $_SERVER['REQUEST_URI'] = substr($reqUri, strlen($basePath));
+  if (strpos($_SERVER['REQUEST_URI'], $virtualPath) === 0) {
+    $_SERVER['REQUEST_URI'] = '/' . substr($_SERVER['REQUEST_URI'], count($virtualPath));
   }
 
-  unset($reqUri);
+  unset($virtualPath);
 }
 
 // CRYPT_SHA512

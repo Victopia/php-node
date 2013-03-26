@@ -6,10 +6,10 @@
 
 namespace framework;
 
-class Exceptions {
+class ExceptionsHandler {
   public static function setHandlers() {
-        set_error_handler('framework\Exceptions::handleError');
-    set_exception_handler('framework\Exceptions::handleException');
+        set_error_handler('framework\ExceptionsHandler::handleError');
+    set_exception_handler('framework\ExceptionsHandler::handleException');
   }
 
   public static function handleError($eN, $eS, $eF, $eL) {
@@ -86,8 +86,10 @@ class Exceptions {
     $output = ob_get_clean() . json_encode($output);
 
     if (!\utils::isCLI()) {
-      header('Content-Type: application/json; charset=utf-8');
-      header('Content-Length: ' . strlen($output));
+      if (!headers_sent()) {
+        header('Content-Type: application/json; charset=utf-8');
+        header('Content-Length: ' . strlen($output));
+      }
 
       // JSONP support
       if (@$_GET['callback']) {

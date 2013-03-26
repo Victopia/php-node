@@ -295,23 +295,28 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
     $response = ob_get_clean();
 
-    // Send HTTP header Content-Length according to the output buffer if it is not sent.
-    $headers = headers_list();
-    $contentLengthSent = FALSE;
-    foreach ($headers as $header) {
-      if (stripos($header, 'Content-Length') !== FALSE) {
-        $contentLengthSent = TRUE;
-        break;
+    // Sent related HTTP headers, if not already flushed (this should not happend in normal cases).
+    if (!headers_sent()) {
+
+      // Send HTTP header Content-Length according to the output buffer if it is not sent.
+      $headers = headers_list();
+      $contentLengthSent = FALSE;
+      foreach ($headers as $header) {
+        if (stripos($header, 'Content-Length') !== FALSE) {
+          $contentLengthSent = TRUE;
+          break;
+        }
       }
-    }
-    unset($headers, $header);
+      unset($headers, $header);
 
-    if ($mime !== NULL) {
-      header("Content-Type: $mime", true);
-    }
+      if ($mime !== NULL) {
+        header("Content-Type: $mime", TRUE);
+      }
 
-    if (!$contentLengthSent) {
-      header("Content-Length: $contentLength", true);
+      if (!$contentLengthSent) {
+        header("Content-Length: $contentLength", TRUE);
+      }
+
     }
 
     echo $response;
@@ -416,7 +421,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
         }
         break;
       case 'csv':
-        header('Content-Disposition: attachment;', true);
+        header('Content-Disposition: attachment;', TRUE);
         break;
       default:
         // Extension-less
