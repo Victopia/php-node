@@ -1,5 +1,5 @@
 <?php
-/*! Service.php | Cater all web service functions. */
+/* Service.php | Cater all web service functions. */
 
 namespace framework;
 
@@ -25,6 +25,21 @@ class Service {
   //--------------------------------------------------
 
   /**
+   * @deprecated
+   *
+   * The original localRequest has been renamed into redirect()
+   * as it also supports external requests, acting more like
+   * a shorthand of core/Net module now.
+   *
+   * This function exists for backward compatibility.
+   */
+  static function localRequest($service, $httpOptions = array()) {
+    triggerDeprecate('redirect');
+
+    return self::redirect($service, $httpOptions);
+  }
+
+  /**
    * @beta
    *
    * This will issue a local request to the server itself.
@@ -32,13 +47,8 @@ class Service {
    * @param $service (String) Typical service request path on this. e.g. "/class/method/param1/param2"
    * @param $httpOptions (Array) Optional, will do a GET request without any parameters by default.
    */
-  static function localRequest($service, $httpOptions = array()) {
+  static function redirect($service, $httpOptions = array()) {
     $result = NULL;
-
-    // remove prefix '/'
-    if (strpos($service, '/') !== 0) {
-      $service = "/$service";
-    }
 
     if (is_string($httpOptions)) {
       switch (strtoupper($httpOptions)) {
@@ -64,11 +74,19 @@ class Service {
       }
     }
 
-    $httpOptions['url'] = (@$_SERVER['HTTPS'] ? 'https' : 'http') . '://' . gethostname() . $service;
+    if (strpos($service, 'http') !== 0) {
+      // prepend '/' if not exists
+      if (strpos($service, '/') !== 0) {
+        $service = "/$service";
+      }
 
-    $httpOptions['__curlOpts'] = array(
-      CURLOPT_REFERER => gethostname()
-    );
+      $service = (@$_SERVER['HTTPS'] ? 'https' : 'http') . '://' . gethostname() . $service;
+    }
+
+
+    $httpOptions['url'] = $service;
+
+    @$httpOptions['__curlOpts'][CURLOPT_REFERER] = gethostname();
 
     $httpOptions['callbacks'] = array(
       'success' => function($response, $curlOptions) use($service, &$result) {
@@ -77,7 +95,11 @@ class Service {
           throw new exceptions\ServiceException("Error making local request to $service, HTTP status: $curlOptions[status].");
         }
 
-        $result = json_decode($response, TRUE);
+        $result = @json_decode($response, TRUE);
+
+        if ($response !== 'null' && $result === NULL) {
+          throw new exceptions\ServiceException('Response is not a well-formed JSON string: ' . $response);
+        }
       }
     , 'failure' => function($num, $str, $curlOptions) {
         // This should not occurs, errors are supposed to be thrown as an exception object.
@@ -95,7 +117,7 @@ class Service {
   /**
    * Instantiate target service class and call that method directly.
    *
-   * Use this method instead of Service::localRequest() to gain performance,
+   * Use this method instead of Service::redirect() to gain performance,
    * or when the current session and cookies are meant to persist, which is
    * not able by local redirection without the PHPSESSID hack.
    */
@@ -133,11 +155,7 @@ class Service {
    * internal classes, it still allows so, but only when used with care.
    */
   static function requireService($service) {
-    $servicePath = str_replace('\\', DIRECTORY_SEPARATOR, $service) . '.php';
-
-    if (strpos($servicePath, DIRECTORY_SEPARATOR) !== 0) {
-      $servicePath = DIRECTORY_SEPARATOR . $servicePath;
-    }
+    $servicePath = DIRECTORY_SEPARATOR . str_replace('\\', DIRECTORY_SEPARATOR, $service) . '.php';
 
     $servicePath = realpath(FRAMEWORK_PATH_ROOT . FRAMEWORK_PATH_SERVICES . $servicePath);
 

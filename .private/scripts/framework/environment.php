@@ -1,8 +1,5 @@
 <?php
-/*! environment.php
- *
- *  Perform base functionality check, terminate the script if any of these doesn't presence.
- */
+/* environment.php | Perform base functionality check, terminate the script if any of these doesn't presence. */
 
 //--------------------------------------------------
 //
@@ -45,4 +42,22 @@ if (!utils::isCLI()) {
   		unset($_REQUEST['HEADERS']);
   	}
 	}
+}
+
+//--------------------------------------------------
+//
+//  Development cycle functions
+//
+//--------------------------------------------------
+
+function triggerDeprecate($successor = '') {
+  $message = utils::getCallee();
+
+  $message = "Function $message[class]::$message[function]() has been deprecated";
+
+  if ($successor) {
+    $message.= ", use its successor $successor() instead";
+  }
+
+  trigger_error("$message.", E_USER_DEPRECATED);
 }

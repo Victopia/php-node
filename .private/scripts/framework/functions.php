@@ -386,12 +386,16 @@ if (!function_exists('array_select')) {
 
 if (!function_exists('array_remove')) {
   function array_remove(&$list, $item, $strict = FALSE) {
+    $items = (array) $item;
+
     $hasRemoved = FALSE;
 
-    while (FALSE !== ($index = array_search($item, $list, $strict))) {
-      $hasRemoved = TRUE;
+    foreach ($items as $item) {
+      while (FALSE !== ($index = array_search($item, $list, $strict))) {
+        $hasRemoved = TRUE;
 
-      array_splice($list, $index, 1);
+        array_splice($list, $index, 1);
+      }
     }
 
     return $hasRemoved;
