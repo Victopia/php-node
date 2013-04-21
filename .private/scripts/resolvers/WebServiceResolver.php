@@ -158,11 +158,16 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
     // Shooto!
     $response = \service::call($classname, $function, $parameters);
 
+    $logContext = array('parameters' => $parameters);
+
+    if (FRAMEWORK_ENVIRONMENT == 'debug') {
+      $logContext = array('response' => $response);
+    }
+
     // Access log
-    \log::write("[WebService] $classname->$function", 'Access', array_filter(array(
-        'parameters' => $parameters
-      , 'response' => $response
-      )));
+    \log::write("[WebService] $classname->$function", 'Access', array_filter($logContext));
+
+    unset($logContext);
 
     // unset($instance); unset($function); unset($parameters);
 
