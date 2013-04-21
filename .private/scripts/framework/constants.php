@@ -192,6 +192,7 @@ class_alias('\core\Utility',  'utils');
 class_alias('\core\Log',      'log');
 class_alias('\core\Debugger', 'debug');
 
+class_alias('\framework\Optimist', 'optimist');
 class_alias('\framework\Configuration', 'conf');
 class_alias('\framework\Cache',   'cache');
 class_alias('\framework\Session', 'session');
