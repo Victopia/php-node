@@ -6,10 +6,13 @@ require_once('.private/test/DatabaseTest.php');
 
 require_once('.private/test/simpletest/reporter.php');
 
-$test = new BasicSetupIntegrityTest();
+$reporter = new HtmlReporter();
 
-// $test->run(new HtmlReporter());
+$tests = array(
+  'BasicSetupIntegrityTest'
+, 'DatabaseTest'
+);
 
-$test = new DatabaseTest();
-
-$test->run(new HtmlReporter());
+foreach ($tests as $test) {
+  (new $test())->run($reporter);
+}

@@ -12,8 +12,10 @@ class DatabaseTest extends UnitTestCase {
   //--------------------------------------------------
 
   function testConnection() {
+    $this->ignoreException('PDOException');
+
     $this->assertTrue(core\Database::isConnected(),
-      'Not connected to database, please check configurations scripts/Initialize.php and ensure a correct DatabaseOption is passed in.');
+      'Not connected to database, please check database configurations.');
 
     $res = core\Database::query('SELECT 1');
 
