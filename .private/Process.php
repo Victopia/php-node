@@ -60,6 +60,7 @@ if (!$res) {
 $process = $res[0];
 
 $process['locked'] = TRUE;
+$process['pid'] = getmypid();
 
 Node::set($process);
 

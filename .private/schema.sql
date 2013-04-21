@@ -73,6 +73,7 @@ CREATE TABLE `Processes` (
   `ID` bigint(20) NOT NULL AUTO_INCREMENT,
   `path` text NOT NULL,
   `locked` tinyint(1) NOT NULL DEFAULT 0,
+  `pid` int
   PRIMARY KEY (`ID`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 

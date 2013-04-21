@@ -42,9 +42,9 @@ class Process {
     */
     if (is_numeric($res)) {
       $res = array(
-        NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
-      , 'ID' => $res
-      );
+          NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
+        , 'ID' => $res
+        );
 
       $retryCount = 0;
 
@@ -53,7 +53,7 @@ class Process {
       }
     }
 
-    return self::spawnProcess();
+    return self::spawn() ? $res : FALSE;
   }
 
   /**
@@ -77,8 +77,35 @@ class Process {
     }
   }
 
+  /**
+   * Remove target process from queue.
+   */
+  public static function
+  /* void */ kill($process) {
+    $res = array(
+        NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
+      );
+
+    if (is_numeric($process)) {
+      $res['ID'] = intval($process);
+    }
+    else {
+      $res['path'] = $process;
+    }
+
+    $res = \node::get($res);
+
+    if ($res) {
+      node::delete($res);
+
+      if (@$res['pid']) {
+        posix_kill($res['pid'], SIGKILL);
+      }
+    }
+  }
+
   private static function
-  /* void */ spawnProcess() {
+  /* void */ spawn() {
     if (\utils::isCLI()) {
       // Already in the process, let the recursive fork do it's job.
       return TRUE;
