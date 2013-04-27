@@ -187,10 +187,10 @@ define('FRAMEWORK_MIME_LOCKED', 'application/x-locked');
 //
 //--------------------------------------------------
 class_alias('\core\Node',     'node');
+class_alias('\core\Net',      'net');
 class_alias('\core\Relation', 'relation');
 class_alias('\core\Utility',  'utils');
 class_alias('\core\Log',      'log');
-class_alias('\core\Debugger', 'debug');
 
 class_alias('\framework\Optimist', 'optimist');
 class_alias('\framework\Configuration', 'conf');
