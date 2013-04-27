@@ -123,6 +123,10 @@ $conveter->resizeTo(1280, 720, TRUE, array(
     )
   ));
 
+$image = $converter->getImage(/* specify a mime-type, or the original one is returned. */);
+
+$converter->close(); // release memory
+
 ```
 
 ### XMLConverter
