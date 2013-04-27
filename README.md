@@ -130,7 +130,7 @@ $conveter->resizeTo(1280, 720, TRUE, array(
 Originally this is built as an XML formatter for `core\Net`, while exposed as a public class to be used alone.
 
 ```PHP
-$phpArray = XMLConverter::fromXML('<a><b1 c="c">d</b1><b2>c</b2></a>');
+$phpArray = core\XMLConverter::fromXML('<a><b1 c="c">d</b1><b2>c</b2></a>');
 
 var_dump($phpArray);
 
