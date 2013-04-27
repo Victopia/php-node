@@ -163,33 +163,81 @@ class ImageConverter {
    *
    * @returns (bool) TRUE on success, FALSE otherwise.
    */
-  function resizeTo($width, $height, $keepRatio = FALSE, $ratioPicker = 'min', $cropToBounds = FALSE) {
+  function resizeTo($width, $height, $options = NULL) {
+    $options = (array) $options;
+
     $this->checkImage();
 
-    $srcWidth  = imagesx($this->image);
-    $srcHeight = imagesy($this->image);
+    $src = array(
+        'w' => imagesx($this->image)
+      , 'h' => imagesy($this->image)
+      );
 
-    $ratioX = $width / $srcWidth;
-    $ratioY = $height / $srcHeight;
+    $ratio = array(
+        'x' => $width / $src['w']
+      , 'y' => $height / $src['h']
+      );
 
-    // Set scale ratio identical to maintain aspect ratio.
-    if ($keepRatio) {
-      $ratioX = $ratioY = call_user_func_array($ratioPicker, array($ratioX, $ratioY));
+    if (@$options['ratioPicker'] === TRUE) {
+      $options['ratioPicker'] = 'min';
     }
 
-    // image fill rect.
-    $dstWidth = round($srcWidth * $ratioX);
-    $dstHeight = round($srcHeight * $ratioY);
+    // Set scale ratio identical to maintain aspect ratio, with the specified function.
+    if (@$options['ratioPicker']) {
+      $ratio['x'] = $ratio['y'] =
+        call_user_func_array(@$options['ratioPicker'], array($ratio['x'], $ratio['y']));
+    }
 
-    // image bounds
-    if ($cropToBounds) {
+    // Image fill rect
+    $dst = array(
+        'w' => round($src['w'] * $ratio['x'])
+      , 'h' => round($src['h'] * $ratio['y'])
+      );
+
+    // Image bounds
+    if (@$options['cropsTarget']) {
       $image = imagecreatetruecolor($width, $height);
-    }
-    else {
-      $image = imagecreatetruecolor($dstWidth, $dstHeight);
+
+      switch (@$options['cropsTarget']['x']) {
+        case 'auto':
+        case 'center':
+          if ($dst['w'] > $width) { // width needs cropping
+            $dst['x'] = round($width / 2 - $dst['w'] / 2);
+          }
+          else {
+            // nothing needs to do here.
+          }
+          break;
+
+        default:
+          $dst['x'] = intval($options['cropsTarget']['x']);
+          break;
+      }
+
+      switch (@$options['cropsTarget']['y']) {
+        case 'auto':
+        case 'center':
+          if ($dst['h'] > $height) { // height needs cropping
+            $dst['y'] = round($height / 2 - $dst['h'] / 2);
+          }
+          else {
+            // nothing needs to do here.
+          }
+          break;
+
+        default:
+          $dst['y'] = intval($options['cropsTarget']['y']);
+          break;
+      }
     }
 
-    // Creates an image with transparent background.
+    // Take only smaller edges, automatically crop empty pixels
+    $image = imagecreatetruecolor(
+        min($dst['w'], $width)
+      , min($dst['h'], $height)
+      );
+
+    // Creates an image with transparent background
     imagefilledrectangle($image
       , 0, 0
       , $width, $height
@@ -198,8 +246,10 @@ class ImageConverter {
 
     // Perform resample and copy
     imagecopyresampled($image, $this->image
-      , 0, 0, 0, 0
-      , $dstWidth, $dstHeight, $srcWidth, $srcHeight
+      , (int) @$dst['x'], (int) @$dst['y']
+      , (int) @$src['x'], (int) @$src['y']
+      , $dst['w'], $dst['h']
+      , $src['w'], $src['h']
       );
 
     // Destroy the old image
