@@ -10,8 +10,6 @@ Just create issues in github as usual, I am open for discussions.
 
 This framework aims to provide simple select and upsert upon a database, seamlessly manipulating data across virtual (JSON encoded) columns and rational columns.
 
-This project is more a prove of concept than production use, I made this for an easy code transition for my team from MySQL to MongoDB.
-
 Some of the ideas might seems irrational, feel free to discuss every tiny bit in the project.
 
 ## Usage
