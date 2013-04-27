@@ -27,12 +27,12 @@ These directories behave differently as normal folders, they are configurable vi
 #### .private
 This directory is prevented from access. For any reason you don't want some files to be public, place them here.
 
-#### scripts
+#### .private/scripts
 This directory contains framework scripts, and is not supposed to be accessed by public.
 
 Feel free to add your own scripts here.
 
-#### services
+#### .privae/services
 PHP scripts in this folder are served as RESTful methods, for more information see the example script inside and scripts/resolveers/WebServiceResolver.
 
 ### Node
@@ -89,6 +89,75 @@ And the result will be look like this,
 		)
 	)
 
+### ImageConverter
+
+Utilize and depends on the GD library, for easy resizing, cropping and converting images into different formats.
+
+Sample usage:
+
+```PHP
+$converter = new core\ImageConverter($_FILES['image']['tmp_name']);
+
+// resize to 720p regardless of aspect ratio.
+$conveter->resizeTo(1280, 720);
+
+// resize image to match the 720p bounding box, respecting aspect ratio.
+$conveter->resizeTo(1280, 720, array(
+    'ratioPicker' => 'min'
+  ));
+
+// resize image to at least 720p.
+$conveter->resizeTo(1280, 720, TRUE, array(
+    'ratioPicker' => 'max'
+  ));
+
+// resize image to at least 720p, and cropping exceeded pixels.
+$conveter->resizeTo(1280, 720, TRUE, array(
+    'ratioPicker' => 'max'
+
+  // $dst_x and $dst_y in imagecopyresampled(), default to (0, 0) which is the top-left corner.
+  , 'cropsTarget' => array(
+      // offset pixels, 'auto' or 'center' (they have the same meaning)
+      'x' => 'center'
+    , 'y' => 50
+    )
+  ));
+
+```
+
+### XMLConverter
+
+Originally this is built as an XML formatter for `core\Net`, while exposed as a public class to be used alone.
+
+```PHP
+$phpArray = XMLConverter::fromXML('<a><b1 c="c">d</b1><b2>c</b2></a>');
+
+var_dump($phpArray);
+
+/* OUTPUT:
+
+array(1) {
+  ["a"]=>
+  array(2) {
+    ["b1"]=>
+    array(2) {
+      ["@attributes"]=>
+      array(1) {
+        ["c"]=>
+        string(1) "c"
+      }
+      ["@value"]=>
+      string(1) "d"
+    }
+    ["b2"]=>
+    string(1) "c"
+  }
+}
+
+*/
+
+```
+
 ### Session
 
 Make use of table type MEMORY, take advantage of memory storage and clears sessions upon reboot.
@@ -138,3 +207,35 @@ The `Database` class is build way earlier then Node frameworks, and has a lower 
 ### Database
 
 Read the code for more info.
+
+### Net
+
+This class is inspired by the old jQuery ajax style, without the deferred/promise object return. Promises are likely to be implemented in the near future.
+
+Sample usage:
+
+```PHP
+
+net::httpRequest(array(
+  'url' => 'http://www.google.com'
+, 'type' => 'POST'
+, 'data' => array( /* data object to be encoded */ )
+, 'dataType' => 'xml'
+
+  /* Any callable formats are accepted here. */
+  'success' => function() {}
+, 'failure' => function() {}
+, 'complete' => function() {}
+));
+
+```
+
+### Event
+### EventEmitter
+
+Name of the event classes are inspired by node.js, while PHP is a blocking language this make little advantage but favoring the JavaScript-like coding style.
+
+### Deferred
+### Promise
+
+Porting the functionalities from jQuery deferred/promise objects, see their docs [here](http://api.jquery.com/category/deferred-object/).
