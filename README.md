@@ -54,43 +54,43 @@ For all constants, see scripts/framework/constants.php.
 Assume we have the following data structure,
 
 ```PHP
-  +----------------------+-------------+---------------------------------------+---------------------+
-  | ID                   | @collection | @contents                             | timestamp           |
-  +----------------------+-------------+---------------------------------------+---------------------+
-  | 00000000000000000001 | User        | {"username":"root","password":"..."}  | 2012-03-01 11:59:55 |
-  | 00000000000000000002 | User        | {"username":"Peter","password":"..."} | 2012-03-01 12:00:10 |
-  +----------------------+-------------+---------------------------------------+---------------------+
++----------------------+-------------+---------------------------------------+---------------------+
+| ID                   | @collection | @contents                             | timestamp           |
++----------------------+-------------+---------------------------------------+---------------------+
+| 00000000000000000001 | User        | {"username":"root","password":"..."}  | 2012-03-01 11:59:55 |
+| 00000000000000000002 | User        | {"username":"Peter","password":"..."} | 2012-03-01 12:00:10 |
++----------------------+-------------+---------------------------------------+---------------------+
 ```
 
 We can search the database with these code,
 
 ```PHP
-  // Remarks: `ID` and `identifier` is required to be rational column at the moment,
-  //          as these are derived from the primary ideas when building this thing.
-  //          They are meant to be optional in later time.
+// Remarks: `ID` and `identifier` is required to be rational column at the moment,
+//          as these are derived from the primary ideas when building this thing.
+//          They are meant to be optional in later time.
 
-  $filter = Array(
-    NODE_FIELD_COLLECTION => 'User',
-    'username' => 'root'
-  );
+$filter = Array(
+  NODE_FIELD_COLLECTION => 'User',
+  'username' => 'root'
+);
 
-  $result = Node::get($filter);
+$result = Node::get($filter);
 
-  print_r($result);
+print_r($result);
 ```
 
 And the result will be look like this,
 
 ```PHP
-  Array(
-    [0] => Array(
-      '@collection' => 'User',
-      'ID' => '00000000000000000001',
-      'username' => 'root',
-      'password' => '...',
-      'timestamp' => '2012-03-01 11:59:55'
-    )
+Array(
+  [0] => Array(
+    '@collection' => 'User',
+    'ID' => '00000000000000000001',
+    'username' => 'root',
+    'password' => '...',
+    'timestamp' => '2012-03-01 11:59:55'
   )
+)
 ```
 
 ### ImageConverter
@@ -171,31 +171,31 @@ array(1) {
 Make use of table type MEMORY, take advantage of memory storage and clears sessions upon reboot.
 
 ```PHP
-  // Authenticate a user and returns a session ID string.
-  //
-  // If a current session with this user exists, constant SESSION_ERR_EXISTS
-  // is returned unless parameter $overrideExists is true.
-  Session::validate($username, $password, $overrideExists);
+// Authenticate a user and returns a session ID string.
+//
+// If a current session with this user exists, constant SESSION_ERR_EXISTS
+// is returned unless parameter $overrideExists is true.
+Session::validate($username, $password, $overrideExists);
 
-  // Deletes a session with specified session ID string if exists, do nothing otherwise.
-  Session::invalidate($sid);
+// Deletes a session with specified session ID string if exists, do nothing otherwise.
+Session::invalidate($sid);
 
-  // Validates and extends an existing session.
-  //
-  // An optional one-time token can be passed for extended security.
-  // See Session::generateToken() for more details.
-  //
-  // Note that sessions are meant to expire after 30 minutes of inactivity.
-  Session::ensure($sid, $token = NULL);
+// Validates and extends an existing session.
+//
+// An optional one-time token can be passed for extended security.
+// See Session::generateToken() for more details.
+//
+// Note that sessions are meant to expire after 30 minutes of inactivity.
+Session::ensure($sid, $token = NULL);
 
-  // Revives an expired session.
-  //
-  // Returns FALSE if no such session exists.
-  Session::restore($sid);
+// Revives an expired session.
+//
+// Returns FALSE if no such session exists.
+Session::restore($sid);
 
-  // Generates a unique token for a request next time.
-  // Validation fails if such a token exists and no $token is specified on Session::ensure();
-  Session::generateToken($sid);
+// Generates a unique token for a request next time.
+// Validation fails if such a token exists and no $token is specified on Session::ensure();
+Session::generateToken($sid);
 ```
 
 ### Log
@@ -203,13 +203,13 @@ Make use of table type MEMORY, take advantage of memory storage and clears sessi
 Basic logging into database.
 
 ```PHP
-  // Overloaded function write()
+// Overloaded function write()
 
-  // This writes the content without logging a specific user.
-  Log::write($contents);
+// This writes the content without logging a specific user.
+Log::write($contents);
 
-  // This validates a session with 'sid' and acquires user info when logging.
-  Log::write($sid, $identifier, $action, $remarks = NULL);
+// This validates a session with 'sid' and acquires user info when logging.
+Log::write($sid, $identifier, $action, $remarks = NULL);
 ```
 
 ## Low level classes
@@ -229,16 +229,16 @@ Sample usage:
 ```PHP
 
 net::httpRequest(array(
-  'url' => 'http://www.google.com'
-, 'type' => 'POST'
-, 'data' => array( /* data object to be encoded */ )
-, 'dataType' => 'xml'
+    'url' => 'http://www.google.com'
+  , 'type' => 'POST'
+  , 'data' => array( /* data object to be encoded */ )
+  , 'dataType' => 'xml'
 
-  /* Any callable formats are accepted here. */
-  'success' => function() {}
-, 'failure' => function() {}
-, 'complete' => function() {}
-));
+    /* Any callable formats are accepted here. */
+    'success' => function() {}
+  , 'failure' => function() {}
+  , 'complete' => function() {}
+  ));
 
 ```
 
