@@ -222,7 +222,7 @@ Read the code for more info.
 
 ### Net
 
-This class is inspired by the old jQuery ajax style, without the deferred/promise object return. Promises are likely to be implemented in the near future.
+This class is inspired by the old jQuery ajax style, without the deferred/promise object returned, while they are likely to be implemented in the near future.
 
 Sample usage:
 
