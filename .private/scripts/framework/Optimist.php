@@ -91,7 +91,7 @@ final class Optimist {
       //  Parse argv
       //------------------------------
 
-      $argv = $this->argv;
+      $argv = (array) $this->argv;
 
       // Remove until the script itself.
       if (@$_SERVER['PHP_SELF'] && in_array($_SERVER['PHP_SELF'], $argv)) {
