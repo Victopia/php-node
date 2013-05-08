@@ -161,9 +161,64 @@ class Net {
         $curlOption[CURLOPT_HTTPHEADER] = &$option['headers'];
       }
 
-      if (isset($option['callbacks'])) {
-        $curlOption['callbacks'] = &$option['callbacks'];
+      // Data type converting
+      if (isset($option['success'])) {
+        $originalSuccess = @$option['success'];
+
+        switch (@$option['dataType']) {
+          case 'json':
+            $option['success'] = function($response, $curlOptions) use($option, $originalSuccess) {
+              $result = @json_encode($response, TRUE);
+
+              if ($result === NULL && $response) {
+                Utility::forceInvoke(@$option['failure'], array(
+                    0
+                  , 'Malformed JSON string returned.'
+                  , $curlOptions
+                  ));
+              }
+              else {
+                Utility::forceInvoke(@$originalSuccess, array(
+                    $result
+                  , $curlOptions
+                  ));
+              }
+            };
+            break;
+
+          case 'xml':
+            $option['success'] = function($response, $curlOptions) use($option, $originalSuccess) {
+              try {
+                $result = XMLConverter::fromXML($response);
+              } catch (\Exception $e) {
+                $result = NULL;
+              }
+
+              if ($result === NULL && $response) {
+                Utility::forceInvoke(@$option['failure'], array(
+                    0
+                  , 'Malformed XML string returned.'
+                  , $curlOptions
+                  ));
+              }
+              else {
+                Utility::forceInvoke(@$originalSuccess, array(
+                    $result
+                  , $curlOptions
+                  ));
+              }
+            };
+            break;
+        }
+
+        unset($originalSuccess);
       }
+
+      $curlOption['callbacks'] = array_filter(array(
+          'success' => @$option['success']
+        , 'failure' => @$option['failure']
+        , 'complete' => @$option['complete']
+        ));
 
       $curlOption = (array) @$option['__curlOpts'] + $curlOption;
 
