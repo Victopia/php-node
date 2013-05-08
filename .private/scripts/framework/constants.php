@@ -173,7 +173,7 @@ define('FRAMEWORK_SEARCH_QUICK_LIMIT', 10);
 // Date format for search
 define('FRAMEWORK_SEARCH_DATE_FORMAT', 'M, Y');
 
-/* Quoted by Eric @ 26 Nov, 2012
+/* Quoted by Vicary @ 26 Nov, 2012
     Unused
 // Intermadiate mime type for File collection, indicates file write in progress.
 define('FRAMEWORK_MIME_INTERMEDIATE', 'application/x-intermediate');

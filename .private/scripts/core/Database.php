@@ -1,12 +1,12 @@
 <?php
-/*! Database.php | https://github.com/victopia/PHPNode
- *
- */
+/* Database.php | https://github.com/victopia/php-node */
 
 namespace core;
 
 /**
  * Basic database helper functions.
+ *
+ * @author Vicary Arcahgnel <vicary@victopia.org>
  */
 class Database {
 
@@ -263,7 +263,7 @@ class Database {
                       , $param = NULL
                       , $fetch_offset = 0
                       , $fetch_type = \PDO::FETCH_ASSOC ) {
-    /* Note by Eric @ 8.Nov.2012
+    /* Note by Vicary @ 8.Nov.2012
        As of PHP 5.4.8, this shit is still not supported by SQLite and MySQL.
 
     $res = self::query($query, $param, array(

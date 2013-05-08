@@ -1,16 +1,18 @@
 <?php
-/*! XMLConverter.php
+/* XMLConverter.php | Converts between XML and PHP arrays. */
+
+namespace core;
+
+/**
+ * XMLConverter class.
  *
  * Conversion between XML and PHP array.
  *
  * Inspired by XML2Array and Array2XML by lalit.lab.
  * http://www.lalit.org
  *
- * @author Vicary Archangel
+ * @author Vicary Arcahgnel <vicary@victopia.org>
  */
-
-namespace core;
-
 class XMLConverter {
 
   /**
@@ -20,11 +22,7 @@ class XMLConverter {
    */
   public static function fromXML($source) {
     $reader = new \XMLReader();
-    $method = 'open';
-
-    if (preg_match('/^\s*\</', $source)) {
-      $method = 'xml';
-    }
+    $method = preg_match('/^\s*\</', $source) ? 'xml' : 'open';
 
     $method = new \ReflectionMethod($reader, $method);
     $method = $method->invoke($reader, $source);
@@ -110,10 +108,10 @@ class XMLConverter {
             strlen($value) < 15) {
           $value = floatval($value);
         }
-        elseif ($value === 'true') {
+        elseif (strcasecmp($value, 'true') === 0) {
           $value = TRUE;
         }
-        elseif ($value === 'false') {
+        elseif (strcasecmp($value, 'false') === 0) {
           $value = FALSE;
         }
 

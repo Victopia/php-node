@@ -1,8 +1,5 @@
 <?php
-/*! Process.php
- *
- *  Perform tasks queued on the database.
- */
+/* Process.php | Perform tasks queued on the database. */
 
 namespace framework;
 
@@ -37,7 +34,7 @@ class Process {
       return FALSE;
     }
 
-    /* Added by Eric @ 20 Nov, 2012
+    /* Added by Vicary @ 20 Nov, 2012
         Wait until the process is written into database.
     */
     if (is_numeric($res)) {

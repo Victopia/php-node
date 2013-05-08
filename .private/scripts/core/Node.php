@@ -1,4 +1,5 @@
 <?php
+/* Node.php | The node data framework. */
 
 namespace core;
 
@@ -116,7 +117,7 @@ class Node {
           else
 
           // 2. Numeric comparison: 3, <10, >=20, ==3.5 ... etc.
-          if (preg_match('/^(<|<=|==|>=|>)?(\d+)$/', $content, $matches) &&
+          if (preg_match('/^(<|<=|==|>=|>)?(\d+)$/', trim($content), $matches) &&
             count($matches) > 2)
           {
             if (!$matches[1] || $matches[1] == '==') {
@@ -129,7 +130,7 @@ class Node {
           else
 
           // 3. Datetime comparison: <'2010-07-31', >='1989-06-21' ... etc.
-          if (preg_match('/^(?:<|<=|==|>=|>)\'([0-9- :]+)\'$/', $content, $matches) &&
+          if (preg_match('/^(?:<|<=|==|>=|>)\'([0-9- :]+)\'$/', trim($content), $matches) &&
             count($matches) > 2 && strtotime($matches[2]) !== FALSE)
           {
             $subQuery[] = "$escapedField $matches[1] ?";
@@ -138,7 +139,7 @@ class Node {
           else
 
           // 4. Regexp matching: "/^AB\d+/"
-          if (preg_match('/^\/([^\/]+)\/g?i?$/i', $content, $matches) &&
+          if (preg_match('/^\/([^\/]+)\/[\-gismx]*$/i', trim($content), $matches) &&
             count($matches) > 1)
           {
             $subQuery[] = "$escapedField REGEXP ?";
@@ -147,7 +148,7 @@ class Node {
           else
 
           // 5. NULL types
-          if (is_null($content) || preg_match('/^((?:==|\!=)=?)\s*NULL\s*$/i', $content, $matches)) {
+          if (is_null($content) || preg_match('/^((?:==|\!=)=?)\s*NULL$/i', trim($content), $matches)) {
             $content = 'IS ' . (@$matches[1][0] == '!' ? 'NOT ' : '') . 'NULL';
             $subQuery[] = "$escapedField $content";
           }
@@ -155,13 +156,20 @@ class Node {
 
           // 6. Plain string.
           if (is_string($content)) {
-            $subQuery[] = "$escapedField LIKE ?";
+            if (preg_match('/^!\'([^\']+)\'$/', trim($content), $matches)) {
+              $subQuery[] = "$escapedField NOT LIKE ?";
+              $content = $matches[1];
+            }
+            else {
+              $subQuery[] = "$escapedField LIKE ?";
+            }
+
             $params[] = $content;
           }
         });
 
-        /* Note by Eric @ 4 Dec, 2012
-            Inclusive search in real columns, within the same column.
+        /* Note by Vicary @ 4 Dec, 2012
+           Inclusive search in real columns, within the same column.
         */
         if ($subQuery) {
           $query[] = '(' . implode(' OR ', $subQuery) . ')';
@@ -315,7 +323,7 @@ class Node {
       // NULL type: NULL
           ( is_null($content) && $value !== $content ) ||
 
-      /* Quoted by Eric @ 1 Jan, 2013
+      /* Quoted by Vicary @ 1 Jan, 2013
          This will make inconsistency between real and virtual columns.
 
       // Array type: direct comparison
@@ -414,7 +422,7 @@ class Node {
         continue;
 
       if (!isset($row[NODE_FIELD_COLLECTION])) {
-        /* Note by Eric @ 4 Dec, 2012
+        /* Note by Vicary @ 4 Dec, 2012
             Should discuss whether we should use trigger_error
             instead of throwing exceptions in all non-fatal cases.
         */

@@ -1,7 +1,7 @@
 <?php
 /*! framework\functions.php | Implements functional programming. */
 
-/* Note by Eric @ 10 Dec, 2012
+/* Note by Vicary @ 10 Dec, 2012
 
     Follow a simple rule: Use verbs as names for function factories
     (functions that return functions).

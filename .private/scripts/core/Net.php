@@ -1,8 +1,5 @@
 <?php
-/*! net.php
- *
- *  The Net class provides network related functionalities.
- */
+/* Net.php | The Net class provides network related functionalities. */
 
 namespace core;
 
@@ -282,15 +279,15 @@ class Net {
             if ($_dLen != $dLen) {
               $_dLen = $dLen;
 
-              /* Note by Eric @ 2.Oct.2012
-                  Total download size is often 0 if server doesn't
-                  response with a Content-Length header.
+              /* Note by Vicary @ 2.Oct.2012
+                 Total download size is often 0 if server doesn't
+                 response with a Content-Length header.
 
-                  Total size guessing logic:
-                  1. if $dLen < 1M, assume 1M.
-                  2. if $dLen < 10M, assume 10M.
-                  3. if $dLen < 100M, assume 100M.
-                  4. if $dLen < 1G, assume 1G.
+                 Total size guessing logic:
+                 1. if $dLen < 1M, assume 1M.
+                 2. if $dLen < 10M, assume 10M.
+                 3. if $dLen < 100M, assume 100M.
+                 4. if $dLen < 1G, assume 1G.
                */
               if (!$dSize) {
                 // Do not assume when size under 1K
@@ -363,9 +360,9 @@ class Net {
     do {
       $status = curl_multi_exec($multiHandle, $active);
 
-      /* Added by Eric @ 6.Nov.2012
-          Blocks until there is a message arrives.
-       */
+      /* Added by Vicary @ 6.Nov.2012
+         Blocks until there is a message arrives.
+      */
       curl_multi_select($multiHandle);
 
       do {

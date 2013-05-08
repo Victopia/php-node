@@ -1,7 +1,20 @@
 <?php
+/* Utility.php | https://github.com/victopia/php-node */
 
 namespace core;
 
+/**
+ * Utility class.
+ *
+ * This is a collection of handy utility methods,
+ * read the code for hidden gems.
+ *
+ * Mostly snippets here that is not big enough
+ * (either size or functionality) for a standalone
+ * class.
+ *
+ * @author Vicary Arcahgnel <vicary@victopia.org>
+ */
 class Utility {
   /**
    * Returns whether the current process is in CLI environment.
@@ -61,7 +74,7 @@ class Utility {
       $level = count($backtrace) - 1;
     }
 
-    /* Added by Eric @ 23 Dec, 2012
+    /* Added by Vicary @ 23 Dec, 2012
         This script should:
         1. try its best to search until there is a file, and
         2. stop before framework scripts are reached.
@@ -108,54 +121,81 @@ class Utility {
   }
 
   /**
-   *  Determine whether the given string is a well formed URL.
+   * Determine whether the given string is a well formed URL.
    */
   static function isURL($value) {
     // SCHEME
-    $urlregex = "^(file|https?|ftps?|php|zlib|data|glob|phar|ssh2|ogg|expect)\:\/\/";
+    $urlregex = '^(file|https?|ftps?|php|zlib|data|glob|phar|ssh2|ogg|expect)\:\/\/';
 
     // USER AND PASS (optional)
-    $urlregex .= "([a-z0-9+!*(),;?&=\$_.-]+(\:[a-z0-9+!*(),;?&=\$_.-]+)?@)?";
+    $urlregex .= '([a-z0-9+!*(),;?&=\$_.-]+(\:[a-z0-9+!*(),;?&=\$_.-]+)?@)?';
 
     // HOSTNAME OR IP
-    $urlregex .= "[a-z0-9+\$_-]+(\.[a-z0-9+\$_-]+)*"; // http://x = allowed (ex. http://localhost, http://routerlogin)
-    //$urlregex .= "[a-z0-9+\$_-]+(\.[a-z0-9+\$_-]+)+"; // http://x.x = minimum
-    //$urlregex .= "([a-z0-9+\$_-]+\.)*[a-z0-9+\$_-]{2,3}"; // http://x.xx(x) = minimum
+    $urlregex .= '[a-z0-9+\$_-]+(\.[a-z0-9+\$_-]+)*'; // http://x = allowed (ex. http://localhost, http://routerlogin)
+    //$urlregex .= '[a-z0-9+\$_-]+(\.[a-z0-9+\$_-]+)+'; // http://x.x = minimum
+    //$urlregex .= '([a-z0-9+\$_-]+\.)*[a-z0-9+\$_-]{2,3}'; // http://x.xx(x) = minimum
     //use only one of the above
 
     // PORT (optional)
-    $urlregex .= "(\:[0-9]{2,5})?";
+    $urlregex .= '(\:[0-9]{2,5})?';
     // PATH (optional)
-    $urlregex .= "(\/([a-z0-9+\$_-]\.?)+)*\/?";
+    $urlregex .= '(\/([a-z0-9+\$_-]\.?)+)*\/?';
     // GET Query (optional)
-    $urlregex .= "(\?[a-z+&\$_.-][a-z0-9;:@/&%=+\$_.-]*)?";
+    $urlregex .= '(\?[a-z+&\$_.-][a-z0-9;:@/&%=+\$_.-]*)?';
     // ANCHOR (optional)
-    $urlregex .= "(#[a-z_.-][a-z0-9+\$_.-]*)?\$";
+    $urlregex .= '(#[a-z_.-][a-z0-9+\$_.-]*)?\$';
 
     // check
-    return (bool) @eregi($urlregex, $value);
+    return (bool) preg_match("/$urlregex/i", $value);
   }
 
   /**
-   *  Determine whether an array is associative.
+   * Determine whether an array is associative.
    *
-   *  To determine a numeric array, inverse the result of this function.
+   * To determine a numeric array, inverse the result of this function.
    */
   static function isAssoc($value) {
-    /*
+    /* This is the original version found somewhere in the internet,
+       keeping it to respect the author.
+
+       Problem is numeric arrays with inconsecutive keys will return
+       as associative, might be a desired outcome when doing json_encode,
+       but this led to a not very descriptive function name.
+
     return is_array($value) && count($value) &&
       count(array_diff_key($value, array_keys(array_keys($value))));
     */
 
     return is_array($value) && $value &&
-      // ALL keys must be numeric to qualify as NOT assoc.
-      count(array_filter(array_keys($value), 'is_numeric')) != count($value);
+      // All keys must be numeric to qualify as NOT assoc.
+      array_filter(array_keys($value), 'is_numeric');
   }
 
   /**
-   *  Case-insensitive version of array_merge.
+   * Wrap an associative array with a new array(), making it iteratable.
+   */
+  static function wrapAssoc($item) {
+    return !is_array($item) || self::isAssoc($item) ? array($item) : $item;
+  }
+
+  /**
+   * Unwrap an array of primitives, hash-arrays or objects,
+   * and returns the first element.
    *
-   *  Character case of the orginal array is preserved.
+   * Null is returned if input array is empty.
+   */
+  static function unwrapAssoc($list) {
+    if ($list && is_array($list) && !self::isAssoc($list)) {
+      return reset($list);
+    }
+
+    return $list;
+  }
+
+  /**
+   * Case-insensitive version of array_merge.
+   *
+   * Character case of the orginal array is preserved.
    */
   static function arrayMergeIgnoreCase(&$subject) {
     $args = func_get_args();
@@ -263,30 +303,12 @@ class Utility {
   }
 
   /**
-   * Wrap an associative array with a new array(), making it iteratable.
-   */
-  static function wrapAssoc($item) {
-    return !is_array($item) || self::isAssoc($item) ? array($item) : $item;
-  }
-
-  /**
-   * Unwrap an array of primitives, hash-arrays or objects,
-   * and returns the first element.
-   *
-   * Null is returned if input array is empty.
-   */
-  static function unwrapAssoc($list) {
-    if ($list && is_array($list) && !self::isAssoc($list)) {
-      return reset($list);
-    }
-
-    return $list;
-  }
-
-  /**
    * Return the first value that is not interpreted as FALSE.
    *
-   * @param $list Array for this, or it will func_get_args().
+   * This is made for those lazy shits like me, who does
+   * (foo || bar || baz) a lot in Javascript.
+   *
+   * @param $list Array of values to cascade, or it will func_get_args().
    */
   static function cascade($list) {
     if (!is_array($list)) {
@@ -315,6 +337,12 @@ class Utility {
     return $ref;
   }
 
+  /**
+   * Invoke target function or method, regardless the declaration
+   * modifier (private, protected or public).
+   *
+   * This is achieved by the Reflection model of PHP.
+   */
   static function forceInvoke($callable, $parameters = NULL) {
     $parameters = (array) $parameters;
 
@@ -362,8 +390,9 @@ class Utility {
     return date($pattern, $date);
   }
 
-  /* Added and Quoted by Eric @ 17 Feb, 2013
-
+  /* Added and Quoted by Vicary @ 17 Feb, 2013
+     Not very useful, should be a standalone duration class, or even resource bundle
+     for this kind of thing.
 
   /**
    * Make a "in ... (time unit)" string, compared between the input times.
@@ -439,9 +468,9 @@ class Utility {
   }
 
   /**
-   *  Try parsing the value as XML string.
+   * Try parsing the value as XML string.
    *
-   *  @returns TRUE on success, FALSE otherwise.
+   * @returns TRUE on success, FALSE otherwise.
    */
   static function sanitizeXML($value) {
     libxml_use_internal_errors(true);
@@ -460,9 +489,9 @@ class Utility {
   }
 
   /**
-   *  Try sanitizing the value as date.
+   * Try sanitizing the value as date.
    *
-   *  A date of zero timestamp will be returned on invalid.
+   * A date of zero timestamp will be returned on invalid.
    */
   static function sanitizeDate($value, $format = '%Y-%m-%d')
   {
@@ -477,9 +506,9 @@ class Utility {
   }
 
   /**
-   *  Expanding 2 digit year to 4 digits.
+   * Expanding 2 digit year to 4 digits.
    *
-   *  FALSE will be returned when parse failure.
+   * FALSE will be returned when parse failure.
    */
   static function sanitizeYear($input) {
     if (!is_int($input-0)) {
@@ -504,16 +533,16 @@ class Utility {
   }
 
   /**
-   *  Returns an array of the same length of $input and all it's elements set to $value.
+   * Returns an array of the same length of $input and all it's elements set to $value.
    *
-   *  Optionally passing $glue will implode the created array with it.
+   * Optionally passing $glue will implode the created array with it.
    *
-   *  @param $input Source array to be counted.
-   *  @param $value Any PHP value to be filled to the new array.
-   *  @param $glue (Optional) Cusotmize implode() behavior of the result array, specify FALSE to skip this action and return an array instead.
+   * @param $input Source array to be counted.
+   * @param $value Any PHP value to be filled to the new array.
+   * @param $glue (Optional) Cusotmize implode() behavior of the result array, specify FALSE to skip this action and return an array instead.
    *
-   *  @returns Array of the same length of $input filled with $value,
-   *           or an imploded string of the resulting array.
+   * @returns Array of the same length of $input filled with $value,
+   *          or an imploded string of the resulting array.
    */
   static function fillArray($input, $value = '?', $glue = ',') {
     $result = array_fill(0, count($input), $value);

@@ -1,14 +1,16 @@
 <?php
-/*! DeferredObject.php
- *
- *  An implementation of jQuery deferred object.
- *
- *  Difference between Promise and deferred object
- *  is the accessibility of state changing methods.
- */
+/* Deferred.php | An implementation of jQuery deferred object. */
 
 namespace core;
 
+/**
+ * An implementation of jQuery deferred object.
+ *
+ * Difference between Promise and deferred object
+ * is the accessibility of state changing methods.
+ *
+ * @author Vicary Arcahgnel <vicary@victopia.org>
+ */
 class Deferred {
 
 	//--------------------------------------------------

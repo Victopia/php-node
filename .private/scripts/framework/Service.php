@@ -132,7 +132,7 @@ class Service {
       throw new \framework\exceptions\ResolverException( 401 );
     }
 
-    /* Modified by Eric @ 21 Dec, 2012
+    /* Modified by Vicary @ 21 Dec, 2012
         Uses core\Utility::forceInvoke(), to forcibly invoke
         regardless of method exists. This is to cope with
         implementations that tries to mimic a real RESTful

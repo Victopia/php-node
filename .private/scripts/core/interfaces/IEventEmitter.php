@@ -1,11 +1,13 @@
 <?php
-/*! IEventEmitter.php
- *
- *  Base interface for event handling implementations.
- */
+/* IEventEmitter.php | Base interface for event handling implementations. */
 
 namespace core\interfaces;
 
+/**
+ * IEventEmitter interface.
+ *
+ * @author Vicary Arcahgnel <vicary@victopia.org>
+ */
 interface IEventEmitter {
 
 	/**
@@ -34,6 +36,14 @@ interface IEventEmitter {
 	 */
 	public function
 	/* void */ removeAllListeners($eventName = NULL);
+
+	/**
+	 * Remove target or all event listeners.
+	 *
+	 * Shorthand for removeEventListener and removeAllListeners.
+	 */
+  public function
+  /* void */ off($eventName, $listener = NULL);
 
 	/**
 	 * Returns TRUE when this object has listeners attached,

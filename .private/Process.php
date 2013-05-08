@@ -1,8 +1,5 @@
 <?php
-/*! Process.php
- *
- *  Daemon dequeues and executes processes from the database.
- */
+/* Process.php | Daemon dequeues and executes processes from the database. */
 
 if (!function_exists('pcntl_fork')) {
   $forked = TRUE; // Just run this shit if forking is not supported.

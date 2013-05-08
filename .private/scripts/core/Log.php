@@ -1,5 +1,5 @@
 <?php
-/*! Log.php | https://github.com/victopia/PHPNode
+/*! Log.php | https://github.com/victopia/php-node
  *
  * CAUTION: This class is not production ready, use at own risk.
  */

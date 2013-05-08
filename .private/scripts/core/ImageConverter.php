@@ -1,4 +1,5 @@
 <?php
+/* ImageConverter.php | Converts and resize image using the GD2 PHP extension. */
 
 namespace core;
 
