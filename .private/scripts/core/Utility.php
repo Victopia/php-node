@@ -13,7 +13,7 @@ namespace core;
  * (either size or functionality) for a standalone
  * class.
  *
- * @author Vicary Arcahgnel <vicary@victopia.org>
+ * @author Vicary Archangel <vicary@victopia.org>
  */
 class Utility {
   /**

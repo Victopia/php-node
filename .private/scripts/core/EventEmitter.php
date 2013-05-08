@@ -6,7 +6,7 @@ namespace core;
 /**
  * EventEmitter class.
  *
- * @author Vicary Arcahgnel <vicary@victopia.org>
+ * @author Vicary Archangel <vicary@victopia.org>
  */
 class EventEmitter implements interfaces\IEventEmitter {
 

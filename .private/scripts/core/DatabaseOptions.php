@@ -8,7 +8,7 @@ namespace core;
  *
  * Must be set before the Database class can function.
  *
- * @author Vicary Arcahgnel <vicary@victopia.org>
+ * @author Vicary Archangel <vicary@victopia.org>
  */
 class DatabaseOptions {
 	public function __construct($driver = null,

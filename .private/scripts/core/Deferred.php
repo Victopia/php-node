@@ -9,7 +9,7 @@ namespace core;
  * Difference between Promise and deferred object
  * is the accessibility of state changing methods.
  *
- * @author Vicary Arcahgnel <vicary@victopia.org>
+ * @author Vicary Archangel <vicary@victopia.org>
  */
 class Deferred {
 

@@ -6,7 +6,7 @@ namespace core;
 /**
  * Basic database helper functions.
  *
- * @author Vicary Arcahgnel <vicary@victopia.org>
+ * @author Vicary Archangel <vicary@victopia.org>
  */
 class Database {
 

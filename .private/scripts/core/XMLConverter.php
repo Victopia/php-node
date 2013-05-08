@@ -11,7 +11,7 @@ namespace core;
  * Inspired by XML2Array and Array2XML by lalit.lab.
  * http://www.lalit.org
  *
- * @author Vicary Arcahgnel <vicary@victopia.org>
+ * @author Vicary Archangel <vicary@victopia.org>
  */
 class XMLConverter {
 

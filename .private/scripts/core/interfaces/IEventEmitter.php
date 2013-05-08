@@ -6,7 +6,7 @@ namespace core\interfaces;
 /**
  * IEventEmitter interface.
  *
- * @author Vicary Arcahgnel <vicary@victopia.org>
+ * @author Vicary Archagnel <vicary@victopia.org>
  */
 interface IEventEmitter {
 
