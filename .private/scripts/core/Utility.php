@@ -128,22 +128,22 @@ class Utility {
     $urlregex = '^(file|https?|ftps?|php|zlib|data|glob|phar|ssh2|ogg|expect)\:\/\/';
 
     // USER AND PASS (optional)
-    $urlregex .= '([a-z0-9+!*(),;?&=\$_.-]+(\:[a-z0-9+!*(),;?&=\$_.-]+)?@)?';
+    $urlregex .= '([a-z0-9+!*(),;?&=$_.-]+(\:[a-z0-9+!*(),;?&=$_.-]+)?@)?';
 
     // HOSTNAME OR IP
-    $urlregex .= '[a-z0-9+\$_-]+(\.[a-z0-9+\$_-]+)*'; // http://x = allowed (ex. http://localhost, http://routerlogin)
-    //$urlregex .= '[a-z0-9+\$_-]+(\.[a-z0-9+\$_-]+)+'; // http://x.x = minimum
-    //$urlregex .= '([a-z0-9+\$_-]+\.)*[a-z0-9+\$_-]{2,3}'; // http://x.xx(x) = minimum
+    $urlregex .= '[a-z0-9+$_-]+(\.[a-z0-9+$_-]+)*'; // http://x = allowed (ex. http://localhost, http://routerlogin)
+    //$urlregex .= '[a-z0-9+$_-]+(\.[a-z0-9+$_-]+)+'; // http://x.x = minimum
+    //$urlregex .= '([a-z0-9+$_-]+\.)*[a-z0-9+$_-]{2,3}'; // http://x.xx(x) = minimum
     //use only one of the above
 
     // PORT (optional)
     $urlregex .= '(\:[0-9]{2,5})?';
     // PATH (optional)
-    $urlregex .= '(\/([a-z0-9+\$_-]\.?)+)*\/?';
+    $urlregex .= '(\/([a-z0-9+$_-]\.?)+)*\/?';
     // GET Query (optional)
-    $urlregex .= '(\?[a-z+&\$_.-][a-z0-9;:@/&%=+\$_.-]*)?';
+    $urlregex .= '(\?[a-z+&$_.-][a-z0-9;:@\/&%=+$_.-]*)?';
     // ANCHOR (optional)
-    $urlregex .= '(#[a-z_.-][a-z0-9+\$_.-]*)?\$';
+    $urlregex .= '(#[a-z_.-][a-z0-9+$_.-]*)?$';
 
     // check
     return (bool) preg_match("/$urlregex/i", $value);
