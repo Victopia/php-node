@@ -45,8 +45,7 @@ CAUTION: This might not be compatible to systems with maximum process ID
     );
 
   protected $defaultReceiveOptions = array(
-      'maxsize' => 4194304   // maxsize to 4KB (4 * 1024 * 1024)
-    , 'truncate' => FALSE    // truncate message or fail the receive
+      'truncate' => FALSE    // truncate message or fail the receive
     , 'retryInterval' => 0.2 // retry sending every 0.2 second
     );
 
@@ -148,8 +147,6 @@ CAUTION: This might not be compatible to systems with maximum process ID
 
         $timeout = microtime(1) + doubleval($options['timeout']);
 
-        // echo 'Sending buffer ... ';
-
         do {
           $ret = msg_send(
               $this->ipc
@@ -161,8 +158,6 @@ CAUTION: This might not be compatible to systems with maximum process ID
             );
 
           if ($ret) {
-            // echo 'Sent a buffer: ' .var_export($segment,1).".\n";
-
             continue 2;
           }
           else {
@@ -186,8 +181,6 @@ CAUTION: This might not be compatible to systems with maximum process ID
       while ($data) {
         $segment = array_shift($data);
 
-        // echo 'Sending buffer ... ';
-
         $ret = msg_send(
             $this->ipc
           , getmypid()
@@ -200,8 +193,6 @@ CAUTION: This might not be compatible to systems with maximum process ID
         if (!$ret) {
           return $ret;
         }
-
-        // echo 'Sent a buffer: ' .var_export($segment,1).".\n";
       }
 
       return TRUE;
@@ -221,6 +212,14 @@ CAUTION: This might not be compatible to systems with maximum process ID
     else {
       $target = -self::PID_MAX;
     }
+
+    $maxsize = (int) @$this->stat()['msg_qbytes'];
+
+    if (!@$options['maxsize'] || $options['maxsize'] > $maxsize) {
+      $options['maxsize'] = $maxsize;
+    }
+
+    unset($maxsize);
 
     $flags = $options['truncate'] ? MSG_NOERROR : 0;
 
@@ -275,13 +274,9 @@ CAUTION: This might not be compatible to systems with maximum process ID
       $buffer = NULL;
 
       while (1) {
-        // echo 'Reading buffer ... ';
-
         $ret = msg_receive($this->ipc, $target, $msgtype, (int) $options['maxsize'], $buffer, FALSE, $flags);
 
         if ($ret) {
-          // echo "Got a buffer: ".var_export($buffer, 1).".\n";
-
           if ($buffer === self::MSG_HEADER) {
             // Got a message and is listening to boardcast, listen only to this sender from now on.
             if ($target === -self::PID_MAX) {
