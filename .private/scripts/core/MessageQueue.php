@@ -108,6 +108,10 @@ CAUTION: This might not be compatible to systems with maximum process ID
   private function serializeData($data) {
     $size = (int) @$this->stat()['msg_qbytes'];
 
+    if ($data instanceof MessageQueueMessage) {
+      $data = $data->message;
+    }
+
     $data = serialize($data);
 
     $data = fopen('data://text/plain;base64,' . base64_encode($data), 'r');
@@ -130,13 +134,23 @@ CAUTION: This might not be compatible to systems with maximum process ID
    *
    * @param $data Data to be sent, must be serializable by default.
    * @param $options
-   *        ['timeout'] Seconds to wait before giving up retrying the message send.
+   *        ['replyTo'] Target PID to reply to, this will be added
+   *                    with PID_MAX before send.
+   *        ['timeout'] Seconds to wait before giving up retrying
+   *                    the message send.
    *        ['retryInterval'] Seconds to wait between each retry.
    */
   public function send($data, $options = NULL) {
     $options = (array) $options + $this->defaultSendOptions;
 
     $data = $this->serializeData($data);
+
+    if (is_numeric(@$options['replyTo'])) {
+      $msgtype = intval($options['replyTo']) + self::PID_MAX;
+    }
+    else {
+      $msgtype = getmypid();
+    }
 
     // Timeout
     if (is_numeric(@$options['timeout'])) {
@@ -150,7 +164,7 @@ CAUTION: This might not be compatible to systems with maximum process ID
         do {
           $ret = msg_send(
               $this->ipc
-            , getmypid()
+            , $msgtype
             , $segment
             , FALSE // serialize
             , TRUE  // blocking
@@ -183,7 +197,7 @@ CAUTION: This might not be compatible to systems with maximum process ID
 
         $ret = msg_send(
             $this->ipc
-          , getmypid()
+          , $msgtype
           , $segment
           , FALSE // serialize
           , TRUE  // blocking
@@ -201,13 +215,24 @@ CAUTION: This might not be compatible to systems with maximum process ID
 
   /**
    * Receives a message from the channel.
+   *
+   * @param $options
+   *        ['reply'] Waiting for replies, will listen to self PID
+   *                  plus PID_MAX, instead of -PID_MAX.
+   *        ['timeout'] Seconds to wait before giving up retrying
+   *                    the message send.
+   *        ['retryInterval'] Seconds to wait between each retry.
+   *        ['maxsize'] Maximum size of target msg, cannot be
+   *                    larger than msg_qbytes of stat().
+   *        ['truncate'] TRUE to append MSG_NOERROR and trim msg
+   *                     bytes exceeded ['maxsize'].
    */
   public function receive($options = NULL) {
     $options = (array) $options + $this->defaultReceiveOptions;
 
     // Target sender
-    if (is_numeric(@$options['target'])) {
-      $target = intval($options['target']);
+    if (@$options['reply']) {
+      $target = getmypid() + self::PID_MAX;
     }
     else {
       $target = -self::PID_MAX;
@@ -249,7 +274,11 @@ CAUTION: This might not be compatible to systems with maximum process ID
               $result = '';
             }
             else if ($buffer === self::MSG_FOOTER) {
-              return unserialize($result);
+              if (@$options['reply']) {
+                $target -= self::PID_MAX;
+              }
+
+              return new MessageQueueMessage(unserialize($result), $target, $this);
             }
             else if ($result !== NULL) { // Only append the message when started, else drop the data.
               $result.= $buffer;
@@ -274,7 +303,7 @@ CAUTION: This might not be compatible to systems with maximum process ID
       $buffer = NULL;
 
       while (1) {
-        $ret = msg_receive($this->ipc, $target, $msgtype, (int) $options['maxsize'], $buffer, FALSE, $flags);
+        $ret = msg_receive($this->ipc, $target, $msgtype, (int) $options['maxsize'], $buffer, FALSE, $flags, $errCode);
 
         if ($ret) {
           if ($buffer === self::MSG_HEADER) {
@@ -286,7 +315,11 @@ CAUTION: This might not be compatible to systems with maximum process ID
             $result = '';
           }
           else if ($buffer === self::MSG_FOOTER) {
-            return unserialize($result);
+            if (@$options['reply']) {
+              $target -= self::PID_MAX;
+            }
+
+            return new MessageQueueMessage(unserialize($result), $target, $this);
           }
           else if ($result !== NULL) { // Only append the message when started, else drop the data.
             $result.= $buffer;
@@ -307,6 +340,51 @@ CAUTION: This might not be compatible to systems with maximum process ID
     msg_remove_queue($this->ipc);
 
     @unlink($this->ipcFile);
+  }
+
+}
+
+class MessageQueueMessage {
+
+  private $msgQueue;
+
+  private $sender;
+
+  private $message;
+
+  //--------------------------------------------------
+  //
+  //  Constructor
+  //
+  //--------------------------------------------------
+
+  public function __construct($message, $sender = NULL, $queue = NULL) {
+    $this->msgQueue = $queue;
+    $this->sender = $sender;
+    $this->message = $message;
+  }
+
+  //--------------------------------------------------
+  //
+  //  Methods
+  //
+  //--------------------------------------------------
+
+  public function reply($data, $options = NULL) {
+    $options = (array) $options;
+
+    $options['replyTo'] = $this->sender;
+
+    $this->msgQueue->send($data, $options);
+  }
+
+  public function __get($name) {
+    switch ($name) {
+      case 'sender':
+      case 'message':
+        return $this->$name;
+        break;
+    }
   }
 
 }
