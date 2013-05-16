@@ -20,25 +20,25 @@ if (@$argv[1] == '--cron') {
 }
 
 core\Database::lockTables(array(
-  	FRAMEWORK_COLLECTION_PROCESS
+    FRAMEWORK_COLLECTION_PROCESS
   , FRAMEWORK_COLLECTION_LOG
   ));
 
 // Get working processes.
 $res = Node::get(array(
-		NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
-	, 'locked' => TRUE
-	));
+    NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
+  , 'locked' => TRUE
+  ));
 
 if (count($res) >= process::MAX_PROCESS) {
-	log::write('Forking exceed MAX_PROCESS, suicide.', 'Notice');
-	die;
+  log::write('Forking exceed MAX_PROCESS, suicide.', 'Notice');
+  die;
 }
 
 $res = node::get(array(
-		NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
-	, 'locked' => FALSE
-	));
+    NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
+  , 'locked' => FALSE
+  ));
 
 // No waiting jobs in queue.
 if (!$res) {
@@ -46,12 +46,12 @@ if (!$res) {
 
   // Not even locked jobs, let's reset the Process ID with truncate.
   if (!$res) {
-  	core\Database::unlockTables();
-  	core\Database::query('TRUNCATE `' . FRAMEWORK_COLLECTION_PROCESS . '`');
+    core\Database::unlockTables();
+    core\Database::query('TRUNCATE `' . FRAMEWORK_COLLECTION_PROCESS . '`');
   }
 
-	log::write('No more jobs to do, suicide.', 'Information');
-	die;
+  log::write('No more jobs to do, suicide.', 'Information');
+  die;
 }
 
 $process = $res[0];
@@ -96,12 +96,12 @@ if (!$processSpawn) {
 // unset($process['locked']);
 
 if ($output !== NULL) {
-	log::write("Output captured from command line $path:\n" . print_r($output, 1), 'Warning');
+  log::write("Output captured from command line $path:\n" . print_r($output, 1), 'Warning');
 }
 
 // Finally, delete the process
 core\Database::lockTables(array(
-  	FRAMEWORK_COLLECTION_PROCESS
+    FRAMEWORK_COLLECTION_PROCESS
   , FRAMEWORK_COLLECTION_LOG
   ));
 
