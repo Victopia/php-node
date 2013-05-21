@@ -1,5 +1,5 @@
 <?php
-/* Optimist.phpo | Port from nodejs optimist https://github.com/substack/node-optimist. */
+/* Optimist.php | Port from nodejs optimist https://github.com/substack/node-optimist. */
 
 namespace framework;
 
@@ -161,6 +161,19 @@ final class Optimist {
       //  Alias
       //------------------------------
 
+      foreach ($this->alias as $name => $alias) {
+        // Alias: type
+        if (isset($this->types[$name])) {
+          $this->types+= array_fill_keys($alias, $this->types[$name]);
+        }
+
+        // Alias: defaults
+        if (isset($this->defaults[$name])) {
+          $this->defaults+= array_fill_keys($alias, $this->defaults[$name]);
+        }
+      } unset($name, $alias);
+
+      // Alias: value
       foreach ($args as $option => $value) {
         $target = (array) @$this->alias[$option];
 
@@ -193,7 +206,7 @@ final class Optimist {
         }
       }
       else {
-        foreach ($this->demand as $key) {
+        foreach ($this->demand as $key => $value) {
           if (!isset($args[$key])) {
             $this->showError("Missing required options: " . implode(', ', $this->demand));
 
@@ -498,11 +511,9 @@ final class Optimist {
     foreach ($options as $option) {
       $message = (array) $option;
 
-      while (FALSE !== ($key = array_search($option, $alias))) {
-        array_unshift($message, $key);
-
-        unset($alias[$key]);
-      } unset($key);
+      if (isset($alias[$option])) {
+        $message = array_merge($message, (array) $alias[$option]);
+      } unset($alias[$option]);
 
       $message = array_map(function($key) {
         return strlen("$key") == 1 ? "-$key" : "--$key";
