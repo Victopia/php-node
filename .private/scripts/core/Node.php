@@ -109,6 +109,11 @@ class Node {
         array_walk($contents, function($content) use($field, &$subQuery, &$params) {
           $escapedField = Database::escape($field);
 
+          // Error checking
+          if (is_array($content)) {
+            throw new \PDOException('Node does not support composite array types.');
+          }
+
           // 1. Boolean comparison: true, false
           if (is_bool($content)) {
             $subQuery[] = "$escapedField = ?";
