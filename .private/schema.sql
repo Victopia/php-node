@@ -64,12 +64,12 @@ CREATE TABLE `Nodes` (
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='Data nodes';
 
 --
--- Table structure for table `Processes`
+-- Table structure for table `ProcessQueue`
 --
 
 DROP TABLE IF EXISTS `ProcessQueue`;
 
-CREATE TABLE `Processes` (
+CREATE TABLE `ProcessQueue` (
   `ID` bigint(20) NOT NULL AUTO_INCREMENT,
   `path` text NOT NULL,
   `locked` tinyint(1) NOT NULL DEFAULT 0,
