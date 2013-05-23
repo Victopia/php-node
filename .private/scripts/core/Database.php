@@ -53,7 +53,6 @@ class Database {
     if ( self::$con === NULL ) {
       if ( self::$options === NULL ) {
         if (error_reporting()) {
-          debug_print_backtrace();
           throw new \PDOException('Please specify connection options with setOptions() before accessing database.');
         }
         else {
