@@ -98,6 +98,17 @@ unset($options);
 //
 //--------------------------------------------------
 
+/**
+ * Check whether current session has the specified
+ * user level, redirect to $rejectTarget if not session
+ * is matched.
+ *
+ * @param {int} $status One of the session::USR_* constants.
+ * @param {string} $rejectTarget Optional, redirect target
+ *                               on invalid sesssions.
+ *
+ * @author Vicary Archangel
+ */
 function authorize($status, $rejectTarget = '/Login') {
   if ($status && session::checkStatus($status) === FALSE) {
     // Already logged in but user doesn't have specified status,
@@ -116,6 +127,17 @@ function authorize($status, $rejectTarget = '/Login') {
   }
 }
 
+/**
+ * Redirect to a path, or exit with a HTTP status code.
+ *
+ * If it is HTTP status code, and that error doc exists,
+ * it will be included along with that status header sent.
+ *
+ * @param {mixed} $response Target redirection path, or
+ *                          HTTP status code.
+ *
+ * @author Vicary Archangel
+ */
 function redirect($response) {
   if (is_string($response)) {
     $self = $_SERVER['REQUEST_URI'];
