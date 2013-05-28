@@ -13,9 +13,6 @@ class Service {
 
   private static $defaultHttpOptions = array(
     'type' => 'GET'
-  , 'headers' => array(
-      "Host: {gethostname()}"
-    )
   );
 
   //--------------------------------------------------
@@ -50,7 +47,7 @@ class Service {
   static function redirect($service, $httpOptions = array()) {
     $result = NULL;
 
-    if (is_string($httpOptions)) {
+    if ( is_string($httpOptions) ) {
       switch (strtoupper($httpOptions)) {
         // Request methods, according to RFC2616 section 9.
         case 'GET':
@@ -74,38 +71,40 @@ class Service {
       }
     }
 
-    if (strpos($service, 'http') !== 0) {
+    if ( strpos($service, 'http') !== 0 ) {
       // prepend '/' if not exists
-      if (strpos($service, '/') !== 0) {
+      if ( strpos($service, '/') !== 0 ) {
         $service = "/$service";
       }
 
-      $service = (@$_SERVER['HTTPS'] ? 'https' : 'http') . '://' . gethostname() . $service;
+      $service = (@$_SERVER['HTTPS'] ? 'https' : 'http') . '://' . FRAMEWORK_SERVICE_HOSTNAME . $service;
     }
-
 
     $httpOptions['url'] = $service;
 
-    @$httpOptions['__curlOpts'][CURLOPT_REFERER] = gethostname();
+    // Must send this header to determine local redirection.
+    @$httpOptions['headers'][] = 'Host: ' . FRAMEWORK_SERVICE_HOSTNAME;
+    @$httpOptions['headers'][] = 'User-Agent: X-PHP';
 
-    $httpOptions['callbacks'] = array(
-      'success' => function($response, $curlOptions) use($service, &$result) {
-        // Not 2xx, should be an error.
-        if ($curlOptions['status'] >= 300) {
-          throw new exceptions\ServiceException("Error making local request to $service, HTTP status: $curlOptions[status].");
-        }
+    @$httpOptions['__curlOpts'][CURLOPT_REFERER] = FRAMEWORK_SERVICE_HOSTNAME;
 
-        $result = @json_decode($response, TRUE);
-
-        if ($response !== 'null' && $result === NULL) {
-          throw new exceptions\ServiceException('Response is not a well-formed JSON string: ' . $response);
-        }
+    $httpOptions['success'] = function($response, $curlOptions) use($service, &$result) {
+      // Not 2xx, should be an error.
+      if ( $curlOptions['status'] >= 300 ) {
+        throw new exceptions\ServiceException("Error making local request to $service, HTTP status: $curlOptions[status].");
       }
-    , 'failure' => function($num, $str, $curlOptions) {
-        // This should not occurs, errors are supposed to be thrown as an exception object.
-        throw new exceptions\ServiceException("An error occurred when making local service redirection. #$num $str");
+
+      $result = @json_decode($response, TRUE);
+
+      if ( $response && $response !== 'null' && $result === NULL ) {
+        throw new exceptions\ServiceException('Response is not a well-formed JSON string: ' . $response);
       }
-    );
+    };
+
+    $httpOptions['failure'] = function($num, $str, $curlOptions) {
+      // This should not occurs, errors are supposed to be thrown as an exception object.
+      throw new exceptions\ServiceException("An error occurred when making local service redirection. #$num $str");
+    };
 
     $httpOptions += self::$defaultHttpOptions;
 
@@ -132,7 +131,7 @@ class Service {
       throw new \framework\exceptions\ResolverException( 401 );
     }
 
-    /* Modified by Vicary @ 21 Dec, 2012
+    /* Modified by Eric @ 21 Dec, 2012
         Uses core\Utility::forceInvoke(), to forcibly invoke
         regardless of method exists. This is to cope with
         implementations that tries to mimic a real RESTful
@@ -159,7 +158,7 @@ class Service {
 
     $servicePath = realpath(FRAMEWORK_PATH_ROOT . FRAMEWORK_PATH_SERVICES . $servicePath);
 
-    if (!file_exists($servicePath)) {
+    if ( !file_exists($servicePath) ) {
       throw new \framework\exceptions\ServiceException('Target service file not found.');
     }
 
