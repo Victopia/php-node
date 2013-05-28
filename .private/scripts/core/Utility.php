@@ -168,7 +168,7 @@ class Utility {
 
     return is_array($value) && $value &&
       // All keys must be numeric to qualify as NOT assoc.
-      array_filter(array_keys($value), 'is_numeric');
+      count(array_filter(array_keys($value), 'is_numeric')) == count($value);
   }
 
   /**
