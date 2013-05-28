@@ -34,10 +34,8 @@ class Utility {
         return $ifaces;
 
       case 'LINUX':
-        // $ifaces = `ifconfig -a | sed 's/[ \t].*//;/^\(lo\|\)$/d'`;
-        // $ifaces = preg_split('/\s+/', $ifaces);
-
-        $ifaces = array('en0', 'en1', 'eth0', 'eth1', 'lo');
+        $ifaces = `ifconfig -a | sed 's/[ \t].*//;/^\(lo\|\)$/d'`;
+        $ifaces = preg_split('/\s+/', $ifaces);
         return $ifaces;
 
       case 'WINNT': // Currently not supported.
@@ -50,7 +48,7 @@ class Utility {
    * Returns whether current request is made by local redirect.
    */
   static function isLocalRedirect() {
-    return @$_SERVER['HTTP_REFERER'] == gethostname();
+    return @$_SERVER['HTTP_REFERER'] == FRAMEWORK_SERVICE_HOSTNAME;
   }
 
   /**
@@ -308,7 +306,7 @@ class Utility {
    * This is made for those lazy shits like me, who does
    * (foo || bar || baz) a lot in Javascript.
    *
-   * @param $list Array of values to cascade, or it will func_get_args().
+   * @param {array} $list Array of values to cascade, or it will func_get_args().
    */
   static function cascade($list) {
     if (!is_array($list)) {
@@ -323,15 +321,15 @@ class Utility {
   /**
    * Create deep array path if any intermediate property does not exists.
    */
-  static function deepCreate($path, $input) {
+  static function &deepRef($path, &$input) {
+    if (!is_array($path)) {
+      $path = explode('.', $path);
+    }
+
     $ref = &$input;
 
-    foreach ($path as $property) {
-      if (!isset($input[$property])) {
-        $input[$property] = array();
-      }
-
-      $input = &$input[$property];
+    while ($path) {
+      $ref = &$ref[array_shift($path)];
     }
 
     return $ref;
@@ -557,13 +555,13 @@ class Utility {
   /**
    * Call a WebService internally.
    *
-   * @param $service Name of the service.
-   * @param $method Name of the service method.
-   * @param $parameters Array of parameters passed to the methdod.
+   * @param {string} $service Name of the service.
+   * @param {string} $method Name of the service method.
+   * @param {array} $parameters Optional, array of parameters passed to the methdod.
    *
    * @return Whatever the method returns, or FALSE in case of method not exists.
    */
-  static function callService($service, $method, $parameters = Array()) {
+  static function callService($service, $method, $parameters = array()) {
     return \service::call($service, $method, $parameters);
   }
 
@@ -571,7 +569,7 @@ class Utility {
    * Fix weird array format in _FILES.
    */
   static function filesFix() {
-    if ( isset($_FILES) ) {
+    if ( @$_FILES ) {
       foreach ($_FILES as $key => &$file) {
         if ( is_array($file['name']) ) {
           $result = Array();
