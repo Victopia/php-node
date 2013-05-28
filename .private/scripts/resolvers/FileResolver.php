@@ -494,11 +494,14 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
       case 'html':
         $mime = NULL;
         break;
+      case 'cff':
+        $mime = 'application/font-cff';
+        break;
       case 'ttf':
-        $mime = 'application/x-font-ttf';
+        $mime = 'application/font-ttf';
         break;
       case 'woff':
-        $mime = 'application/x-font-woff';
+        $mime = 'application/font-woff';
         break;
       case 'eot':
         $mime = 'applicaiton/vnd.ms-fontobject';
