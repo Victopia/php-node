@@ -66,6 +66,8 @@ class XMLConverter {
 
         $_value[$nodeName][] = &$currentNode;
 
+        $isEmpty = $reader->isEmptyElement;
+
         // Attributes
         if ($reader->hasAttributes) {
           $attr = array();
@@ -79,8 +81,6 @@ class XMLConverter {
           $currentNode['@attributes'] = &$attr;
         }
 
-        $isEmpty = $reader->isEmptyElement;
-
         $reader->read();
 
         if (!$isEmpty) {
@@ -93,7 +93,7 @@ class XMLConverter {
             return;
           }
         }
-        else {
+        else if (!@$currentNode['@attributes']) {
           $currentNode = '';
         }
 
