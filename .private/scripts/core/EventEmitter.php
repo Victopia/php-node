@@ -16,6 +16,25 @@ class EventEmitter implements interfaces\IEventEmitter {
     $this->addEventListener($eventName, $listener);
   }
 
+	public function once($eventName, $listener) {
+	  $onceHandler = function() use(&$onceHandler, $listener) {
+    	call_user_func_array($listener, func_get_args());
+
+    	$this->off($eventName, $onceHandler);
+  	};
+
+  	$this->on($eventName, $onceHandler);
+	}
+
+	public function off($eventName, $listener = NULL) {
+  	if ($listener) {
+    	$this->removeEventListener($eventName, $listener);
+  	}
+  	else {
+    	$this->removeAllListeners($eventName);
+  	}
+	}
+
   public function addEventListener($eventName, $listener) {
     if (!isset($this->listeners[$eventName])) {
       $this->listeners[$eventName] = array();

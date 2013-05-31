@@ -26,6 +26,20 @@ interface IEventEmitter {
 	/* void */ on($eventName, $listener);
 
 	/**
+	 * Adds a one time listener for the event. This listener is
+	 * invoked only the next time the event is fired, after
+	 * which it is removed.
+	 */
+	public function
+	/* void */ once($eventName, $listener);
+
+  /**
+   * Shorthand of removeEventListener().
+   */
+  public function
+  /* void */ off($eventName, $listener = NULL);
+
+	/**
 	 * Remove specified listener from the callback stack if exists.
 	 */
 	public function
