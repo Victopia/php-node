@@ -181,12 +181,17 @@ class Configuration implements \Iterator, \ArrayAccess {
 		$confObj = $cObj->getContents();
 		$confKey = $cObj->getKey();
 
-		$confObj = array_merge($confObj, array(
-			NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_CONFIGURATION
-		, '@key' => $confKey
-		));
+    $filter = array(
+  			NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_CONFIGURATION
+  		, '@key' => $confKey
+  		);
 
-		\Node::set($confObj);
+    if ( !$confObj ) {
+      \node::delete($filter);
+    }
+    else {
+		  \node::set($filter + $confObj);
+		}
 	}
 
 	//--------------------------------------------------
