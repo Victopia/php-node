@@ -24,8 +24,16 @@ if (CRYPT_SHA512 !== 1) {
 	throw new Exception('CRYPT_SHA512 method is not supported, please enable it on your system.');
 }
 
+if (utils::isCLI()) {
+  // Allow more nesting for functional programming.
+  ini_set('xdebug.max_nesting_level', 50000);
+
+  // Turn on garbage collection
+  gc_enable();
+}
+
 // Starts HTTP session for browsers.
-if (!utils::isCLI()) {
+else {
 	session_start();
 
 	if (function_exists('getallheaders')) {
