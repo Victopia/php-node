@@ -502,8 +502,6 @@ final class Optimist {
         , array_keys($this->demand)));
     }
 
-    sort($options);
-
     $alias = $this->alias;
 
     foreach ($options as $option) {
