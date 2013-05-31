@@ -313,9 +313,7 @@ final class Optimist {
         $key = array($key => TRUE);
       }
 
-      // $key = \utils::wrapAssoc($key);
-
-      $this->demand = array_unique(array_merge($this->demand, $key));
+      $this->demand = $key + $this->demand;
     }
 
     return $this; // chainable
