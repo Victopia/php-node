@@ -9,10 +9,10 @@ class Process {
   const ERR_EPERM = 2;
   const ERR_ENQUE = 3;
 
-  const MAX_PROCESS = 20;
+  const MAX_PROCESS = 500;
 
   // Assume gateway redirection, pwd should always at DOCUMENT_ROOT.
-  const EXEC_PATH = 'php .private/Process.php';
+  const EXEC_PATH = '/usr/bin/php .private/Process.php';
 
   public static function
   /* Boolean */ enqueue($command) {
@@ -125,9 +125,7 @@ class Process {
       ));
 
     if ( count($res) < self::MAX_PROCESS ) {
-      $ret = shell_exec(self::EXEC_PATH . ' >/dev/null 2>&1 &');
-
-      return (int) @$ret;
+      return (int) shell_exec(self::EXEC_PATH . ' >/dev/null & echo $!');
     }
 
     return FALSE;

@@ -1,23 +1,27 @@
 <?php
 /* Process.php | Daemon dequeues and executes processes from the database. */
 
+require_once('scripts/Initialize.php');
+
 if ( !function_exists('pcntl_fork') ) {
   $forked = TRUE; // Just run this shit if forking is not supported.
 }
 else {
   $pid = pcntl_fork();
 
+  // parent: $forked == FALSE
+  // child:  $forked == TRUE
   $forked = $pid == 0;
 }
 
-// Parent will die here.
+// parent will die here.
 if ( !$forked ) {
   echo $pid;
 
   die;
 }
 
-require_once('scripts/Initialize.php');
+posix_setsid();
 
 if ( @$argv[1] == '--cron' ) {
   log::write('Cron started process.', 'Information');
@@ -69,7 +73,7 @@ core\Database::unlockTables();
 
 $path = $process['path'];
 
-log::write("Running process: $path");
+log::write("Running process: $path", 'Notice', $pid);
 
 // Kick off the process
 
@@ -116,6 +120,11 @@ log::write("Deleting finished process, affected rows: $res.", 'Information', $pr
 core\Database::unlockTables();
 
 // Recursive process, fork another child and spawn itself.
-if ( pcntl_fork() > 0 ) {
+// shell_exec(process::EXEC_PATH . ' >/dev/null &');
+utils::forceInvoke('process::spawn');
+
+/*
+if ( pcntl_fork() === 0 ) {
   shell_exec(process::EXEC_PATH . ' >/dev/null &');
 }
+*/
