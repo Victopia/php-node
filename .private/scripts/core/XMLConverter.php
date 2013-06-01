@@ -103,10 +103,12 @@ class XMLConverter {
       case \XMLReader::CDATA:                  // #4
         $value = $reader->value;
 
-        if (is_numeric($value) &&
-            $value < PHP_INT_MAX &&
-            strlen($value) < 15) {
-          $value = floatval($value);
+        if ( is_numeric($value) && $value < PHP_INT_MAX && strlen($value) < 15 ) {
+          // Only converts when exact match on numeric value and string value,
+          // this prevents values with preceding zeros like 001.
+          if ( "$value" === (string) doubleval($value) ) {
+            $value = doubleval($value);
+          }
         }
         elseif (strcasecmp($value, 'true') === 0) {
           $value = TRUE;
