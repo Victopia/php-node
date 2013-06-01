@@ -18,7 +18,7 @@ class Process {
   /* Boolean */ enqueue($command) {
     $args = explode(' ', $command);
 
-    if (count($args) == 0 || !self::isExecutable($args[0])) {
+    if ( count($args) == 0 || !self::isExecutable($args[0]) ) {
       throw new \Exception('[Process] Specified file is invalid or not an executable.', self::ERR_EPERM);
       return FALSE;
     }
@@ -29,15 +29,14 @@ class Process {
       , 'path' => $command
       ));
 
-    if ($res === FALSE) {
+    if ( $res === FALSE ) {
       throw new \Exception('[Process] Unable to enqueue process.', self::ERR_ENQUE);
-      return FALSE;
     }
 
     /* Added by Vicary @ 20 Nov, 2012
         Wait until the process is written into database.
     */
-    if (is_numeric($res)) {
+    if ( is_numeric($res) ) {
       $res = array(
           NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
         , 'ID' => $res
@@ -45,7 +44,7 @@ class Process {
 
       $retryCount = 0;
 
-      while (!\node::get($res) && $retryCount++ < FRAMEWORK_PROCESS_INSERT_RETRY_COUNT) {
+      while ( !\node::get($res) && $retryCount++ < FRAMEWORK_PROCESS_INSERT_RETRY_COUNT ) {
         usleep(FRAMEWORK_DATABASE_ENSURE_WRITE_INTERVAL * 1000000);
       }
     }
@@ -60,12 +59,22 @@ class Process {
    */
   public static function
   /* Boolean */ enqueueOnce($command, $requeue = FALSE) {
-    $res = \Node::get(array(
+    $res = \node::get(array(
         NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
       , 'path' => $command
       ));
 
-    if (count($res) > 0) {
+    if ( $res ) {
+      if ( $requeue ) {
+        \node::delete(array(
+            NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
+          , 'path' => $command
+          , 'locked' => FALSE
+          ));
+
+        return self::enqueue($command);
+      }
+
       // throw new \Exception('[Process] Command exists.', self::ERR_EXIST);
       return TRUE;
     }
@@ -83,7 +92,7 @@ class Process {
         NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
       );
 
-    if (is_numeric($process)) {
+    if ( is_numeric($process) ) {
       $res['ID'] = intval($process);
     }
     else {
@@ -92,10 +101,10 @@ class Process {
 
     $res = \node::get($res);
 
-    if ($res) {
+    if ( $res ) {
       node::delete($res);
 
-      if (@$res['pid']) {
+      if ( @$res['pid'] ) {
         posix_kill($res['pid'], SIGKILL);
       }
     }
@@ -113,49 +122,12 @@ class Process {
       , 'locked' => TRUE
       ));
 
-    if ( !self::isExecutable(self::EXEC_PATH) ) {
-      throw new \Exception('[Process] Daemon file not executable, please check permission!');
-      return FALSE;
-    }
-
     if ( count($res) < self::MAX_PROCESS ) {
       shell_exec(self::EXEC_PATH . ' >/dev/null &');
       return TRUE;
     }
 
     return FALSE;
-  }
-
-  public static function
-  /* Boolean */ isExecutable($command) {
-    if (is_executable($command)) {
-      return TRUE;
-    }
-    else {
-      $strpos = strpos($command, '/');
-
-      $command = explode(' ', $command, 2);
-      $command = $command[0];
-
-      if (($strpos === FALSE || $strpos !== 0) &&
-          !preg_match('/^(:?\.\.?\/)/', $command)) {
-        $PATH = getenv('PATH');
-
-        if (!$PATH) {
-          return FALSE;
-        }
-
-        $PATH = explode(':', $PATH);
-
-        foreach ($PATH as $path) {
-          if (is_executable("$path/$command")) {
-            return TRUE;
-          }
-        }
-
-        return FALSE;
-      }
-    }
   }
 
 }
