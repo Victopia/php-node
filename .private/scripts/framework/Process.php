@@ -18,9 +18,8 @@ class Process {
   /* Boolean */ enqueue($command) {
     $args = explode(' ', $command);
 
-    if ( count($args) == 0 || !self::isExecutable($args[0]) ) {
+    if ( !$args ) {
       throw new \Exception('[Process] Specified file is invalid or not an executable.', self::ERR_EPERM);
-      return FALSE;
     }
 
     $res = \Node::set(array(
