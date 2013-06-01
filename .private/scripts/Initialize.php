@@ -24,7 +24,7 @@ function __autoload($name) {
   // Loop up script folder
   else {
     $lookupPaths = array(
-        '.private/scripts' // Script files, meant to be included on initialize.
+        FRAMEWORK_PATH_SCRIPTS // Script files, meant to be included on initialize.
       );
 
     foreach ($lookupPaths as $lookupPath) {
@@ -140,9 +140,9 @@ function authorize($status, $rejectTarget = '/Login') {
  */
 function redirect($response) {
   if (is_string($response)) {
-    $self = $_SERVER['REQUEST_URI'];
+    $self = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
-    $dest = dirname($_SERVER['REQUEST_URI']) . $response;
+    $dest = dirname($self) . $response;
 
     if ($self && $dest && $self == $dest) {
       return;
