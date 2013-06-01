@@ -240,9 +240,9 @@ class Node {
         if (isset($row[NODE_FIELD_VIRTUAL])) {
           $content = json_decode($row[NODE_FIELD_VIRTUAL], true);
 
-          unset($row[NODE_FIELD_VIRTUAL]);
+          unset($row[NODE_FIELD_VIRTUAL]); // unset beforehand, to preserve the same name in virtual field
 
-          $row = array_merge($row, (array) $content);
+          $row = ((array) $content) + $row; // never use array_merge(), it will screw up numeric keys.
 
           unset($name, $value, $content);
         }
