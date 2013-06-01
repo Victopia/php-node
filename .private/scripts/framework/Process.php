@@ -15,7 +15,7 @@ class Process {
   const EXEC_PATH = 'php .private/Process.php';
 
   public static function
-  /* Boolean */ enqueue($command) {
+  /* Boolean */ enqueue($command, $spawnProcess = TRUE) {
     $args = explode(' ', $command);
 
     if ( !$args ) {
@@ -48,7 +48,15 @@ class Process {
       }
     }
 
-    return self::spawn() ? $res : FALSE;
+    $ret = self::spawn();
+
+    if ( $ret ) {
+      $res['pid'] = $ret;
+
+      return $res;
+    }
+
+    return FALSE;
   }
 
   /**
@@ -111,19 +119,15 @@ class Process {
 
   private static function
   /* void */ spawn() {
-    if (\utils::isCLI()) {
-      // Already in the process, let the recursive fork do it's job.
-      return TRUE;
-    }
-
     $res = \node::get(array(
         NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
       , 'locked' => TRUE
       ));
 
     if ( count($res) < self::MAX_PROCESS ) {
-      shell_exec(self::EXEC_PATH . ' >/dev/null &');
-      return TRUE;
+      exec(self::EXEC_PATH . ' >/dev/null 2>&1 & echo $!', $ret);
+
+      return (int) @$ret[0];
     }
 
     return FALSE;
