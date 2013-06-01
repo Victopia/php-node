@@ -1,7 +1,7 @@
 <?php
 /* Process.php | Daemon dequeues and executes processes from the database. */
 
-if (!function_exists('pcntl_fork')) {
+if ( !function_exists('pcntl_fork') ) {
   $forked = TRUE; // Just run this shit if forking is not supported.
 }
 else {
@@ -9,13 +9,13 @@ else {
 }
 
 // Parent will die here.
-if (!$forked) {
+if ( !$forked ) {
   die;
 }
 
 require_once('scripts/Initialize.php');
 
-if (@$argv[1] == '--cron') {
+if ( @$argv[1] == '--cron' ) {
   log::write('Cron started process.', 'Information');
 }
 
@@ -30,7 +30,7 @@ $res = Node::get(array(
   , 'locked' => TRUE
   ));
 
-if (count($res) >= process::MAX_PROCESS) {
+if ( count($res) >= process::MAX_PROCESS ) {
   log::write('Forking exceed MAX_PROCESS, suicide.', 'Notice');
   die;
 }
@@ -41,11 +41,11 @@ $res = node::get(array(
   ));
 
 // No waiting jobs in queue.
-if (!$res) {
+if ( !$res ) {
   $res = node::get(FRAMEWORK_COLLECTION_PROCESS);
 
   // Not even locked jobs, let's reset the Process ID with truncate.
-  if (!$res) {
+  if ( !$res ) {
     core\Database::unlockTables();
     core\Database::query('TRUNCATE `' . FRAMEWORK_COLLECTION_PROCESS . '`');
   }
@@ -89,13 +89,13 @@ while (!$processSpawn && $retryCount++ < FRAMEWORK_PROCESS_SPAWN_RETRY_COUNT) {
   }
 }
 
-if (!$processSpawn) {
+if ( !$processSpawn ) {
   log::write('Unable to spawn process, process terminating.', 'Error');
 }
 
 // unset($process['locked']);
 
-if ($output !== NULL) {
+if ( $output !== NULL ) {
   log::write("Output captured from command line $path:\n" . print_r($output, 1), 'Warning');
 }
 
@@ -112,6 +112,6 @@ log::write("Deleting finished process, affected rows: $res.", 'Information', $pr
 core\Database::unlockTables();
 
 // Recursive process, fork another child and spawn itself.
-if (pcntl_fork() > 0) {
+if ( pcntl_fork() > 0 ) {
   shell_exec(process::EXEC_PATH . ' >/dev/null &');
 }
