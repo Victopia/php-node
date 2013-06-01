@@ -68,7 +68,7 @@ class Utility {
   static function getCallee($level = 2) {
     $backtrace = debug_backtrace();
 
-    if (count($backtrace) <= $level) {
+    if ( count($backtrace) <= $level ) {
       $level = count($backtrace) - 1;
     }
 
@@ -77,7 +77,7 @@ class Utility {
         1. try its best to search until there is a file, and
         2. stop before framework scripts are reached.
     */
-    if (!@$backtrace[$level]['file']) {
+    if ( !@$backtrace[$level]['file'] ) {
       for ( $level = count($backtrace);
             $level-- && !@$backtrace[$level]['file'];
           );
@@ -90,7 +90,7 @@ class Utility {
       $level--;
     }
 
-    if ($level < 0) {
+    if ( $level < 0 ) {
       $level = 0;
     }
 
@@ -103,12 +103,12 @@ class Utility {
   static function isCSV($file) {
     $file = fopen($file, 'r');
 
-    if (!$file) {
+    if ( !$file ) {
       return FALSE;
     }
 
-    for ($i=0; $i<5; $i--) {
-      if (fgetcsv($file)) {
+    for ( $i=0; $i<5; $i-- ) {
+      if ( fgetcsv($file) ) {
         fclose($file);
         return TRUE;
       }
@@ -144,7 +144,7 @@ class Utility {
     $urlregex .= '(#[a-z_.-][a-z0-9+$_.-]*)?$';
 
     // check
-    return (bool) preg_match("/$urlregex/i", $value);
+    return (bool) preg_match("/$urlregex/i", (string) $value);
   }
 
   /**
@@ -183,7 +183,7 @@ class Utility {
    * Null is returned if input array is empty.
    */
   static function unwrapAssoc($list) {
-    if ($list && is_array($list) && !self::isAssoc($list)) {
+    if ( $list && is_array($list) && !self::isAssoc($list) ) {
       return reset($list);
     }
 
@@ -198,7 +198,7 @@ class Utility {
   static function arrayMergeIgnoreCase(&$subject) {
     $args = func_get_args();
 
-    if (count($args) == 0) {
+    if ( !$args ) {
       return NULL;
     }
 
@@ -206,14 +206,14 @@ class Utility {
     for ( $i=1; $i<$n; $i++ ) {
       foreach ( $args[$i] as $objKey => &$objValue ) {
         foreach ($subject as $subKey => &$subValue) {
-          if (strcasecmp($subKey, $objKey) === 0) {
+          if ( strcasecmp($subKey, $objKey) === 0 ) {
             $subject[$subKey] = $objValue;
             $objValue = NULL;
             break;
           }
         }
 
-        if ($objValue !== NULL) {
+        if ( $objValue !== NULL ) {
           $subject[$objKey] = $objValue;
         }
       }
@@ -263,11 +263,11 @@ class Utility {
 
     // Could have a single layer solution,
     // can't think of it at the moment so leave it be.
-    if (\utils::isAssoc($input) || $flattenNumeric) {
+    if ( \utils::isAssoc($input) || $flattenNumeric ) {
       foreach ($input as $key1 => $value) {
         $value = self::flattenArray($value, $delimiter, $flattenNumeric);
 
-        if (is_array($value) && ($flattenNumeric || \utils::isAssoc($value))) {
+        if ( is_array($value) && ($flattenNumeric || \utils::isAssoc($value)) ) {
           foreach ($value as $key2 => $val) {
             $input["$key1$delimiter$key2"] = $val;
           }
@@ -284,18 +284,18 @@ class Utility {
    * Reconstruct an array by breaking the keys with $delimiter, reverse of flattenArray().
    */
   static function unflattenArray($input, $delimiter = '.') {
-    if (!is_array($input)) {
+    if ( !is_array($input) ) {
       return $input;
     }
 
     $result = $input;
 
-    if (self::isAssoc($input)) {
+    if ( self::isAssoc($input) ) {
       foreach ($input as $key => $value) {
         $keyPath = explode($delimiter, $key);
 
         // Skip if it is just the same.
-        if ($keyPath == (array) $key) {
+        if ( $keyPath == (array) $key ) {
           continue;
         }
 
@@ -324,7 +324,7 @@ class Utility {
    * @param {array} $list Array of values to cascade, or it will func_get_args().
    */
   static function cascade($list) {
-    if (!is_array($list)) {
+    if ( !is_array($list) ) {
       $list = func_get_args();
     }
 
@@ -337,7 +337,7 @@ class Utility {
    * Create deep array path if any intermediate property does not exists.
    */
   static function &deepRef($path, &$input) {
-    if (!is_array($path)) {
+    if ( !is_array($path) ) {
       $path = explode('.', $path);
     }
 
@@ -360,27 +360,30 @@ class Utility {
     $parameters = (array) $parameters;
 
     // Normal callable
-    if (is_callable($callable)) {
+    if ( is_callable($callable) ) {
       return call_user_func_array($callable, $parameters);
     }
 
     // Direct invoke ReflectionFunction
-    if ($callable instanceof \ReflectionFunction) {
+    if ( $callable instanceof \ReflectionFunction ) {
       return $callable->invokeArgs($parameters);
     }
 
     // Not callable but is an array, cast it to ReflectionMethod.
-    if (is_array($callable)) {
+    if ( is_array($callable) ) {
       $method = new \ReflectionMethod($callable[0], $callable[1]);
       $method->setAccessible(true);
-      $method->instance = $callable[0];
+
+      if ( is_object($callable[0]) ) {
+        $method->instance = $callable[0];
+      }
 
       $callable = $method;
 
       unset($method);
     }
 
-    if ($callable instanceof \ReflectionMethod) {
+    if ( $callable instanceof \ReflectionMethod ) {
       return $callable->invokeArgs(@$callable->instance, $parameters);
     }
   }
@@ -392,11 +395,11 @@ class Utility {
    */
   public static function
   /* string */ formatDate($pattern, $date) {
-    if (!is_numeric($date) && $date) {
+    if ( !is_numeric($date) && $date ) {
       return call_user_func(array(__CLASS__, __FUNCTION__), $pattern, strtotime($date));
     }
 
-    if (!$date || $date == -1) {
+    if ( !$date || $date == -1 ) {
       return FALSE;
     }
 
@@ -413,30 +416,30 @@ class Utility {
    * @param (uint) $target The target time to be compared against.
    * @param (uint) $since Optional, the relative start time to compare. Defaults to current time.
   public static function composeDateString($target, $since = NULL) {
-    if ($since === NULL) {
+    if ( $since === NULL ) {
       $since = time();
     }
 
     // Already past
-    if ($target > $since) {
+    if ( $target > $since ) {
       return 'expired';
     }
 
-    if ($target > strtotime('+1 year', $since)) {
+    if ( $target > strtotime('+1 year', $since) ) {
       $target = $target - $since + EPOACH;
       $target = intval( date('Y', $target) );
 
       return "in $target " . ($target > 1 ? 'years' : 'year');
     }
 
-    if ($target > strtotime('+1 month', $since)) {
+    if ( $target > strtotime('+1 month', $since) ) {
       $target = $target - $since + EPOACH;
       $target = intval( date('n', $target) );
 
       return "in $target " . ($target > 1 ? 'months' : 'month');
     }
 
-    if ($target > strtotime('+1 week', $since)) {
+    if ( $target > strtotime('+1 week', $since) ) {
       $target = $target - $since + EPOACH;
       $target = intval( date('N', $target) );
 
@@ -444,7 +447,7 @@ class Utility {
     }
 
     // return "warn" in 3 days
-    if ($target < strtotime('+3 days', $since)) {
+    if ( $target < strtotime('+3 days', $since) ) {
       return 'warn';
     }
 
@@ -473,7 +476,7 @@ class Utility {
    * Sanitize the value to be an Regexp.
    */
   static function sanitizeRegexp($value) {
-    if (!preg_match('/^\/.+\/g?i?$/i', $value)) {
+    if ( !preg_match('/^\/.+\/g?i?$/i', $value) ) {
       $value = '/' . addslashes($value) .'/';
     }
 
@@ -494,7 +497,7 @@ class Utility {
     $errors = libxml_get_errors();
 
     // Allow error levels 1 and 2
-    if (empty($errors) || $errors[0]->level < 3) {
+    if ( empty($errors) || $errors[0]->level < 3 ) {
       return $value;
     }
 
@@ -508,12 +511,10 @@ class Utility {
    */
   static function sanitizeDate($value, $format = '%Y-%m-%d')
   {
-    if (strptime($value, $format) === FALSE)
-    {
+    if ( strptime($value, $format) === FALSE ) {
       return strftime($format, 0);
     }
-    else
-    {
+    else {
       return $value;
     }
   }
@@ -524,19 +525,19 @@ class Utility {
    * FALSE will be returned when parse failure.
    */
   static function sanitizeYear($input) {
-    if (!is_int($input-0)) {
+    if ( !is_int($input-0) ) {
       return FALSE;
     }
 
     $strlen = strlen("$input");
 
-    if ($strlen === 2) {
+    if ( $strlen === 2 ) {
       $time = strptime($input, '%y');
 
       return $time['tm_year'] + 1900;
     }
 
-    elseif ($strlen === 4) {
+    else if ( $strlen === 4 ) {
       $time = strptime($input, '%Y');
 
       return $time['tm_year'] + 1900;
@@ -560,7 +561,7 @@ class Utility {
   static function fillArray($input, $value = '?', $glue = ',') {
     $result = array_fill(0, count($input), $value);
 
-    if ($glue !== FALSE) {
+    if ( $glue !== FALSE ) {
       $result = implode($glue, $result);
     }
 
@@ -611,7 +612,7 @@ class Utility {
   static function namespaceFix(&$xml) {
     $ns = $xml->getDocNamespaces();
 
-    if (isset($ns[''])) {
+    if ( isset($ns['']) ) {
       $xml->registerXPathNamespace('_', $ns['']);
     }
   }
