@@ -5,11 +5,15 @@ if ( !function_exists('pcntl_fork') ) {
   $forked = TRUE; // Just run this shit if forking is not supported.
 }
 else {
-  $forked = pcntl_fork() > 0;
+  $pid = pcntl_fork();
+
+  $forked = $pid == 0;
 }
 
 // Parent will die here.
 if ( !$forked ) {
+  echo $pid;
+
   die;
 }
 

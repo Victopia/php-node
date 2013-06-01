@@ -15,7 +15,7 @@ class Process {
   const EXEC_PATH = 'php .private/Process.php';
 
   public static function
-  /* Boolean */ enqueue($command, $spawnProcess = TRUE) {
+  /* Boolean */ enqueue($command) {
     $args = explode(' ', $command);
 
     if ( !$args ) {
@@ -125,9 +125,9 @@ class Process {
       ));
 
     if ( count($res) < self::MAX_PROCESS ) {
-      exec(self::EXEC_PATH . ' >/dev/null 2>&1 & echo $!', $ret);
+      $ret = shell_exec(self::EXEC_PATH . ' >/dev/null 2>&1 &');
 
-      return (int) @$ret[0];
+      return (int) @$ret;
     }
 
     return FALSE;
