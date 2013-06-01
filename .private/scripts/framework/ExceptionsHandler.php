@@ -1,8 +1,5 @@
 <?php
-/*! Exception.php
- *
- *  Exception handling class of the framework.
- */
+/* ExceptionsHandler.php | Exception handler class of the framework. */
 
 namespace framework;
 
@@ -81,9 +78,10 @@ class ExceptionsHandler {
     if (FRAMEWORK_ENVIRONMENT == 'debug') {
       $output['file'] = $eF;
       $output['line'] = $eL;
+      $output['trace'] = $eC;
     }
 
-    $output = ob_get_clean() . json_encode($output);
+    $output = ob_get_clean() . @json_encode($output);
 
     if (!\utils::isCLI()) {
       if (!headers_sent()) {
