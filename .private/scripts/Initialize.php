@@ -148,7 +148,7 @@ function redirect($response) {
       return;
     }
 
-    header("Location: $response", true);
+    header("Location: $response", true, 302);
   }
   else if (is_integer($response)) {
     // FastCGI and CGI expects Status: instead of HTTP/1.0 for status code.
