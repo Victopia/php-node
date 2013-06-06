@@ -234,7 +234,9 @@ class Node {
     $result = array();
 
     while ($rowCount > 0 && ($limit === NULL || $limit[1] > 0)) {
-      $res = Database::select($tableName, $selectField, "$queryString LIMIT $rowOffset, " . NODE_FETCHSIZE, $params);
+      $res = (int) min(array_filter(array(NODE_FETCHSIZE, $limit[1])));
+
+      $res = Database::select($tableName, $selectField, "$queryString LIMIT $rowOffset, $res", $params);
 
       foreach ($res as $key => &$row) {
         if (isset($row[NODE_FIELD_VIRTUAL])) {
@@ -561,7 +563,17 @@ class Node {
 
   private static function
   /* String */ resolveCollection($tableName) {
-    return $tableName && Database::hasTable($tableName) ? $tableName : NODE_COLLECTION;
+    if ( !$tableName ) {
+      return NODE_COLLECTION;
+    }
+
+    if ( isset($collectionCache[$tableName]) ) {
+      return $collectionCache[$tableName];
+    }
+    else {
+      return $collectionCache[$tableName] =
+        Database::hasTable($tableName) ? $tableName : NODE_COLLECTION;
+    }
   }
 
   //-----------------------------------------------------------------------
