@@ -402,16 +402,14 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
               , '__curlOpts' => array(
                   CURLOPT_TIMEOUT => 2
                 )
-              , 'callbacks' => array(
-                  'success' => function($response, $request) use($path) {
-                    if ($response) {
-                      file_put_contents($path, $response);
-                    }
+              , 'success' => function($response, $request) use($path) {
+                  if ($response) {
+                    file_put_contents($path, $response);
                   }
-                , 'failure' => function() use($path) {
-                    @unlink($path);
-                  }
-                )
+                }
+              , 'failure' => function() use($path) {
+                  @unlink($path);
+                }
               ));
           }
 
