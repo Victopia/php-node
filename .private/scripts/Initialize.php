@@ -158,6 +158,9 @@ function redirect($response) {
       case 200:
         header("$statusPrefix 200 OK", true, 200);
         return;
+      case 301:
+        header("$statusPrefix 301 Moved Permanently", true, 301);
+        return;
       case 304: // CAUTION: Do not create an errordoc for this code.
         header("$statusPrefix 304 Not Modified", true, 304);
         die;
