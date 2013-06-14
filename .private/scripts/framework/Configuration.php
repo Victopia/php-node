@@ -213,7 +213,7 @@ class Configuration implements \Iterator, \ArrayAccess {
 	}
 
 	function rewind() {
-		return rewind($this->contents);
+		reset($this->contents);
 	}
 
 	function valid() {
