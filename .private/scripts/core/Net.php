@@ -149,7 +149,7 @@ class Net {
         else {
           $url = &$curlOption[CURLOPT_URL];
 
-          $url.= ( strpos($url, '?') === FALSE ? '&' : '?' ) . $data;
+          $url.= ( strpos($url, '?') === FALSE ? '?' : '&' ) . $data;
         }
       }
 
