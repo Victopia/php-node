@@ -103,19 +103,19 @@ class Deferred {
 	// Expose methods from internal Promise object.
 
 	public function progress($callback) {
-		$this->promiseObject->progress($callback);
+		return $this->promiseObject->progress($callback);
 	}
 
 	public function done($callback) {
-		$this->promiseObject->done($callback);
+		return $this->promiseObject->done($callback);
 	}
 
 	public function fail($callback) {
-		$this->promiseObject->fail($callback);
+		return $this->promiseObject->fail($callback);
 	}
 
 	public function always($callback) {
-		$this->promiseObject->always($callback);
+		return $this->promiseObject->always($callback);
 	}
 
 	//--------------------------------------------------

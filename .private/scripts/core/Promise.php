@@ -45,6 +45,8 @@ class Promise {
 		if ($this->state === self::STATE_NORMAL) {
 			$this->progressCallbacks[] = $callback;
 		}
+
+		return $this; // chainable
 	}
 
 	public function done($callback) {
@@ -54,6 +56,8 @@ class Promise {
 		else {
 			$this->resolvedCallbacks[] = $callback;
 		}
+
+		return $this; // chainable
 	}
 
 	public function fail($callback) {
@@ -63,6 +67,8 @@ class Promise {
 		else {
 			$this->rejectedCallbacks[] = $callback;
 		}
+
+		return $this; // chainable
 	}
 
 	public function always($callback) {
@@ -75,11 +81,15 @@ class Promise {
 		else {
 			$this->alwaysCallbacks[] = $callback;
 		}
+
+		return $this; // chainable
 	}
 
 	public function then($doneCallback, $failCallback) {
 		$this->done($doneCallback);
 		$this->fail($failCallback);
+
+		return $this; // chainable
 	}
 
 }
