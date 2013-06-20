@@ -2,33 +2,37 @@
 
 namespace framework\exceptions;
 
-class ResolverException extends GeneralException {
+class ResolverException extends \Exception {
 
-	//--------------------------------------------------
-	//
-	//  Constructor
-	//
-	//--------------------------------------------------
-	public function __construct($statusCode, $message = "", $code = 0, Exception $previous = NULL) {
-		$this->statusCode = $statusCode;
+  //--------------------------------------------------
+  //
+  //  Constructor
+  //
+  //--------------------------------------------------
+  public function __construct($statusCode, $message = "", $code = 0, Exception $previous = NULL) {
+    if (is_numeric($statusCode)) {
+      $this->statusCode = $statusCode;
+    }
+    else {
+      // Force-cast to string message
+      $message = @"$statusCode";
+    }
 
-		$message = \message::get(APP_TOOL, FNC_TOOL_EXCEPTION, MSG_EXCEPTION_RESOLVER);
+    // TODO: Use `Resource` class to get a predefined locale-based message.
 
-		$message = sprintf($message, $statusCode);
+    parent::__construct($message, $code, $previous);
+  }
 
-		parent::__construct($message, $code, $previous);
-	}
+  //--------------------------------------------------
+  //
+  //  Properties
+  //
+  //--------------------------------------------------
 
-	//--------------------------------------------------
-	//
-	//  Properties
-	//
-	//--------------------------------------------------
+  private $statusCode = NULL;
 
-	private $statusCode;
-
-	public function statusCode() {
-		return $this->statusCode;
-	}
+  public function statusCode() {
+    return $this->statusCode;
+  }
 
 }
