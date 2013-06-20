@@ -15,7 +15,7 @@ class Process {
   const EXEC_PATH = '/usr/bin/php .private/Process.php';
 
   public static function
-  /* Boolean */ enqueue($command) {
+  /* Boolean */ enqueue($command, $spawnProcess = TRUE) {
     $args = explode(' ', $command);
 
     if ( !$args ) {
@@ -48,15 +48,17 @@ class Process {
       }
     }
 
+    if ( !$spawnProcess ) {
+      return TRUE;
+    }
+
     $ret = self::spawn();
 
     if ( $ret ) {
       $res['pid'] = $ret;
-
-      return $res;
     }
 
-    return FALSE;
+    return $res;
   }
 
   /**

@@ -1,29 +1,45 @@
 <?php
 /* Process.php | Daemon dequeues and executes processes from the database. */
 
-require_once('scripts/Initialize.php');
+require_once('.private/scripts/Initialize.php');
+
+$opts = (new optimist())
+  ->alias('nohup', 'n')
+  ->alias('cron', 'c')
+  ->argv;
 
 if ( !function_exists('pcntl_fork') ) {
-  $forked = TRUE; // Just run this shit if forking is not supported.
+  // try nohup if internal forking is not supported.
+  if ( !isset($opts['n']) ) {
+    $ret = shell_exec('nohup ' . process::EXEC_PATH . ' --nohup >/dev/null 2>&1 & echo $!');
+
+    if ( !$ret ) {
+      log::write('Process cannot be spawn, try configuration.', 'Error');
+    }
+
+    die;
+  }
+
+  $pid = 0;
 }
 else {
   $pid = pcntl_fork();
-
-  // parent: $forked == FALSE
-  // child:  $forked == TRUE
-  $forked = $pid == 0;
 }
+
+// parent: $forked == FALSE
+// child:  $forked == TRUE
+$forked = $pid == 0;
 
 // parent will die here.
 if ( !$forked ) {
-  echo $pid;
-
   die;
 }
 
-posix_setsid();
+if ( function_exists('posix_setsid') ) {
+  posix_setsid();
+}
 
-if ( @$argv[1] == '--cron' ) {
+if ( @$opts['cron'] ) {
   log::write('Cron started process.', 'Information');
 }
 
@@ -101,7 +117,7 @@ if ( !$processSpawn ) {
   log::write('Unable to spawn process, process terminating.', 'Error');
 }
 
-// unset($process['locked']);
+unset($process['locked']);
 
 if ( $output !== NULL ) {
   log::write("Output captured from command line $path:\n" . print_r($output, 1), 'Warning');
@@ -120,11 +136,6 @@ log::write("Deleting finished process, affected rows: $res.", 'Information', $pr
 core\Database::unlockTables();
 
 // Recursive process, fork another child and spawn itself.
-// shell_exec(process::EXEC_PATH . ' >/dev/null &');
-utils::forceInvoke('process::spawn');
-
-/*
-if ( pcntl_fork() === 0 ) {
+if ( !function_exists('pcntl_fork') || pcntl_fork() === 0 ) {
   shell_exec(process::EXEC_PATH . ' >/dev/null &');
 }
-*/
