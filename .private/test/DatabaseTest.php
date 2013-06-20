@@ -1,5 +1,5 @@
 <?php
-/* DatabaseTest.php | Test against database connections and tables setup. */
+/* test/DatabaseTest.php | Test against database connections and tables setup. */
 
 require_once('.private/test/simpletest/unit_tester.php');
 
@@ -30,8 +30,6 @@ class DatabaseTest extends UnitTestCase {
       'Unable to fetch data from PDOStatement.');
   }
 
-  function testSchemas() {
-    // $tables = core\Database::query();
-  }
+  // function testSchemas() { // $tables = core\Database::query(); }
 
 }
