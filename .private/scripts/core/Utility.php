@@ -20,7 +20,7 @@ class Utility {
    * Returns whether the current process is in CLI environment.
    */
   static function isCLI() {
-    return php_sapi_name() == 'cli' && empty($_SERVER['REMOTE_ADDR']);
+    return php_sapi_name() == 'cli'/* && empty($_SERVER['REMOTE_ADDR']) */;
   }
 
   /**
@@ -367,6 +367,11 @@ class Utility {
     // Direct invoke ReflectionFunction
     if ( $callable instanceof \ReflectionFunction ) {
       return $callable->invokeArgs($parameters);
+    }
+
+    // "class::method" static thing
+    if ( is_string($callable) && strpos($callable, '::') !== FALSE ) {
+      $callable = explode('::', $callable);
     }
 
     // Not callable but is an array, cast it to ReflectionMethod.
