@@ -264,6 +264,10 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     $_SERVER['SCRIPT_NAME'] = $_SERVER['REQUEST_URI'];
     $_SERVER['PHP_SELF'] = $_SERVER['REQUEST_URI'];
 
+    if ($mime !== NULL) {
+      header("Content-Type: $mime", true);
+    }
+
     ob_start();
 
     switch($mime) {
@@ -280,6 +284,8 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
       case 'image/tiff':
       case 'text/plain':
       default:
+        unset($mtime, $mime);
+
         readfile($path);
         break;
 
@@ -287,6 +293,8 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
       case 'text/html':
       case 'text/x-php':
       case NULL: // ... ahem
+        unset($mtime, $mime);
+
         include_once($path);
         break;
     }
@@ -295,28 +303,19 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
     $response = ob_get_clean();
 
-    // Sent related HTTP headers, if not already flushed (this should not happend in normal cases).
-    if (!headers_sent()) {
-
-      // Send HTTP header Content-Length according to the output buffer if it is not sent.
-      $headers = headers_list();
-      $contentLengthSent = FALSE;
-      foreach ($headers as $header) {
-        if (stripos($header, 'Content-Length') !== FALSE) {
-          $contentLengthSent = TRUE;
-          break;
-        }
+    // Send HTTP header Content-Length according to the output buffer if it is not sent.
+    $headers = headers_list();
+    $contentLengthSent = FALSE;
+    foreach ($headers as $header) {
+      if (stripos($header, 'Content-Length') !== FALSE) {
+        $contentLengthSent = TRUE;
+        break;
       }
-      unset($headers, $header);
+    }
+    unset($headers, $header);
 
-      if ($mime !== NULL) {
-        header("Content-Type: $mime", TRUE);
-      }
-
-      if (!$contentLengthSent) {
-        header("Content-Length: $contentLength", TRUE);
-      }
-
+    if (!$contentLengthSent) {
+      header("Content-Length: $contentLength", true);
     }
 
     echo $response;
@@ -331,13 +330,13 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
         // When requesting *.min.js, minify it from the original source.
         $opath = preg_replace('/\.min(\.js)$/', '\\1', $path, -1, $count);
 
-        if (true && $count > 0 && is_file($opath)) {
+        if ($count > 0 && is_file($opath)) {
           $mtime = filemtime($opath);
 
           // Whenever orginal source exists and is newer,
           // udpate minified version.
           if (!is_file($path) || $mtime > filemtime($path)) {
-            $output = `cat $opath | .private/uglifyjs -o $path 2>&1`;
+            $output = shell_exec("cat $opath | .private/uglifyjs -o $path 2>&1");
 
             if ($output) {
               $output = "[uglifyjs] $output.";
@@ -370,7 +369,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
           if (!is_file($path) || $mtime > filemtime($path)) {
             $res = `/usr/bin/convert -density 72 -background none $opath $path 2>&1`;
 
-            touch($path, $mtime);
+            @touch($path, $mtime);
           }
         }
         break;
@@ -396,14 +395,14 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
             $opath = realpath($opath);
 
             \core\Net::httpRequest(array(
-                'url' => 'http://www.cssminifier.com/raw'
+                'url' => 'http://cssminifier.com/raw'
               , 'type' => 'post'
               , 'data' => array( 'input' => file_get_contents($opath) )
               , '__curlOpts' => array(
                   CURLOPT_TIMEOUT => 2
                 )
               , 'success' => function($response, $request) use($path) {
-                  if ($response) {
+                  if (@$request['status'] == 200 && $response) {
                     file_put_contents($path, $response);
                   }
                 }
@@ -419,7 +418,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
         }
         break;
       case 'csv':
-        header('Content-Disposition: attachment;', TRUE);
+        header('Content-Disposition: attachment;', true);
         break;
       default:
         // Extension-less
