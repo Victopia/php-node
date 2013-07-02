@@ -20,7 +20,7 @@ class Utility {
    * Returns whether the current process is in CLI environment.
    */
   static function isCLI() {
-    return php_sapi_name() == 'cli'/* && empty($_SERVER['REMOTE_ADDR']) */;
+    return php_sapi_name() == 'cli'/* && empty($_SERVER['REMOTE_ADDR'])*/;
   }
 
   /**
@@ -348,6 +348,13 @@ class Utility {
     }
 
     return $ref;
+  }
+
+  /**
+   * Value version of deepRef.
+   */
+  static function deepVal($path, $input) {
+    return self::deepRef($path, $input);
   }
 
   /**
