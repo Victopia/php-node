@@ -78,7 +78,7 @@ class Net {
     $options = \utils::wrapAssoc((array) $options);
 
     $options = array_map(function(&$option) {
-      if (is_string($option)) {
+      if ( is_string($option) ) {
         $option = array( 'url' => $option );
       }
       elseif (!@$option['url']) {
@@ -86,7 +86,7 @@ class Net {
       }
 
       // Auto prepend http, default protocol.
-      if (preg_match('/^(\/\/)/', $option['url'])) {
+      if ( preg_match('/^(\/\/)/', $option['url']) ) {
         $option['url'] = "http:" . $option['url'];
       }
 
@@ -97,15 +97,16 @@ class Net {
         , CURLOPT_SSL_VERIFYPEER => FALSE
         , CURLOPT_CAINFO => NULL
         , CURLOPT_CAPATH => NULL
+        , CURLOPT_FOLLOWLOCATION => TRUE
         );
 
       // Request method: 'GET', 'POST', 'PUT', 'HEAD', 'DELETE'
-      if (!isset($option['type']) && is_array(@$option['data']) || preg_match('/^post$/i', @$option['type'])) {
+      if ( !isset($option['type']) && is_array(@$option['data']) || preg_match('/^post$/i', @$option['type']) ) {
         $curlOption[CURLOPT_POST] = TRUE;
         $curlOption[CURLOPT_CUSTOMREQUEST] = 'POST';
       }
-      elseif (preg_match('/^put$/i', @$option['type'])) {
-        if (!@$option['file'] || !is_file($option['file'])) {
+      elseif ( preg_match('/^put$/i', @$option['type']) ) {
+        if ( !@$option['file'] || !is_file($option['file']) ) {
           throw new exceptions\CoreException('Please specify the \'file\' option when using PUT method.');
         }
 
@@ -128,7 +129,7 @@ class Net {
       }
 
       // Query data, applicable for all request methods.
-      if (@$option['data']) {
+      if ( @$option['data'] ) {
         $data = $option['data'];
 
         $hasPostFile = is_array($data) &&
@@ -154,22 +155,22 @@ class Net {
       }
 
       // HTTP Headers
-      if (isset($option['headers'])) {
+      if ( isset($option['headers']) ) {
         $curlOption[CURLOPT_HTTPHEADER] = &$option['headers'];
       }
 
       // Data type converting
-      if (isset($option['success'])) {
+      if ( isset($option['success']) ) {
         $originalSuccess = @$option['success'];
 
-        switch (@$option['dataType']) {
+        switch ( @$option['dataType'] ) {
           case 'json':
             $option['success'] = function($response, $curlOptions) use($option, $originalSuccess) {
               $result = @json_encode($response, TRUE);
 
-              if ($result === NULL && $response) {
+              if ( $result === NULL && $response ) {
                 Utility::forceInvoke(@$option['failure'], array(
-                    0
+                    3
                   , 'Malformed JSON string returned.'
                   , $curlOptions
                   ));
@@ -191,9 +192,9 @@ class Net {
                 $result = NULL;
               }
 
-              if ($result === NULL && $response) {
+              if ( $result === NULL && $response ) {
                 Utility::forceInvoke(@$option['failure'], array(
-                    0
+                    2
                   , 'Malformed XML string returned.'
                   , $curlOptions
                   ));
@@ -409,9 +410,11 @@ class Net {
           // libcurl errors, try to parse it.
           if ($errorNumber === 0) {
             if (preg_match('/errno: (\d+)/', $errorMessage, $matches) ) {
+              $errorNumber = (int) $matches[1];
+
               $curlErrors = unserialize(FRAMEWORK_NET_CURL_ERRORS);
 
-              $errorMessage = "curl error #$matches[1]: " . @$curlErrors[$matches[1]];
+              $errorMessage = "curl error #$matches[1]: " . @$curlErrors[$errorNumber];
             }
           }
 
