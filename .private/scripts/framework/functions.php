@@ -40,7 +40,7 @@ function partial() {
 	return function() use($func, $part) {
 		$args = array_merge($part, func_get_args());
 
-		return call_user_func($func, $args);
+		return call_user_func_array($func, $args);
 	};
 }
 
