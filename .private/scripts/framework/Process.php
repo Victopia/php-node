@@ -74,10 +74,17 @@ class Process {
     $res = \node::get(array(
         NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
       , 'path' => $command
+      , 'locked' => $includeActive
       ));
+
+    \utils::unwrapAssoc($res);
 
     if ( $res ) {
       if ( $requeue ) {
+        if ( $res['locked'] && $res['pid'] ) {
+          self::kill($res['ID']);
+        }
+
         \node::delete(array(
             NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
           , 'path' => $command
@@ -116,7 +123,7 @@ class Process {
     if ( $res ) {
       node::delete($res);
 
-      if ( @$res['pid'] ) {
+      if ( @$res['pid'] && function_exists('posix_kill') ) {
         posix_kill($res['pid'], SIGKILL);
       }
     }
