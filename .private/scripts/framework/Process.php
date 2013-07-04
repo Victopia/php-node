@@ -64,10 +64,13 @@ class Process {
   /**
    * Return TRUE if the command is already in queue.
    *
-   * @param $requeue Boolean If TRUE, the existing path will be put at the back of the queue.
+   * @param {Boolean} $requeue If TRUE, the existing path
+   *                           will be put at the back of the queue.
+   * @param {Boolean} $includeActive Specify TRUE to include active processes when considering
+   *                                 whether the same process is already in queue.
    */
   public static function
-  /* Boolean */ enqueueOnce($command, $requeue = FALSE) {
+  /* Boolean */ enqueueOnce($command, $requeue = FALSE, $includeActive = FALSE) {
     $res = \node::get(array(
         NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
       , 'path' => $command
@@ -78,7 +81,7 @@ class Process {
         \node::delete(array(
             NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
           , 'path' => $command
-          , 'locked' => FALSE
+          , 'locked' => $includeActive
           ));
 
         return self::enqueue($command);
