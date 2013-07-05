@@ -10,7 +10,7 @@ class ExceptionsHandler {
   }
 
   public static function handleError($eN, $eS, $eF, $eL) {
-    if (error_reporting() == 0) {
+    if ( error_reporting() == 0 ) {
       return;
     }
 
@@ -18,7 +18,7 @@ class ExceptionsHandler {
   }
 
   public static function handleException($e) {
-    if (error_reporting() == 0) {
+    if ( error_reporting() == 0 ) {
       return;
     }
 
@@ -28,12 +28,12 @@ class ExceptionsHandler {
     $eC = $e->getTrace();
     $eN = $e->getCode();
 
-    if ($e instanceof exceptions\GeneralException) {
+    if ( $e instanceof exceptions\GeneralException ) {
       $eS = Resource::getString($eS);
     }
 
-    if ($e instanceof \ErrorException) {
-      switch (error_reporting()) {
+    if ( $e instanceof \ErrorException ) {
+      switch ( error_reporting() ) {
         case E_ERROR:
         case E_PARSE:
         case E_CORE_ERROR:
@@ -65,9 +65,24 @@ class ExceptionsHandler {
     }
 
     // Prevent recursive errors on logging when database fails to connect.
-    if (\core\Database::isConnected()) {
+    if ( \core\Database::isConnected() ) {
+      if ( \utils::isCLI() ) {
+        $logContext = $eC;
+      }
+      else {
+        $logContext = array_filter(array(
+            'remoteAddr' => @$_SERVER['REMOTE_ADDR']
+          , 'forwarder' => @$_SERVER['HTTP_X_FORWARDED_FOR']
+          , 'referrer' => @$_SERVER['HTTP_REFERER']
+          , 'userAgent' => \utils::cascade(@$_SERVER['HTTP_USER_AGENT'], 'Unknown')
+          , 'errorContext' => $eC
+          ));
+      }
+
       // Log the error
-      \log::write("Gateway:: uncaught \"$eS\" #$eN, on $eF:$eL.", $type, $eC);
+      \log::write("[Gateway] Uncaught exception with message: \"$eS\" #$eN, on $eF:$eL.", $type, $logContext);
+
+      unset($logContext);
     }
 
     $output = array(
@@ -75,7 +90,7 @@ class ExceptionsHandler {
       , 'code' => $eN
       );
 
-    if (FRAMEWORK_ENVIRONMENT == 'debug') {
+    if ( FRAMEWORK_ENVIRONMENT == 'debug' ) {
       $output['file'] = $eF;
       $output['line'] = $eL;
       $output['trace'] = $eC;
@@ -83,14 +98,14 @@ class ExceptionsHandler {
 
     $output = ob_get_clean() . @json_encode($output);
 
-    if (!\utils::isCLI()) {
-      if (!headers_sent()) {
+    if ( !\utils::isCLI() ) {
+      if ( !headers_sent() ) {
         header('Content-Type: application/json; charset=utf-8');
         header('Content-Length: ' . strlen($output));
       }
 
       // JSONP support
-      if (@$_GET['callback']) {
+      if ( @$_GET['callback'] ) {
         $output = "$_GET[callback]($output)";
       }
     }
@@ -99,7 +114,7 @@ class ExceptionsHandler {
     echo $output;
 
     // Terminates on Exceptions and Errors.
-    if ($type == 'Exception' || $type == 'Error') {
+    if ( $type == 'Exception' || $type == 'Error' ) {
       die;
     }
   }
