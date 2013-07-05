@@ -82,7 +82,7 @@ class Net {
         $option = array( 'url' => $option );
       }
       elseif (!@$option['url']) {
-        throw new \framework\exceptions\CoreException('No URL set!');
+        throw new \core\exceptions\CoreException('No URL set!');
       }
 
       // Auto prepend http, default protocol.
