@@ -384,10 +384,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
           // Whenever orginal source exists and is newer,
           // udpate minified version.
-
-          // Wait for a time before re-download, no matter the
-          // last request failed or not.
-          if (time() - $ctime > 3600 && (!is_file($path) || $mtime > filemtime($path))) {
+          if (!is_file($path) || $mtime > filemtime($path)) {
             // Store the offset in cache, enabling a waiting time before HTTP retry.
             \cache::delete($path);
             \cache::set($path, time());
