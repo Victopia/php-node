@@ -26,6 +26,8 @@ define('NODE_FETCHSIZE', 100);
 // Current environment, 'debug' or 'production'
 define('FRAMEWORK_ENVIRONMENT', 'debug');
 
+// Hostname for services and local redirections
+define('FRAMEWORK_SERVICE_HOSTNAME', gethostname());
 // Document root to this framework
 define('FRAMEWORK_PATH_ROOT', realpath(__DIR__ . '/../../..'));
 // Define web directories
