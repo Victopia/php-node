@@ -234,9 +234,9 @@ class Node {
     $result = array();
 
     while ($rowCount > 0 && ($limit === NULL || $limit[1] > 0)) {
-      $res = (int) min(array_filter(array(NODE_FETCHSIZE, $limit[1])));
+      $fetchSize = (int) min(array_filter(array(NODE_FETCHSIZE, $limit[1])));
 
-      $res = Database::select($tableName, $selectField, "$queryString LIMIT $rowOffset, $res", $params);
+      $res = Database::select($tableName, $selectField, "$queryString LIMIT $rowOffset, $fetchSize", $params);
 
       foreach ($res as $key => &$row) {
         if (isset($row[NODE_FIELD_VIRTUAL])) {
@@ -284,8 +284,8 @@ class Node {
         }
       }
 
-      $rowOffset += NODE_FETCHSIZE;
-      $rowCount -= NODE_FETCHSIZE;
+      $rowOffset += $fetchSize;
+      $rowCount -= $fetchSize;
     }
 
     // Skip default nodeSorter when custom $sorter is provided.
