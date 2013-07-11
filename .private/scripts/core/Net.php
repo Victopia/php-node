@@ -118,7 +118,7 @@ class Net {
         $curlOption[CURLOPT_INFILESIZE] = filesize($option['file']);
       }
       elseif (preg_match('/^head$/i', @$option['type'])) {
-        $curlOption[CULROPT_NOBODY] = TRUE;
+        $curlOption[CURLOPT_NOBODY] = TRUE;
         $curlOption[CURLOPT_CUSTOMREQUEST] = 'HEAD';
       }
       elseif (preg_match('/^delete$/i', @$option['type'])) {
