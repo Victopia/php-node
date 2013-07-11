@@ -62,15 +62,20 @@ class Process {
   }
 
   /**
-   * Return TRUE if the command is already in queue.
+   * Call enqueue when there is no identical process already in queue,
+   * otherwise return the process descriptor instead.
    *
-   * @param {Boolean} $requeue If TRUE, the existing path
-   *                           will be put at the back of the queue.
-   * @param {Boolean} $includeActive Specify TRUE to include active processes when considering
-   *                                 whether the same process is already in queue.
+   * @param {String} Command to be executed.
+   * @param {Boolean} $spawnProcess FALSE to not spawn the queued
+   *                                process right away, default TRUE.
+   * @param {Boolean} $requeue If TRUE, the existing path will be put
+   *                           at the back of the queue.
+   * @param {Boolean} $includeActive Specify TRUE to include active
+   *                                 processes when considering whether
+   *                                 the same process is already in queue.
    */
   public static function
-  /* Boolean */ enqueueOnce($command, $requeue = FALSE, $includeActive = FALSE) {
+  /* Boolean */ enqueueOnce($command, $spawnProcess = TRUE, $requeue = FALSE, $includeActive = FALSE) {
     $res = \node::get(array(
         NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
       , 'path' => $command
@@ -91,14 +96,14 @@ class Process {
           , 'locked' => $includeActive
           ));
 
-        return self::enqueue($command);
+        return self::enqueue($command, $spawnProcess);
       }
 
       // throw new \Exception('[Process] Command exists.', self::ERR_EXIST);
-      return TRUE;
+      return $res;
     }
     else {
-      return self::enqueue($command);
+      return self::enqueue($command, $spawnProcess);
     }
   }
 
