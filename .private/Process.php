@@ -8,19 +8,15 @@ $opts = (new optimist())
   ->alias('cron', 'c')
   ->argv;
 
-if ( !function_exists('pcntl_fork') ) {
-  // try nohup if internal forking is not supported.
-  if ( !isset($opts['n']) ) {
-    $ret = shell_exec('nohup ' . process::EXEC_PATH . ' --nohup >/dev/null 2>&1 & echo $!');
+// use nohup if internal forking is not supported.
+if ( !function_exists('pcntl_fork') || isset($opts['n']) ) {
+  $ret = shell_exec('nohup ' . process::EXEC_PATH . ' --nohup >/dev/null 2>&1 & echo $!');
 
-    if ( !$ret ) {
-      log::write('Process cannot be spawn, try configuration.', 'Error');
-    }
-
-    die;
+  if ( !$ret ) {
+    log::write('Process cannot be spawn, please review your configuration.', 'Error');
   }
 
-  $pid = 0;
+  die;
 }
 else {
   $pid = pcntl_fork();

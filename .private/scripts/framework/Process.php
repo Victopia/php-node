@@ -9,7 +9,7 @@ class Process {
   const ERR_EPERM = 2;
   const ERR_ENQUE = 3;
 
-  const MAX_PROCESS = 500;
+  const MAX_PROCESS = 100;
 
   // Assume gateway redirection, pwd should always at DOCUMENT_ROOT.
   const EXEC_PATH = '/usr/bin/php .private/Process.php';
@@ -82,13 +82,18 @@ class Process {
       , 'locked' => $includeActive
       ));
 
-    \utils::unwrapAssoc($res);
+    /* Quoted by Vicary @ 12 Jul, 2013
+       Multiple processes could be queued at this moment,
+       kill all of them by not unwrapping here.
+    */
+    // \utils::unwrapAssoc($res);
 
     if ( $res ) {
       if ( $requeue ) {
-        if ( $res['locked'] && $res['pid'] ) {
-          self::kill($res['ID']);
-        }
+        // kill only those has a pid.
+        $res = array_filter($res, prop('pid'));
+
+        array_walk($res, compose('Process::kill', prop('ID')));
 
         \node::delete(array(
             NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
@@ -126,11 +131,17 @@ class Process {
     $res = \node::get($res);
 
     if ( $res ) {
-      node::delete($res);
+      \node::delete($res);
 
-      if ( @$res['pid'] && function_exists('posix_kill') ) {
-        posix_kill($res['pid'], SIGKILL);
-      }
+      \log::write('Killing processes.', 'Debug', $res);
+
+      array_walk($res, function($process) {
+        if ( @$process['pid'] && function_exists('posix_kill') ) {
+          \log::write("Sending SIGKILL to pid $process[pid].", 'Debug');
+          posix_kill($process['pid'], 2); // SIGINT
+          posix_kill($process['pid'], 15); // SIGTERM
+        }
+      });
     }
   }
 
