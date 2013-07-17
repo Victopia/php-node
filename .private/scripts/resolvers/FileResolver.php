@@ -22,11 +22,11 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
    * Emulate DirectoryIndex chain
    */
   public function directoryIndex($value = NULL) {
-    if ($value === NULL) {
+    if ( $value === NULL ) {
       return self::$directoryIndex;
     }
 
-    if (is_string($value)) {
+    if ( is_string($value) ) {
       $value = explode(' ', $value);
     }
 
@@ -51,11 +51,11 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
    * 2. If-None-Match
    */
   public function cacheExclusions($value = NULL) {
-    if ($value === NULL) {
+    if ( $value === NULL ) {
       return self::$cacheExclusions;
     }
 
-    if (is_string($value)) {
+    if ( is_string($value) ) {
       $value = explode(' ', $value);
     }
 
@@ -74,7 +74,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
     $queryString = isset($res[1]) ? $res[1] : '';
 
-    if (@$res[0][0] === '/') {
+    if ( @$res[0][0] === '/' ) {
       $res = ".$res[0]";
     }
     else {
@@ -86,33 +86,31 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     //------------------------------
     //  Emulate DirectoryIndex
     //------------------------------
-    if (is_dir($res)) {
-
+    if ( is_dir($res) ) {
       // apache_lookup_uri($path)
-      if (false && function_exists('apache_lookup_uri')) {
+      if ( false && function_exists('apache_lookup_uri') ) {
         $res = apache_lookup_uri($path);
         $res = $_SERVER['DOCUMENT_ROOT'] . $res->uri;
 
         // $_SERVER[REDIRECT_URL]
-        if (!is_file($res)) {
+        if ( !is_file($res) ) {
           $res = "./$path" . basename($_SERVER['REDIRECT_URL']);
         }
       }
 
-      if (!is_file($res)) {
+      if ( !is_file($res) ) {
         $files = $this->directoryIndex();
 
-        foreach ($files as $file) {
+        foreach ( $files as $file ) {
           $file = $this->resolve("$res$file");
 
           // Not a fully resolved path at the moment,
           // starts resolve sub-chain.
-          if ($file !== FALSE) {
+          if ( $file !== FALSE ) {
             return $file;
           }
         }
       }
-
     }
 
     //------------------------------
@@ -120,7 +118,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     //------------------------------
     $this->chainResolve($res);
 
-    if (!is_file($res)) {
+    if ( !is_file($res) ) {
       return FALSE;
     }
 
@@ -136,7 +134,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
   private function handles($file) {
     // Ignore hidden files
-    if (preg_match('/^\..*$/', basename($file))) {
+    if ( preg_match('/^\..*$/', basename($file)) ) {
       return FALSE;
     }
 
@@ -156,14 +154,47 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     $mime = $this->mimetype($path);
     $this->sendCacheHeaders($path, $mime !== NULL);
 
-    if (isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) &&
-      strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= $mtime) {
+    if ( isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) &&
+      strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= $mtime ) {
       throw new \framework\exceptions\ResolverException(304);
     }
 
     $eTag = $this->fileETag($path);
 
-    /* Note by Eric @ 24 Jan, 2013
+    /* Note by Vicary @ 17 Jul, 2013
+       Since apache handles the Range header on its own,
+       we can safely treate If-Range as if it is If-Modified-Since or If-Match.
+    */
+    // Request header: If-Range
+    if ( isset($_SERVER['HTTP_IF_RANGE']) ) {
+      /* Note by Vicary @ 17 Jul, 2013
+         According to RFC2616 section 14.27 ...
+         The server can distinguish between a valid HTTP-date and any form of
+         entity-tag by examining no more than two characters.
+
+         Possible entity tag formats: (Not sure if weak eTags applies here)
+         If-Range: "xyzzy"[, "r2d2xxxx", "c3piozzzz"]
+         If-Range: W/"xyzzy"[, W/"r2d2xxxx", W/"c3piozzzz"]
+      */
+
+      // Entity tag
+      if ( preg_match('/^("|W\/")/', $_SERVER['HTTP_IF_RANGE']) ) {
+        preg_match_all('/(?:^\*$|("[^\*"]+")(?:\s*,\s*("[^\*"]+")))$/', $_SERVER['HTTP_IF_NONE_MATCH'], $eTags);
+
+        if ( @$eTags[1] && in_array($eTag, (array) $eTags[1]) ) {
+          throw new \framework\exceptions\ResolverException(304);
+        }
+
+        unset($eTags);
+      }
+
+      // Http date
+      elseif ( strtotime($_SERVER['HTTP_IF_RANGE']) >= $mtime ) {
+        throw new \framework\exceptions\ResolverException(304);
+      }
+    }
+
+    /* Note by Vicary @ 24 Jan, 2013
 
        CAUTION: If-Modified-Since take precedence!
 
@@ -184,9 +215,10 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
        methods, the server MUST respond with a status of 412 (Precondition Failed).
 
     */
-    if (!isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) && isset($_SERVER['HTTP_IF_NONE_MATCH'])) {
+    // Request header: If-None-Match
+    if ( !isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) && isset($_SERVER['HTTP_IF_NONE_MATCH']) ) {
       // Exists but not GET or HEAD
-      switch (@$_SERVER['REQUEST_METHOD']) {
+      switch ( @$_SERVER['REQUEST_METHOD'] ) {
         case 'GET': case 'HEAD':
           break;
 
@@ -195,16 +227,16 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
           break;
       }
 
-      /* Note by Eric @ 24 Jan, 2013
+      /* Note by Vicary @ 24 Jan, 2013
          If-None-Match means 304 when target resources exists.
       */
-      if ($_SERVER['HTTP_IF_NONE_MATCH'] === '*' && $eTag) {
+      if ( $_SERVER['HTTP_IF_NONE_MATCH'] === '*' && $eTag ) {
         throw new \framework\exceptions\ResolverException(304);
       }
 
       preg_match_all('/(?:^\*$|("[^\*"]+")(?:\s*,\s*("[^\*"]+")))$/', $_SERVER['HTTP_IF_NONE_MATCH'], $eTags);
 
-      if (@$eTags[1] && in_array($eTag, (array) $eTags[1])) {
+      if ( @$eTags[1] && in_array($eTag, (array) $eTags[1]) ) {
         throw new \framework\exceptions\ResolverException(304);
       }
     }
@@ -221,9 +253,10 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
        HTTP header If-None-Match should take precedence over this.
 
     */
-    if (!isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) && isset($_SERVER['HTTP_IF_MATCH'])) {
+    // Request header: If-Match
+    if ( !isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) && isset($_SERVER['HTTP_IF_MATCH']) ) {
       // Exists but not GET or HEAD
-      switch (@$_SERVER['REQUEST_METHOD']) {
+      switch ( @$_SERVER['REQUEST_METHOD'] ) {
         case 'GET': case 'HEAD':
           break;
 
@@ -232,7 +265,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
           break;
       }
 
-      /* Note by Eric @ 24 Jan, 2013
+      /* Note by Vicary @ 24 Jan, 2013
          Normally this framework would not generate 412 with *,
          all existing files has an entity tag with md5 hashing.
 
@@ -243,14 +276,14 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
          But anyways ... let's follow the spec.
       */
-      if ($_SERVER['HTTP_IF_MATCH'] === '*' && !$eTag) {
+      if ( $_SERVER['HTTP_IF_MATCH'] === '*' && !$eTag ) {
         throw new \framework\exceptions\ResolverException(412);
       }
 
       preg_match_all('/(?:^\*$|(:?"([^\*"]+)")(?:\s*,\s*(:?"([^\*"]+)")))$/', $_SERVER['HTTP_IF_MATCH'], $eTags);
 
       // 412 Precondition Failed when nothing matches.
-      if (@$eTags[1] && !in_array($eTag, (array) $eTags[1])) {
+      if ( @$eTags[1] && !in_array($eTag, (array) $eTags[1]) ) {
         throw new \framework\exceptions\ResolverException(412);
       }
 
@@ -264,13 +297,13 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     $_SERVER['SCRIPT_NAME'] = $_SERVER['REQUEST_URI'];
     $_SERVER['PHP_SELF'] = $_SERVER['REQUEST_URI'];
 
-    if ($mime !== NULL) {
+    if ( $mime !== NULL ) {
       header("Content-Type: $mime", true);
     }
 
     ob_start();
 
-    switch($mime) {
+    switch ( $mime ) {
       // mime-types that we output directly.
       case 'application/pdf':
       case 'application/octect-stream':
@@ -306,15 +339,15 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     // Send HTTP header Content-Length according to the output buffer if it is not sent.
     $headers = headers_list();
     $contentLengthSent = FALSE;
-    foreach ($headers as $header) {
-      if (stripos($header, 'Content-Length') !== FALSE) {
+    foreach ( $headers as $header ) {
+      if ( stripos($header, 'Content-Length') !== FALSE ) {
         $contentLengthSent = TRUE;
         break;
       }
     }
     unset($headers, $header);
 
-    if (!$contentLengthSent) {
+    if ( !$contentLengthSent ) {
       header("Content-Length: $contentLength", true);
     }
 
@@ -325,27 +358,27 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
    * @private
    */
   private function chainResolve(&$path) {
-    switch (pathinfo($path , PATHINFO_EXTENSION)) {
+    switch ( pathinfo($path , PATHINFO_EXTENSION) ) {
       case 'js':
         // When requesting *.min.js, minify it from the original source.
         $opath = preg_replace('/\.min(\.js)$/', '\\1', $path, -1, $count);
 
-        if ($count > 0 && is_file($opath)) {
+        if ( $count > 0 && is_file($opath) ) {
           $mtime = filemtime($opath);
 
           // Whenever orginal source exists and is newer,
           // udpate minified version.
-          if (!is_file($path) || $mtime > filemtime($path)) {
+          if ( !is_file($path) || $mtime > filemtime($path) ) {
             $output = shell_exec("cat $opath | .private/uglifyjs -o $path 2>&1");
 
-            if ($output) {
+            if ( $output ) {
               $output = "[uglifyjs] $output.";
             }
-            elseif (!file_exists($path)) {
+            elseif ( !file_exists($path) ) {
               $output = "[uglifyjs] Error writing output file $path.";
             }
 
-            if ($output) {
+            if ( $output ) {
               \log::write($output, 'Warning');
 
               // Error caught when minifying javascript, rollback to original.
@@ -361,12 +394,12 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
         // When requesting *.png, we search for svg for conversion.
         $opath = preg_replace('/\.png$/', '.svg', $path, -1, $count);
 
-        if ($count > 0 && is_file($opath)) {
+        if ( $count > 0 && is_file($opath) ) {
           $mtime = filemtime($opath);
 
           // Whenever orginal source exists and is newer,
           // udpate minified version.
-          if (!is_file($path) || $mtime > filemtime($path)) {
+          if ( !is_file($path) || $mtime > filemtime($path) ) {
             $res = `/usr/bin/convert -density 72 -background none $opath $path 2>&1`;
 
             @touch($path, $mtime);
@@ -377,14 +410,14 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
         // When requesting *.min.css, minify it from the original source.
         $opath = preg_replace('/\.min(\.css)$/', '\\1', $path, -1, $count);
 
-        if ($count > 0 && is_file($opath)) {
+        if ( $count > 0 && is_file($opath) ) {
           $mtime = filemtime($opath);
 
           $ctime = \cache::get($path);
 
           // Whenever orginal source exists and is newer,
           // udpate minified version.
-          if (!is_file($path) || $mtime > filemtime($path)) {
+          if ( !is_file($path) || $mtime > filemtime($path) ) {
             // Store the offset in cache, enabling a waiting time before HTTP retry.
             \cache::delete($path);
             \cache::set($path, time());
@@ -399,7 +432,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
                   CURLOPT_TIMEOUT => 2
                 )
               , 'success' => function($response, $request) use($path) {
-                  if (@$request['status'] == 200 && $response) {
+                  if ( @$request['status'] == 200 && $response ) {
                     file_put_contents($path, $response);
                   }
                 }
@@ -409,7 +442,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
               ));
           }
 
-          if (!is_file($path)) {
+          if ( !is_file($path) ) {
             $path = $opath;
           }
         }
@@ -423,8 +456,8 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
           preg_match('/^[^\.]+$/', basename($path))) {
           $files = glob("./$path.*");
 
-          foreach ($files as &$file) {
-            if (is_file($file) && $this->handles($file)) {
+          foreach ( $files as &$file ) {
+            if ( is_file($file) && $this->handles($file) ) {
               $path = $file;
               return;
             }
@@ -443,7 +476,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
       return;
     }
 
-    if ($permanant) {
+    if ( $permanant ) {
       header_remove('Pragma');
       header('Cache-Control: max-age=' . FRAMEWORK_RESPONSE_CACHE_PERMANANT, TRUE);
       header('Expires: ' . gmdate(DATE_RFC1123, time() + FRAMEWORK_RESPONSE_CACHE_PERMANANT), TRUE);
@@ -473,7 +506,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     $mime = new \finfo(FILEINFO_MIME_TYPE);
     $mime = $mime->file($path);
 
-    switch (pathinfo($path , PATHINFO_EXTENSION)) {
+    switch ( pathinfo($path , PATHINFO_EXTENSION) ) {
       case 'css':
         $mime = 'text/css; charset=utf-8';
         break;
@@ -509,7 +542,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
         $mime = 'image/svg+xml; charset=utf-8';
         break;
       default:
-        if (!preg_match('/(^image|pdf$)/', $mime)) {
+        if ( !preg_match('/(^image|pdf$)/', $mime) ) {
           $mime = NULL;
         }
         break;
