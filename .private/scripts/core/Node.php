@@ -111,7 +111,7 @@ class Node {
 
           // Error checking
           if ( is_array($content) ) {
-            throw new \PDOException('Node does not support composite array types.');
+            throw new NodeException('Node does not support composite array types.');
           }
 
           // 1. Boolean comparison: true, false
@@ -409,7 +409,8 @@ class Node {
    *
    * @returns Array of Booleans, TRUE on success of specific row, FALSE otherwises.
    *
-   * @throws CoreException thrown when more than one row is selected with the provided keys,
+   * @throws NodeException thrown when $contents did not specify a collection.
+   * @throws NodeException thrown when more than one row is selected with the provided keys,
    *                       and $extendExists is TRUE.
    */
   static function
@@ -428,12 +429,7 @@ class Node {
       }
 
       if ( !isset($row[NODE_FIELD_COLLECTION]) ) {
-        /* Note by Vicary @ 4 Dec, 2012
-            Should discuss whether we should use trigger_error
-            instead of throwing exceptions in all non-fatal cases.
-        */
-        // trigger_error('Data object must specify a collection with property "'.NODE_FIELD_COLLECTION.'".', E_USER_WARNING);
-        throw new exceptions\CoreException('Data object must specify a collection with property "'.NODE_FIELD_COLLECTION.'".');
+        throw new NodeException('Data object must specify a collection with property "'.NODE_FIELD_COLLECTION.'".');
 
         continue;
       }
@@ -467,7 +463,7 @@ class Node {
         $res = node::get($res);
 
         if ( count($res) > 1 ) {
-          throw new exceptions\CoreException('More than one row is selected when extending '.
+          throw new NodeException('More than one row is selected when extending '.
             'current object, please provide ALL keys when calling with $extendExists = TRUE.');
         }
 
@@ -591,6 +587,10 @@ class Node {
    *                   This must exists when $fieldName is specified.
    *
    * @returns TRUE on success, FALSE otherwise;
+   *
+   * @throws NodeException thrown when the call tries to make a virtual collection physical.
+   * @throws NodeException thrown when target table is no virtual column field.
+   * @throws NodeException thrown when no physical field description ($fieldDesc) is given.
    */
   public static function
   /* Boolean */ makePhysical($collection, $fieldName = NULL, $fieldDesc = NULL) {
