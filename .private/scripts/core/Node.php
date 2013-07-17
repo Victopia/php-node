@@ -39,19 +39,19 @@ class Node {
    */
   static function
   /* Array */ get($filter, $fieldsRequired = TRUE, $limit = NULL, $sorter = NULL) {
-    if ($limit !== NULL && (!$limit || !is_int($limit) && !is_array($limit))) {
+    if ( $limit !== NULL && (!$limit || !is_int($limit) && !is_array($limit)) ) {
       return array();
     }
 
     // Defaults string to collections.
-    if (is_string($filter)) {
+    if ( is_string($filter) ) {
       $filter = array(
         NODE_FIELD_COLLECTION => $filter
       );
     }
 
     // Defaults numbers to ID
-    if (is_numeric($filter)) {
+    if ( is_numeric($filter) ) {
       $filter = array(
         'ID' => intval($filter)
       );
@@ -74,16 +74,16 @@ class Node {
     $columns = Database::query("SHOW COLUMNS FROM $tableName;");
     $columns = $columns->fetchAll(\PDO::FETCH_COLUMN, 0);
 
-    if (isset($filter[NODE_FIELD_RAWQUERY])) {
+    if ( isset($filter[NODE_FIELD_RAWQUERY]) ) {
       $rawQuery = (array) $filter[NODE_FIELD_RAWQUERY];
 
       array_walk($rawQuery,
         function($value, $key) use(&$query, &$params) {
-          if (is_int($key)) {
+          if ( is_int($key) ) {
             $query[] = "($value)";
           }
           else
-          if (is_string($key)) {
+          if ( is_string($key) ) {
             $values = \utils::wrapAssoc($value);
 
             $subQuery = array_fill(0, count($values), "$key");
@@ -110,12 +110,12 @@ class Node {
           $escapedField = Database::escape($field);
 
           // Error checking
-          if (is_array($content)) {
+          if ( is_array($content) ) {
             throw new \PDOException('Node does not support composite array types.');
           }
 
           // 1. Boolean comparison: true, false
-          if (is_bool($content)) {
+          if ( is_bool($content) ) {
             $subQuery[] = "$escapedField = ?";
             $params[] = $content;
           }
@@ -125,7 +125,7 @@ class Node {
           if (preg_match('/^(<|<=|==|>=|>)?(\d+)$/', trim($content), $matches) &&
             count($matches) > 2)
           {
-            if (!$matches[1] || $matches[1] == '==') {
+            if ( !$matches[1] || $matches[1] == '==' ) {
               $matches[1] = '=';
             }
 
@@ -153,15 +153,15 @@ class Node {
           else
 
           // 5. NULL types
-          if (is_null($content) || preg_match('/^((?:==|\!=)=?)\s*NULL$/i', trim($content), $matches)) {
+          if ( is_null($content) || preg_match('/^((?:==|\!=)=?)\s*NULL$/i', trim($content), $matches) ) {
             $content = 'IS ' . (@$matches[1][0] == '!' ? 'NOT ' : '') . 'NULL';
             $subQuery[] = "$escapedField $content";
           }
           else
 
           // 6. Plain string.
-          if (is_string($content)) {
-            if (preg_match('/^!\'([^\']+)\'$/', trim($content), $matches)) {
+          if ( is_string($content) ) {
+            if ( preg_match('/^!\'([^\']+)\'$/', trim($content), $matches) ) {
               $subQuery[] = "$escapedField NOT LIKE ?";
               $content = $matches[1];
             }
@@ -176,7 +176,7 @@ class Node {
         /* Note by Vicary @ 4 Dec, 2012
            Inclusive search in real columns, within the same column.
         */
-        if ($subQuery) {
+        if ( $subQuery ) {
           $query[] = '(' . implode(' OR ', $subQuery) . ')';
         }
       });
@@ -190,7 +190,7 @@ class Node {
     /* Merge $filter into SQL statement, end of. */
 
     /* Merge $sorter into SQL statement. */
-      if (is_array($sorter)) {
+      if ( is_array($sorter) ) {
         $columnsSorter = \utils::isAssoc($sorter) ?
           array_select($sorter, $columns) :
           array_intersect($sorter, $columns);
@@ -200,9 +200,9 @@ class Node {
 
         array_walk($columnsSorter, function($direction, $field) use(&$query, $tableName) {
             // Numeric key, swap if supplied array-value as field, defaulting to ascending order.
-            if (is_int($field)) {
+            if ( is_int($field) ) {
               // ... or simply do nothing on unknown cases.
-              if (!is_string($direction)) {
+              if ( !is_string($direction) ) {
                 return;
               }
 
@@ -213,7 +213,7 @@ class Node {
             $query[] = Database::escape($field, $tableName) . ($direction ? ' ASC' : ' DESC');
           });
 
-        if ($query) {
+        if ( $query ) {
           $queryString.= ' ORDER BY ' . implode(', ', $query);
         }
 
@@ -224,10 +224,10 @@ class Node {
     $rowCount = Database::fetchField('SELECT COUNT(*) FROM ' . Database::escape($tableName) . $queryString, $params);
     $rowOffset = 0;
 
-    if (is_int($limit)) {
+    if ( is_int($limit) ) {
       $limit = array(0, $limit);
     }
-    elseif (is_array($limit)) {
+    elseif ( is_array($limit) ) {
       $limit = array_slice($limit, 0, 2) + array(0, 0);
     }
 
@@ -238,8 +238,8 @@ class Node {
 
       $res = Database::select($tableName, $selectField, "$queryString LIMIT $rowOffset, $fetchSize", $params);
 
-      foreach ($res as $key => &$row) {
-        if (isset($row[NODE_FIELD_VIRTUAL])) {
+      foreach ( $res as $key => &$row ) {
+        if ( isset($row[NODE_FIELD_VIRTUAL]) ) {
           $content = json_decode($row[NODE_FIELD_VIRTUAL], true);
 
           unset($row[NODE_FIELD_VIRTUAL]); // unset beforehand, to preserve the same name in virtual field
@@ -249,12 +249,12 @@ class Node {
           unset($name, $value, $content);
         }
 
-        if ($tableName !== NODE_COLLECTION) {
+        if ( $tableName !== NODE_COLLECTION ) {
           $row[NODE_FIELD_COLLECTION] = $tableName;
         }
 
         /* Start filtering. */
-        foreach ($filter as $field => $expr) {
+        foreach ( $filter as $field => $expr ) {
           // Reuse $expr as it's own result here, do not confuse with the name.
           $expr = self::filterWalker($expr, array(
               'row' => $row,
@@ -262,7 +262,7 @@ class Node {
               'fieldsRequired' => $fieldsRequired
             ));
 
-          if (!$expr) {
+          if ( !$expr ) {
             $row = NULL;
             break;
           }
@@ -270,11 +270,11 @@ class Node {
 
         // If the row passes the filter, add it.
         // if ( $row !== NULL ) {
-        if ($row) {
-          if ($limit !== NULL && $limit[0] > 0) {
+        if ( $row ) {
+          if ( $limit !== NULL && $limit[0] > 0 ) {
             $limit[0]--;
           }
-          elseif ($limit === NULL || $limit[1] > 0) {
+          elseif ( $limit === NULL || $limit[1] > 0 ) {
             $result[] = $row;
 
             if ( $limit[1] > 0 ) {
@@ -289,7 +289,7 @@ class Node {
     }
 
     // Skip default nodeSorter when custom $sorter is provided.
-    if ($sorter === NULL) {
+    if ( $sorter === NULL ) {
       usort($result, array('self', 'nodeSorter'));
     }
 
@@ -308,7 +308,7 @@ class Node {
 
     $value = &$data['row'][$field];
 
-    if (is_array($content)) {
+    if ( is_array($content) ) {
       // OR operation here.
 
       $content = array_map(function($content) use($data) {
@@ -319,7 +319,7 @@ class Node {
     }
     else {
       // Normalize numeric values into exact match.
-      if (is_numeric($content)) {
+      if ( is_numeric($content) ) {
         $content = "==$content";
       }
 
@@ -366,17 +366,17 @@ class Node {
     if ( $itemIndex === 0 ) {
       $itemIndex = 'ID';
 
-      if (!isset($itemA[$itemIndex])) {
+      if ( !isset($itemA[$itemIndex]) ) {
         $itemIndex = array_keys($itemA);
 
-        foreach ($itemIndex as $key) {
-          if (array_key_exists($key, $itemB)) {
+        foreach ( $itemIndex as $key ) {
+          if ( array_key_exists($key, $itemB) ) {
             $itemIndex = $key;
             break;
           }
         }
 
-        if (is_array($itemIndex)) {
+        if ( is_array($itemIndex) ) {
           $itemIndex = $itemIndex[0];
         }
       }
@@ -414,27 +414,27 @@ class Node {
    */
   static function
   /* Array */ set($contents = NULL, $extendExists = FALSE) {
-    if (!$contents) {
+    if ( !$contents ) {
       return array();
     }
 
-    if (Utility::isAssoc($contents)) {
-      $contents = array($contents);
-    }
+    $contents = Utility::wrapAssoc($contents);
 
     $result = array();
 
-    foreach ($contents as $row) {
-      if (!is_array($row) || !count($row))
+    foreach ( $contents as $row ) {
+      if ( !is_array($row) || !$row ) {
         continue;
+      }
 
-      if (!isset($row[NODE_FIELD_COLLECTION])) {
+      if ( !isset($row[NODE_FIELD_COLLECTION]) ) {
         /* Note by Vicary @ 4 Dec, 2012
             Should discuss whether we should use trigger_error
             instead of throwing exceptions in all non-fatal cases.
         */
         // trigger_error('Data object must specify a collection with property "'.NODE_FIELD_COLLECTION.'".', E_USER_WARNING);
         throw new exceptions\CoreException('Data object must specify a collection with property "'.NODE_FIELD_COLLECTION.'".');
+
         continue;
       }
 
@@ -456,7 +456,7 @@ class Node {
       // Note that this process will break when one of the primary key
       // is not provided inside $content object, thus unable to search
       // the exact row.
-      if ($extendExists === TRUE) {
+      if ( $extendExists === TRUE ) {
         $res = array(
           NODE_FIELD_COLLECTION => $tableName === NODE_COLLECTION ?
             $row[NODE_FIELD_COLLECTION] : $tableName
@@ -466,12 +466,12 @@ class Node {
 
         $res = node::get($res);
 
-        if (count($res) > 1) {
+        if ( count($res) > 1 ) {
           throw new exceptions\CoreException('More than one row is selected when extending '.
             'current object, please provide ALL keys when calling with $extendExists = TRUE.');
         }
 
-        if ($res) {
+        if ( $res ) {
           $row += array_select($res[0], array_diff(array_keys($res[0]), $cols));
         }
 
@@ -481,9 +481,9 @@ class Node {
       // Real array to be passed down Database::upsert().
       $data = array();
 
-      foreach ($row as $field => $contents) {
+      foreach ( $row as $field => $contents ) {
         // Physical columns exists, pass in.
-        if ($field !== NODE_FIELD_VIRTUAL && in_array($field, array_merge($keys, $cols))) {
+        if ( $field !== NODE_FIELD_VIRTUAL && in_array($field, array_merge($keys, $cols)) ) {
           $data[$field] = $contents;
 
           unset($row[$field]);
@@ -491,18 +491,18 @@ class Node {
       }
 
       // Do not pass in @collection as data row below, physical tables only.
-      if (@$row[NODE_FIELD_COLLECTION] !== NODE_COLLECTION) {
+      if ( @$row[NODE_FIELD_COLLECTION] !== NODE_COLLECTION ) {
         unset($row[NODE_FIELD_COLLECTION]);
       }
 
       // Encode the rest columns and put inside virtual field.
       // Skip the whole action when `@contents` columns doesn't exists.
-      if (in_array(NODE_FIELD_VIRTUAL, $cols)) {
+      if ( in_array(NODE_FIELD_VIRTUAL, $cols) ) {
         // Silently swallow json_encode() errors.
         $data[NODE_FIELD_VIRTUAL] = @json_encode($row);
 
         // Store nothing on encode error, or there is nothing to be stored.
-        if (!$data[NODE_FIELD_VIRTUAL]) {
+        if ( !$data[NODE_FIELD_VIRTUAL] ) {
           unset($data[NODE_FIELD_VIRTUAL]);
         }
       }
@@ -532,16 +532,16 @@ class Node {
 
     $affectedRows = 0;
 
-    foreach ($res as $key => $row) {
+    foreach ( $res as $key => $row ) {
       $tableName = self::resolveCollection($row[NODE_FIELD_COLLECTION]);
 
       $fields = Database::getFields($tableName, array('PRI', 'UNI'));
 
       $deleteKeys = array();
 
-      foreach ($fields as &$field) {
-        if (array_key_exists($field, $row)) {
-          if (!is_array(@$deleteKeys[$field])) {
+      foreach ( $fields as &$field ) {
+        if ( array_key_exists($field, $row) ) {
+          if ( !is_array(@$deleteKeys[$field]) ) {
             $deleteKeys[$field] = array();
           }
 
@@ -595,25 +595,25 @@ class Node {
   public static function
   /* Boolean */ makePhysical($collection, $fieldName = NULL, $fieldDesc = NULL) {
     // Create table
-    if (!Database::hasTable($collection)) {
+    if ( !Database::hasTable($collection) ) {
       throw new NodeException('Table creation is not supported in this version.');
 
       // Mimic result after table creation.
-      if ($fieldName === NULL) {
+      if ( $fieldName === NULL ) {
         return TRUE;
       }
     }
 
     $fields = Database::getFields($collection);
 
-    if (!in_array(NODE_FIELD_VIRTUAL, $fields)) {
+    if ( !in_array(NODE_FIELD_VIRTUAL, $fields) ) {
       throw new NodeException( 'Specified table `'
                              . $collection
                              . '` does not support virtual fields, no action is taken.'
                              );
     }
 
-    if ($fieldName !== NULL && !$fieldDesc) {
+    if ( $fieldName !== NULL && !$fieldDesc ) {
       throw new NodeException('You must specify $fieldDesc when adding physical column.');
     }
 
@@ -623,7 +623,7 @@ class Node {
                           . $field . ' ' . str_replace(';', '', $fieldDesc)
                           );
 
-    if ($res === FALSE) {
+    if ( $res === FALSE ) {
       return FALSE;
     }
 
@@ -640,7 +640,7 @@ class Node {
 
     $res->setFetchMode(\PDO::FETCH_ASSOC);
 
-    foreach ($res as $row) {
+    foreach ( $res as $row ) {
       $contents = json_decode($row[NODE_FIELD_VIRTUAL], true);
 
       $row[$fieldName] = $contents[$fieldName];
@@ -650,7 +650,7 @@ class Node {
       $row[NODE_FIELD_VIRTUAL] = json_encode($contents);
       $row[NODE_FIELD_COLLECTION] = $collection;
 
-      if (self::set($row) === FALSE) {
+      if ( self::set($row) === FALSE ) {
         $migrated = FALSE;
       }
     }
