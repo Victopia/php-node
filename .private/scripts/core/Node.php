@@ -428,7 +428,7 @@ class Node {
         continue;
       }
 
-      if ( !isset($row[NODE_FIELD_COLLECTION]) ) {
+      if ( !trim(@$row[NODE_FIELD_COLLECTION]) ) {
         throw new NodeException('Data object must specify a collection with property "'.NODE_FIELD_COLLECTION.'".');
 
         continue;
