@@ -598,23 +598,24 @@ class Utility {
    */
   static function filesFix() {
     if ( @$_FILES ) {
-      foreach ($_FILES as $key => &$file) {
-        if ( is_array($file['name']) ) {
-          $result = Array();
+      $output = array();
 
-          foreach ($file['name'] as $index => $name) {
-            $result[$index] = Array(
-              'name' => $name,
-              'type' => $file['type'][$index],
-              'tmp_name' => $file['tmp_name'][$index],
-              'error' => $file['error'][$index],
-              'size' => $file['size'][$index]
-            );
+      foreach ($_FILES as $fileKey => &$input) {
+        $recursor = function($input, &$output) use(&$fileKey, &$recursor) {
+          if ( is_array($input) ) {
+            foreach ( $input as $key => $value ) {
+              $recursor($value, $output[$key]);
+            }
           }
+          else {
+            $output[$fileKey] = $input;
+          }
+        };
 
-          $file = $result;
-        }
+        $recursor($input, $output);
       }
+
+      $_FILES = $output;
     }
   }
 
