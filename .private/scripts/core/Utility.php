@@ -233,9 +233,16 @@ class Utility {
    * Case-insensitive version of array_search.
    */
   static function arraySearchIgnoreCase($needle, $haystack) {
-    $keys = array_map('strtolower', array_keys($haystack));
+    return array_search(strtolower($needle), array_map('strtolower', $haystack));
+  }
 
-    return array_search(strtolower($needle), $keys);
+  /**
+   * Case-insensitive version of array_key_exists.
+   */
+  static function arrayKeyExistsIgnoreCase($key, $search) {
+    $keys = array_map('strtolower', array_keys($search));
+
+    return array_key_exists(strtolower($key), $keys);
   }
 
   /**
