@@ -225,14 +225,14 @@ class Utility {
   /**
    * Case-insensitve version of in_array.
    */
-  static function inArrayIgnoreCase(&$needle, &$haystack) {
+  static function inArrayIgnoreCase($needle, $haystack) {
     return self::arraySearchIgnoreCase($needle, $haystack) !== FALSE;
   }
 
   /**
    * Case-insensitive version of array_search.
    */
-  static function arraySearchIgnoreCase($needle, &$haystack) {
+  static function arraySearchIgnoreCase($needle, $haystack) {
     $keys = array_map('strtolower', array_keys($haystack));
 
     return array_search(strtolower($needle), $keys);
