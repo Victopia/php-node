@@ -223,6 +223,17 @@ class Utility {
   }
 
   /**
+   *
+   */
+  static function arrayDiffIgnoreCase() {
+    $arrays = array_map(function($input) {
+      return array_map('strtolower', array_filter($input, 'is_string')) + $input;
+    }, func_get_args());
+
+    return call_user_func_array('array_diff', $arrays);
+  }
+
+  /**
    * Case-insensitve version of in_array.
    */
   static function inArrayIgnoreCase($needle, $haystack) {
@@ -233,7 +244,10 @@ class Utility {
    * Case-insensitive version of array_search.
    */
   static function arraySearchIgnoreCase($needle, $haystack) {
-    return array_search(strtolower($needle), array_map('strtolower', $haystack));
+    // Only lower case strings, then adding non-string key-value pairs back.
+    $haystack = array_map('strtolower', array_filter($haystack, 'is_string')) + $haystack;
+
+    return array_search(strtolower($needle), $haystack);
   }
 
   /**
@@ -528,8 +542,7 @@ class Utility {
    *
    * A date of zero timestamp will be returned on invalid.
    */
-  static function sanitizeDate($value, $format = '%Y-%m-%d')
-  {
+  static function sanitizeDate($value, $format = '%Y-%m-%d') {
     if ( strptime($value, $format) === FALSE ) {
       return strftime($format, 0);
     }
@@ -605,24 +618,26 @@ class Utility {
    */
   static function filesFix() {
     if ( @$_FILES ) {
-      $output = array();
+      foreach ($_FILES as &$file){
+        $output = array();
 
-      foreach ($_FILES as $fileKey => &$input) {
-        $recursor = function($input, &$output) use(&$fileKey, &$recursor) {
-          if ( is_array($input) ) {
-            foreach ( $input as $key => $value ) {
-              $recursor($value, $output[$key]);
+        foreach ($file as $fileKey => &$input) {
+          $recursor = function($input, &$output) use(&$fileKey, &$recursor) {
+            if ( is_array($input) ) {
+              foreach ( $input as $key => $value ) {
+                $recursor($value, $output[$key]);
+              }
             }
-          }
-          else {
-            $output[$fileKey] = $input;
-          }
-        };
+            else {
+              $output[$fileKey] = $input;
+            }
+          };
 
-        $recursor($input, $output);
+          $recursor($input, $output);
+        }
+
+        $file = $output;
       }
-
-      $_FILES = $output;
     }
   }
 
