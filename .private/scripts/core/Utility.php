@@ -601,6 +601,8 @@ class Utility {
   }
 
   /**
+   * @deprecated
+   *
    * Call a WebService internally.
    *
    * @param {string} $service Name of the service.
@@ -610,6 +612,8 @@ class Utility {
    * @return Whatever the method returns, or FALSE in case of method not exists.
    */
   static function callService($service, $method, $parameters = array()) {
+    triggerDeprecate('framework\Service::call');
+
     return \service::call($service, $method, $parameters);
   }
 
