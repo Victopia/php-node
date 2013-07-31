@@ -86,11 +86,13 @@ class Node {
           if ( is_string($key) ) {
             $values = \utils::wrapAssoc($value);
 
-            $subQuery = array_fill(0, count($values), "$key");
-            $subQuery = '(' . implode(' OR ', $subQuery) . ')';
+            if ( $values ) {
+              $subQuery = array_fill(0, count($values), "$key");
+              $subQuery = '(' . implode(' OR ', $subQuery) . ')';
 
-            $query[] = $subQuery;
-            $params = array_merge($params, $values);
+              $query[] = $subQuery;
+              $params = array_merge($params, $values);
+            }
           }
         });
 
