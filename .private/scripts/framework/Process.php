@@ -138,8 +138,8 @@ class Process {
       array_walk($res, function($process) {
         if ( @$process['pid'] && function_exists('posix_kill') ) {
           \log::write("Sending SIGKILL to pid $process[pid].", 'Debug');
-          posix_kill($process['pid'], 2); // SIGINT
-          posix_kill($process['pid'], 15); // SIGTERM
+          // posix_kill($process['pid'], 2); // SIGINT
+          posix_kill(-$process['pid'], 15); // SIGTERM
         }
       });
     }
