@@ -440,15 +440,18 @@ class Node {
 
       // Get physical columns of target collection,
       // merges into SQL for physical columns.
-      $res = Database::fetchArray("SHOW COLUMNS FROM `$tableName`;");
+      $res = Database::getFields($tableName, NULL, FALSE);
 
       // This is used only when $extendExists is TRUE,
       // contains primary keys and unique keys for retrieving
       // the exact existing object.
-      $keys = array_map(prop('Field'), array_filter($res, propIn('Key', array('PRI', 'UNI'))));
+      $keys = array_filter($res, propHas('Key', array('PRI', 'UNI')));
 
       // Normal columns for merging SQL statements.
-      $cols = array_diff(array_map(prop('Field'), $res), $keys);
+      $cols = array_diff_key($res, $keys);
+
+      $keys = array_keys($keys);
+      $cols = array_keys($cols);
 
       // Composite a filter and call self::get() for the existing object.
       // Note that this process will break when one of the primary key
@@ -479,10 +482,10 @@ class Node {
       // Real array to be passed down Database::upsert().
       $data = array();
 
-      foreach ( $row as $field => $contents ) {
+      foreach ( $row as $field => $fieldContents ) {
         // Physical columns exists, pass in.
         if ( $field !== NODE_FIELD_VIRTUAL && in_array($field, array_merge($keys, $cols)) ) {
-          $data[$field] = $contents;
+          $data[$field] = $fieldContents;
 
           unset($row[$field]);
         }
@@ -508,7 +511,7 @@ class Node {
       $result[] = Database::upsert($tableName, $data);
     }
 
-    if ( count($result) == 1 ) {
+    if ( count($contents) == 1 ) {
       $result = $result[0];
     }
 
@@ -525,8 +528,8 @@ class Node {
    * @returns The total number of affected rows.
    */
   static function
-  /* int */ delete($filter = NULL, $fieldsRequired = FALSE) {
-    $res = self::get($filter, $fieldsRequired);
+  /* int */ delete($filter = NULL, $fieldsRequired = FALSE, $limit = NULL) {
+    $res = self::get($filter, $fieldsRequired, $limit);
 
     $affectedRows = 0;
 
