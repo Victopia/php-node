@@ -14,6 +14,8 @@ class Database {
 
   private static $preparedStatments = array();
 
+  private static $schemaCache = array();
+
   private static /*DatabaseOptions*/ $options;
 
   //----------------------------------------------------------------------------------------
@@ -87,7 +89,45 @@ class Database {
 
   public static function
   /* bool */ isConnected() {
-    return @self::getConnection() !== NULL;
+    return @self::getConnection() !== NULL && self::ping();
+  }
+
+  public static function
+  /* bool */ ping() {
+    try {
+      $res = self::fetchField('SELECT 1');
+    }
+    catch (\PDOException $e) {
+      return FALSE;
+    }
+
+    return @$res[0][0] == 1;
+  }
+
+  /**
+   * Attempt to create a new database connection,
+   * if a current connection exists, abandon it.
+   *
+   * @param {DatabaseOptions} Optionally provide new connection
+   *                          options when reconnecting.
+   */
+  public static function
+  /* bool */ reconnect($dbOptions = NULL) {
+    self::$con = NULL;
+
+    // Temporarily apply new options
+    if ( $dbOptions && $dbOptions instanceof DatabaseOptions ) {
+      list($dbOptions, self::$options) = array(self::$options, $dbOptions);
+    }
+
+    $con = self::getConnection();
+
+    // Swap them back afterwards
+    if ( $dbOptions && $dbOptions instanceof DatabaseOptions ) {
+      list($dbOptions, self::$options) = array(self::$options, $dbOptions);
+    }
+
+    return $con !== NULL;
   }
 
   /**
@@ -144,53 +184,105 @@ class Database {
   }
 
   /**
+   * Check whether specified table exists or not.
+   *
+   * @param $table String that carrries the name of target table.
+   *
+   * @returns TRUE on table exists, FALSE otherwise.
+   */
+  public static function
+  /* Boolean */ hasTable($table) {
+    $cache = &self::$schemaCache;
+
+    if ( isset($cache['timestamp']) &&
+         $cache['timestamp'] < strtotime('-30min') ) {
+      unset($cache['collections']);
+
+      $cache['timestamp'] = microtime(1);
+    }
+
+    if ( !isset($cache['collections']) ) {
+      $tables = (array) @self::fetchArray('SHOW TABLES', NULL, \PDO::FETCH_COLUMN);
+
+      $cache['collections'] = array_fill_keys($tables, array());
+    }
+
+    $tables = (array) @$cache['collections'];
+
+    return array_key_exists($table, $tables);
+  }
+
+  /**
    * Gets fields with specified key type.
    */
   public static function
   /* Array */ getFields($tableName, $key = NULL, $nameOnly = TRUE) {
     $tables = \utils::wrapAssoc($tableName);
 
-    $tables = array_map(function($tableName) use($key, $nameOnly) {
-      if (!Database::hasTable($tableName)) {
+    $cache = &self::$schemaCache;
+
+    // Clear the cache on expire
+    if ( @$cache['timestamp'] < strtotime('-30min') ) {
+      unset($cache['collections']);
+
+      $cache['timestamp'] = microtime(1);
+    }
+
+    array_walk($tables, function($tableName) use(&$cache) {
+      if ( !Database::hasTable($tableName) ) {
         throw new \PDOException("Table `$tableName` doesn't exists!");
       }
 
-      $query = "SHOW COLUMNS FROM $tableName";
-
-      if ($key !== NULL) {
-        $key = \utils::wrapAssoc($key);
-
-        $query.= ' WHERE `key` IN (' . \utils::fillArray($key) . ')';
+      if ( !isset($cache['collections'][$tableName]) ) {
+        return;
       }
 
-      $query = Database::query($query, $key);
+      $res = Database::fetchArray("SHOW COLUMNS FROM $tableName");
 
-      return (array) ($query ?
-          ( $nameOnly ?
-            $query->fetchAll(\PDO::FETCH_COLUMN, 0) :
-            $query->fetchAll(\PDO::FETCH_ASSOC) )
-          : NULL
-          );
-    }, $tables);
+      $res = array_combine(
+          array_map(prop('Field'), $res)
+        , array_map(removes('Field'), $res)
+        );
 
-    $tables = array_reduce($tables, function($result, $input) {
-      foreach ($input as &$field) {
-        switch ($field) {
-          case 'YES':
-            $field = TRUE;
-            break;
+      $res = array_map(function($info) {
+        $info['Key'] = preg_split('/\s*,\s*/', $info['Key']);
 
-          case 'NO':
-            $field = FALSE;
-            break;
+        foreach ($info as &$value) {
+          switch ($value) {
+            case 'YES':
+              $value = TRUE;
+              break;
+
+            case 'NO':
+              $value = FALSE;
+              break;
+          }
         }
-      }
 
-      return array_merge((array) $result, (array) $input);
+        return $info;
+      }, $res);
+
+      $cache['collections'][$tableName] = $res;
     });
 
-    if ($nameOnly) {
-      $tables = array_unique($tables);
+    $tables = array_map(function($tableName) use($cache, $key, $nameOnly) {
+      $cache = $cache['collections'][$tableName];
+
+      if ( $key !== NULL ) {
+        $key = \utils::wrapAssoc($key);
+
+        $cache = array_filter($cache, propHas('Key', $key));
+      }
+
+      return $cache;
+    }, $tables);
+
+    $tables = array_reduce($tables, function($result, $fields) {
+      return array_merge($result, (array) $fields);
+    }, array());
+
+    if ( $nameOnly ) {
+      $tables = array_unique(array_keys($tables));
     }
 
     return $tables;
@@ -305,17 +397,13 @@ class Database {
   }
 
   /**
-   * Check whether specified table exists or not.
-   *
-   * @param $table String that carrries the name of target table.
-   *
-   * @returns TRUE on table exists, FALSE otherwise.
+   * Truncate target table.
    */
   public static function
-  /* Boolean */ hasTable($table) {
-    $res = self::fetchArray('SHOW TABLES LIKE ?', array($table));
+  /* Mixed */ truncateTable($tableName) {
+    $tableName = self::escape($tableName);
 
-    return count($res) > 0;
+    return (bool) self::query("TRUNCATE TABLE $tableName");
   }
 
   /**
@@ -519,7 +607,9 @@ class Database {
 
   public static function
   /* void */ lockTables($tables) {
-    $tables = (array) $tables;
+    if ( !is_array($tables) ) {
+      $tables = func_get_args();
+    }
 
     foreach ($tables as &$table) {
       if (!preg_match('/(?:READ|WRITE)\s*$/', $table)) {
