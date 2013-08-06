@@ -20,7 +20,7 @@
 //--------------------------------------------------
 
 function compose() {
-	$funcs = func_get_args();
+  $funcs = func_get_args();
 
   return function() use($funcs) {
     $args = func_get_args();
@@ -34,14 +34,14 @@ function compose() {
 }
 
 function partial() {
-	$part = func_get_args();
-	$func = array_shift($part);
+  $part = func_get_args();
+  $func = array_shift($part);
 
-	return function() use($func, $part) {
-		$args = array_merge($part, func_get_args());
+  return function() use($func, $part) {
+    $args = array_merge($part, func_get_args());
 
-		return call_user_func_array($func, $args);
-	};
+    return call_user_func_array($func, $args);
+  };
 }
 
 function funcAnd($inputA, $inputB) {
@@ -94,13 +94,13 @@ function isNot($value, $strict = FALSE) {
 }
 
 function prop($name) {
-	return function ($object) use($name) {
-		return @$object[$name];
-	};
+  return function ($object) use($name) {
+    return @$object[$name];
+  };
 }
 
 function propIs($prop, $value, $strict = FALSE) {
-	return propIn($prop, (array) $value, $strict);
+  return propIn($prop, (array) $value, $strict);
 }
 
 function propIsNot($prop, $value, $strict = FALSE) {
@@ -108,31 +108,63 @@ function propIsNot($prop, $value, $strict = FALSE) {
 }
 
 function propIn($prop, array $values, $strict = FALSE) {
-	return function($object) use($prop, $values, $strict) {
-		return in_array($object[$prop], $values, $strict);
-	};
+  return function($object) use($prop, $values, $strict) {
+    return in_array($object[$prop], $values, $strict);
+  };
 }
 
 function propInNot($prop, array $values, $strict = FALSE) {
   return compose('not', propIn($prop, $values, $strict));
 }
 
+/**
+ * This differs from propIn() only when target property
+ * is an array, this returns TRUE when at least one of
+ * the contents in targert property matches $values,
+ * while propIn() does full array equality comparison.
+ *
+ * @param {string} $prop Target property.
+ * @param {array} $values Array of values to match against.
+ * @param {bool} $strict Whether to perform a strict comparison or not.
+ *
+ * @returns {Closure} A function that returns TRUE on
+ *                    at least one matches, FALSE othereise.
+ */
+function propHas($prop, array $values, $strict = FALSE) {
+  return function($object) use($prop, $values, $strict) {
+    $prop = \utils::wrapAssoc(@$object[$prop]);
+
+    $prop = array_map(function($prop) use($values, $strict) {
+      return in_array($prop, $values, $strict);
+    }, $prop);
+
+    return in_array(TRUE, $prop, TRUE);
+  };
+}
+
 function func($name, array $args = array()) {
-	return function ($object) use($name, $args) {
-		return call_user_func(array($object, $name), $args);
-	};
+  return function ($object) use($name, $args) {
+    if (is_array($object)) {
+      $func = @$object[$name];
+    }
+    else {
+      $func = array($object, $name);
+    }
+
+    return call_user_func_array($func, $args);
+  };
 }
 
 function funcEquals($name, $value, array $args = array(), $strict = FALSE) {
-	return funcIn($name, (array) $value, $args, $strict);
+  return funcIn($name, (array) $value, $args, $strict);
 }
 
 function funcIn($name, array $values, array $args = array(), $strict = FALSE) {
-	return function($object) use($name, $values, $args, $strict) {
-		$ret = call_user_func_array($object, $name, $args);
+  return function($object) use($name, $values, $args, $strict) {
+    $ret = call_user_func_array($object, $name, $args);
 
-		return in_array($ret, $values, $strict);
-	};
+    return in_array($ret, $values, $strict);
+  };
 }
 
 function remove($names, &$object) {
@@ -149,14 +181,14 @@ function remove($names, &$object) {
  * 2. remove(array($field1, $field2))
  */
 function removes($name) {
-	if (!is_array($name)) {
-		$name = func_get_args();
-	}
+  if (!is_array($name)) {
+    $name = func_get_args();
+  }
 
-	return function($object) use($name) {
-	  remove($name, $object);
-	  return $object;
-	};
+  return function($object) use($name) {
+    remove($name, $object);
+    return $object;
+  };
 }
 
 //--------------------------------------------------
@@ -271,15 +303,41 @@ function append($suffix, $object) {
 
 function appends($suffix, $prop = NULL) {
   if ($prop === NULL) {
-  	return function($object) use($suffix) {
-  		return append($suffix, $object);
-  	};
+    return function($object) use($suffix) {
+      return append($suffix, $object);
+    };
   }
   else {
     return function($object) use($suffix, $prop) {
       @$object[$prop] = append($suffix, @$object[$prop]);
 
       return $object;
+    };
+  }
+}
+
+function startsWith($prefix, $ignoreCase = FALSE) {
+  if ( $ignoreCase ) {
+    return function($object) use($prefix) {
+      return strcasecmp(substr($object, 0, strlen($prefix)), $prefix) === 0;
+    };
+  }
+  else {
+    return function($object) use($prefix) {
+      return strcmp(substr($object, 0, strlen($prefix)), $prefix) === 0;
+    };
+  }
+}
+
+function endsWith($suffix, $ignoreCase = FALSE) {
+  if ( $ignoreCase ) {
+    return function($object) use($prefix) {
+      return strcasecmp(substr($object, -strlen($suffix)), $suffix) === 0;
+    };
+  }
+  else {
+    return function($object) use($prefix) {
+      return strcmp(substr($object, -strlen($suffix)), $suffix) === 0;
     };
   }
 }
@@ -330,35 +388,35 @@ function maps(/* callable */ $callback) {
  * Factory of functions that wrap provided $item with an array under property $name.
  */
 function wraps($name) {
-	return function ($item) {
-		return array($name => $item);
-	};
+  return function ($item) {
+    return array($name => $item);
+  };
 }
 
 /**
  * Transform hash arrays into a numeric array in [key, value] pairs.
  */
 function pairs($list) {
-	$result = array();
+  $result = array();
 
-	foreach ($list as $key => $value) {
-		$result[] = array($key, $value);
-	}
+  foreach ($list as $key => $value) {
+    $result[] = array($key, $value);
+  }
 
-	return $result;
+  return $result;
 }
 
 /**
  * Transform key-value pairs into hash arrays.
  */
 function object($list) {
-	$result = array();
+  $result = array();
 
-	foreach ($list as $value) {
-		$result[$value[0]] = @$value[1];
-	}
+  foreach ($list as $value) {
+    $result[$value[0]] = @$value[1];
+  }
 
-	return $result;
+  return $result;
 }
 
 //--------------------------------------------------
@@ -368,20 +426,20 @@ function object($list) {
 //--------------------------------------------------
 
 if (!function_exists('array_select')) {
-	function array_select($list, array $keys) {
-		$result = array();
+  function array_select($list, array $keys) {
+    $result = array();
 
-		foreach ($list as $key => &$value) {
-			if (in_array($key, $keys, TRUE)) {
-				$result[$key] = &$value;
-			}
+    foreach ($list as $key => &$value) {
+      if (in_array($key, $keys, TRUE)) {
+        $result[$key] = &$value;
+      }
 
-			// Remove the copied value to save memory.
-			unset($list[$key]);
-		}
+      // Remove the copied value to save memory.
+      unset($list[$key]);
+    }
 
-		return $result;
-	}
+    return $result;
+  }
 }
 
 if (!function_exists('array_remove')) {
@@ -415,9 +473,9 @@ if (!function_exists('array_seldef')) {
 }
 
 if (!function_exists('array_filter_keys')) {
-	function array_filter_keys($list, /* callable */ $func) {
-		return array_select($list, array_filter(array_keys($list), $func));
-	}
+  function array_filter_keys($list, /* callable */ $func) {
+    return array_select($list, array_filter(array_keys($list), $func));
+  }
 }
 
 //--------------------------------------------------
@@ -451,19 +509,19 @@ function seldef(array $keys, $list, /* callable */ $filter = NULL) {
 //--------------------------------------------------
 
 function isdir() {
-	return function($file) {
-		return is_dir($file);
-	};
+  return function($file) {
+    return is_dir($file);
+  };
 }
 
 function isfile() {
-	return function($file) {
-		return is_file($file);
-	};
+  return function($file) {
+    return is_file($file);
+  };
 }
 
 function isexecutable() {
-	return function($file) {
-		return is_executable($file);
-	};
+  return function($file) {
+    return is_executable($file);
+  };
 }
