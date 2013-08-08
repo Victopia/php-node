@@ -53,7 +53,7 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
     $path = urldecode($path);
 
     // Resolve target service and apply appropiate parameters
-    preg_match('/^([^\/]+)\/([^\/\?,]+)(\/[^\?]+)?/', $path, $matches);
+    preg_match('/^([^\/]+)\/([^\/\?,]+)(\/[^\?]+)?\/?/', $path, $matches);
 
     // Chain off to 404 instead of the original "501 Method Not Allowed".
     if (count($matches) < 3) {
