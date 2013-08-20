@@ -123,7 +123,7 @@ class Utility {
    */
   static function isURL($value) {
     // SCHEME
-    $urlregex = '^(file|https?|ftps?|php|zlib|data|glob|phar|ssh2|ogg|expect)\:\/\/';
+    $urlregex = '^(?:(?:file|https?|ftps?|php|zlib|data|glob|phar|ssh2|ogg|expect)\:)?\/\/\/?';
 
     // USER AND PASS (optional)
     $urlregex .= '([a-z0-9+!*(),;?&=$_.-]+(\:[a-z0-9+!*(),;?&=$_.-]+)?@)?';
