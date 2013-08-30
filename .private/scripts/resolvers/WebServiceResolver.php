@@ -89,7 +89,7 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
 
     unset($matches);
 
-    // Allow constants and primitive values on REST requests
+    // Allow intelligible primitive values on REST requests
     $parameters = array_map(function($value) {
       if (preg_match('/^\:([\d\w]+)$/', $value, $matches)) {
         if (strcasecmp(@$matches[1], 'true') == 0) {
@@ -100,12 +100,6 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
         }
         elseif (strcasecmp(@$matches[1], 'null') == 0) {
           $value = NULL;
-        }
-        elseif (!defined(@$matches[1])) {
-          throw new \framework\exceptions\ResolverException('Error resolving web service parameters, undefined constant ' . $matches[1]);
-        }
-        else {
-          $value = constant(@$matches[1]);
         }
       }
 
@@ -165,7 +159,9 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
     }
 
     // Access log
-    \log::write("[WebService] $classname->$function", 'Access', array_filter($logContext));
+    if (FRAMEWORK_ENVIRONMENT == 'debug' || !\utils::isLocal()) {
+      \log::write("[WebService] $classname->$function", 'Access', array_filter($logContext));
+    }
 
     unset($logContext);
 
