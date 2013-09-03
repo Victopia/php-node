@@ -87,6 +87,18 @@ class Database {
     return self::$con;
   }
 
+  /**
+   * Explicitly releases the current database connection.
+   *
+   * If there is no active connection, nothing will happen.
+   */
+  public static function
+  /* void */ disconnect() {
+    if ( self::isConnected() ) {
+      self::$con = NULL;
+    }
+  }
+
   public static function
   /* bool */ isConnected() {
     return @self::getConnection() !== NULL && self::ping();
