@@ -251,12 +251,19 @@ class Utility {
   }
 
   /**
+   * Case-insensitive version of array_search over keys.
+   */
+  static function arrayKeySearchIgnoreCase($key, $search) {
+    $keys = array_map('strtolower', array_keys($search));
+
+    return array_search(strtolower($key), $keys);
+  }
+
+  /**
    * Case-insensitive version of array_key_exists.
    */
   static function arrayKeyExistsIgnoreCase($key, $search) {
-    $keys = array_map('strtolower', array_keys($search));
-
-    return array_key_exists(strtolower($key), $keys);
+    return self::arrayKeySearchIgnoreCase($key, $search) !== FALSE;
   }
 
   /**
