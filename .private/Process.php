@@ -93,6 +93,13 @@ $output = NULL;
 $retryCount = 0;
 $processSpawn = FALSE;
 
+/* Added @ 3 Sep, 2013
+   Explicity release the database connection before spawning concurrent processes.
+
+   A new connection will be created on-demand afterwards.
+*/
+core\Database::disconnect();
+
 while (!$processSpawn && $retryCount++ < FRAMEWORK_PROCESS_SPAWN_RETRY_COUNT) {
   try {
     $output = `$path 2>&1`;
