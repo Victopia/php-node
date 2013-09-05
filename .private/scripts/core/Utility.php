@@ -254,9 +254,15 @@ class Utility {
    * Case-insensitive version of array_search over keys.
    */
   static function arrayKeySearchIgnoreCase($key, $search) {
-    $keys = array_map('strtolower', array_keys($search));
+    $keys = array_keys($search);
 
-    return array_search(strtolower($key), $keys);
+    $index = array_search(strtolower($key), array_map('strtolower', $keys));
+
+    if ( $index !== FALSE ) {
+      $index = $keys[$index];
+    }
+
+    return $index;
   }
 
   /**
