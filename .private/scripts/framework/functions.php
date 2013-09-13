@@ -316,6 +316,12 @@ function appends($suffix, $prop = NULL) {
   }
 }
 
+function replaces($pattern, $replacement) {
+  return function($string) use($pattern, $replacement) {
+    return preg_replace($pattern, $replacement, $string);
+  };
+}
+
 function startsWith($prefix, $ignoreCase = FALSE) {
   if ( $ignoreCase ) {
     return function($object) use($prefix) {
