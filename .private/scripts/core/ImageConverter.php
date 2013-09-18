@@ -74,7 +74,7 @@ class ImageConverter {
     }
 
     if (!$image) {
-      throw new \Exception("Invalid image format \"$stat\", this class supports a limited set of image formats. Read the code for more details.");
+      throw new exceptions\CoreException("Invalid image format \"$stat\", this class supports a limited set of image formats. Read the code for more details.");
     }
 
     imageinterlace($image, 1);
@@ -275,7 +275,7 @@ class ImageConverter {
    */
   private function checkImage() {
     if (!$this->image || !is_resource($this->image)) {
-      throw new \Exception('Image has not been properly loaded, please call ImageConverter::open() first.');
+      throw new exceptions\CoreException('Image has not been properly loaded, please call ImageConverter::open() first.');
     }
   }
 
