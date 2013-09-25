@@ -358,7 +358,7 @@ class Utility {
    * @param {array} $list Array of values to cascade, or it will func_get_args().
    */
   static function cascade($list) {
-    if ( !is_array($list) ) {
+    if ( func_num_args() > 1 ) {
       $list = func_get_args();
     }
 
