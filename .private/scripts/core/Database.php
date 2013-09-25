@@ -617,7 +617,7 @@ class Database {
     return self::getConnection()->errorInfo();
   }
 
-  public static /* void */
+  public static /* NULL */
   function lockTables($tables) {
     if ( !is_array($tables) ) {
       $tables = func_get_args();
@@ -632,7 +632,7 @@ class Database {
     self::query('LOCK TABLES ' . implode(', ', $tables));
   }
 
-  public static /* void */
+  public static /* NULL */
   function unlockTables() {
     self::query('UNLOCK TABLES');
   }
