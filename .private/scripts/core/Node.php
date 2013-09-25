@@ -61,6 +61,8 @@ class Node {
 
     $tableName = self::resolveCollection(@$filter[NODE_FIELD_COLLECTION]);
 
+    unset($filter[NODE_FIELD_COLLECTION]);
+
     $selectField = isset($filter[NODE_FIELD_SELECT]) ? $filter[NODE_FIELD_SELECT] : '*';
 
     unset($filter[NODE_FIELD_SELECT]);
@@ -231,6 +233,17 @@ class Node {
     }
     elseif ( is_array($limit) ) {
       $limit = array_slice($limit, 0, 2) + array(0, 0);
+    }
+
+    /* Added by Vicary @ 25 Sep 2013
+       Apply LIMIT to $rowOffset and $fetchSize if no $filter is left,
+       which implies everything is done in SQL statement.
+    */
+    if ( !$filter && $limit ) {
+      $rowOffset = $limit[0];
+      $rowCount-= min($rowOffset, $rowCount);
+
+      $limit[0] = 0;
     }
 
     $result = array();
