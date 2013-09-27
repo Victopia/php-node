@@ -4,8 +4,14 @@
 require_once('.private/scripts/Initialize.php');
 
 $opts = (new optimist())
-  ->alias('nohup', 'n')
-  ->alias('cron', 'c')
+  ->options('nohup', array(
+      'alias' => 'n'
+    , 'describe' => 'Force nohup process spawn.'
+    ))
+  ->options('cron', array(
+      'alias' => 'c'
+    , 'describe' => 'Indicates the process is invoked from cron job, only affects the log.'
+    ))
   ->argv;
 
 // use nohup if internal forking is not supported.
@@ -70,7 +76,7 @@ if ( !$res ) {
     core\Database::query('TRUNCATE `' . FRAMEWORK_COLLECTION_PROCESS . '`');
   }
 
-  log::write('No more jobs to do, suicide.', 'Information');
+  log::write('No more jobs to do, suicide.', 'Debug');
   die;
 }
 
@@ -85,7 +91,7 @@ core\Database::unlockTables();
 
 $path = $process['path'];
 
-log::write("Running process: $path", 'Notice', $pid);
+log::write("Running process: $path", 'Information', $pid);
 
 // Kick off the process
 
@@ -112,7 +118,7 @@ while (!$processSpawn && $retryCount++ < FRAMEWORK_PROCESS_SPAWN_RETRY_COUNT) {
       , 'error' => $e));
 
     // Wait awhile before retrying.
-    usleep(FRAMEWORK_PROCESS_SPAWN_RETRY_INTERVAL * 10000);
+    usleep(FRAMEWORK_PROCESS_SPAWN_RETRY_INTERVAL * 1000000);
   }
 }
 
@@ -134,7 +140,7 @@ core\Database::lockTables(array(
 
 $res = node::delete($process);
 
-log::write("Deleting finished process, affected rows: $res.", 'Information', $process);
+log::write("Deleting finished process, affected rows: $res.", 'Debug', $process);
 
 core\Database::unlockTables();
 
