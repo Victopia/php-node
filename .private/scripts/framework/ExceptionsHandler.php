@@ -39,29 +39,33 @@ class ExceptionsHandler {
         case E_CORE_ERROR:
         case E_USER_ERROR:
         default:
-          $type = 'Error';
+          $logType = 'Error';
           break;
 
         case E_WARNING:
         case E_CORE_WARNING:
         case E_USER_WARNING:
-          $type = 'Warning';
+          $logType = 'Warning';
           break;
 
         case E_DEPRECATED:
         case E_NOTICE:
         case E_USER_DEPRECATED:
         case E_USER_NOTICE:
-          $type = 'Notice';
+          $logType = 'Notice';
           break;
 
         case E_STRICT:
-          $type = 'Information';
+          $logType = 'Information';
           break;
       }
+
+      $exceptionType = 'error';
     }
     else {
-      $type = 'Exception';
+      $exceptionType = substr(strrchr(get_class($e), '\\'), 1);
+
+      $logType = 'Exception';
     }
 
     // Prevent recursive errors on logging when database fails to connect.
@@ -80,7 +84,7 @@ class ExceptionsHandler {
       }
 
       // Log the error
-      \log::write("[Gateway] Uncaught exception with message: \"$eS\" #$eN, on $eF:$eL.", $type, $logContext);
+      \log::write("[Gateway] Uncaught $exceptionType with message: \"$eS\" #$eN, on $eF:$eL.", $logType, $logContext);
 
       unset($logContext);
     }
@@ -114,7 +118,7 @@ class ExceptionsHandler {
     echo $output;
 
     // Terminates on Exceptions and Errors.
-    if ( $type == 'Exception' || $type == 'Error' ) {
+    if ( $logType == 'Exception' || $logType == 'Error' ) {
       die;
     }
   }
