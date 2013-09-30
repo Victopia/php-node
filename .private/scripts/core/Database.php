@@ -328,7 +328,7 @@ class Database {
 
     $errorInfo = $query->errorInfo();
 
-    $ex = new \PDOException($errorInfo[2]);
+    $ex = new \PDOException($errorInfo[2], $errorInfo[1]);
 
     $ex->errorInfo = $errorInfo;
 
