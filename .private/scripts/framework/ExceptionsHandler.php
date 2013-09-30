@@ -63,7 +63,11 @@ class ExceptionsHandler {
       $exceptionType = 'error';
     }
     else {
-      $exceptionType = substr(strrchr(get_class($e), '\\'), 1);
+      $exceptionType = get_class($e);
+
+      if ( strpos($exceptionType, '\\') !== FALSE ) {
+        $exceptionType = substr(strrchr($exceptionType, '\\'), 1);
+      }
 
       $logType = 'Exception';
     }
