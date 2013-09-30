@@ -76,13 +76,23 @@ class Process {
    */
   public static function
   /* Boolean */ enqueueOnce($command, $spawnProcess = TRUE, $requeue = FALSE, $includeActive = FALSE) {
-    $res = \node::get(array(
-        NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
-      , 'path' => $command
-      , 'locked' => $includeActive
+    \core\Database::lockTables(array(
+        FRAMEWORK_COLLECTION_LOG
+      , FRAMEWORK_COLLECTION_PROCESS
       ));
 
-    /* Quoted by Vicary @ 12 Jul, 2013
+    $res = array(
+        NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
+      , 'path' => $command
+      );
+
+    if ( !$includeActive ) {
+      $res['locked'] = FALSE;
+    }
+
+    $res = \node::get($res);
+
+    /* Quoted by Eric @ 12 Jul, 2013
        Multiple processes could be queued at this moment,
        kill all of them by not unwrapping here.
     */
@@ -104,10 +114,14 @@ class Process {
         return self::enqueue($command, $spawnProcess);
       }
 
+      \core\Database::unlockTables();
+
       // throw new \Exception('[Process] Command exists.', self::ERR_EXIST);
       return $res;
     }
     else {
+      \core\Database::unlockTables();
+
       return self::enqueue($command, $spawnProcess);
     }
   }
@@ -138,7 +152,7 @@ class Process {
       array_walk($res, function($process) {
         if ( @$process['pid'] && function_exists('posix_kill') ) {
           \log::write("Sending SIGKILL to pid $process[pid].", 'Debug');
-          // posix_kill($process['pid'], 2); // SIGINT
+          // posix_kill(-$process['pid'], 2); // SIGINT
           posix_kill(-$process['pid'], 15); // SIGTERM
         }
       });
