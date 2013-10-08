@@ -160,17 +160,14 @@ class Database {
       }, $sourceFields);
 
       $values = array_map(function($value) use($sourceFields, $quotedFields) {
-        $fields = explode(' ', $value);
+        $index = array_search($value, $sourceFields);
 
-        foreach ($fields as &$field) {
-          $index = array_search($field, $sourceFields);
-
-          if ($index !== FALSE) {
-            $field = $quotedFields[$index];
-          }
-        } unset($field);
-
-        return implode(' ', $fields);
+        if ($index !== FALSE) {
+          return $quotedFields[$index];
+        }
+        else {
+          return $value;
+        }
       }, $values);
 
       // Restore to scalar if it was not an array.
