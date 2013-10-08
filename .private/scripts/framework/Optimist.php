@@ -86,7 +86,7 @@ final class Optimist {
   //--------------------------------------------------
 
   public function __get($name) {
-    if ($name == 'argv') {
+    if ( $name == 'argv' ) {
       //------------------------------
       //  Parse argv
       //------------------------------
@@ -94,7 +94,7 @@ final class Optimist {
       $argv = (array) $this->argv;
 
       // Remove until the script itself.
-      if (@$_SERVER['PHP_SELF'] && in_array($_SERVER['PHP_SELF'], $argv)) {
+      if ( @$_SERVER['PHP_SELF'] && in_array($_SERVER['PHP_SELF'], $argv) ) {
         $argv = array_slice($argv, array_search($_SERVER['PHP_SELF'], $argv) + 1);
       }
 
@@ -104,7 +104,7 @@ final class Optimist {
 
       foreach ($argv as $value) {
         // Match flag style, then assign initial value.
-        if (preg_match('/^\-\-?([\w\.]+)(?:=(.*))?$/', $value, $matches)) {
+        if ( preg_match('/^\-\-?([\w\.]+)(?:=(.*))?$/', $value, $matches) ) {
           $nodePath = explode('.', $matches[1]);
 
           $currentNode = &$args[array_shift($nodePath)];
@@ -116,8 +116,8 @@ final class Optimist {
           $value = isset($matches[3]) ? $matches[3] : TRUE;
 
           // Value exists
-          if ($currentNode) {
-            if (!is_array($currentNode)) {
+          if ( $currentNode ) {
+            if ( !is_array($currentNode) ) {
               $currentNode = array($currentNode);
             }
 
@@ -133,8 +133,8 @@ final class Optimist {
         // Not -- style flags, see if a previous flag exists.
         // If so, assign to it, otherwise goes to _.
         else {
-          if (isset($currentNode)) {
-            if ($currentNode === TRUE) {
+          if ( isset($currentNode) ) {
+            if ( $currentNode === TRUE ) {
               $currentNode = $value;
             }
 
@@ -153,7 +153,7 @@ final class Optimist {
         }
       } unset($value);
 
-      if (!$args['_']) {
+      if ( !$args['_'] ) {
         unset($args['_']);
       }
 
@@ -163,12 +163,12 @@ final class Optimist {
 
       foreach ($this->alias as $name => $alias) {
         // Alias: type
-        if (isset($this->types[$name])) {
+        if ( isset($this->types[$name]) ) {
           $this->types+= array_fill_keys($alias, $this->types[$name]);
         }
 
         // Alias: defaults
-        if (isset($this->defaults[$name])) {
+        if ( isset($this->defaults[$name]) ) {
           $this->defaults+= array_fill_keys($alias, $this->defaults[$name]);
         }
       } unset($name, $alias);
@@ -182,7 +182,7 @@ final class Optimist {
         } unset($alias);
       } unset($option, $value, $target);
 
-      if (@$args['_']) {
+      if ( @$args['_'] ) {
         foreach($args['_'] as $value) {
           $target = (array) @$this->alias[$value];
 
@@ -198,20 +198,26 @@ final class Optimist {
       //  Demands
       //------------------------------
 
-      if (is_numeric($this->demand)) {
-        if (count((array) @$args['_']) < $this->demand) {
+      if ( is_numeric($this->demand) ) {
+        if ( count((array) @$args['_']) < $this->demand ) {
           $this->showError("It requires at least $this->demand args to run.");
 
           die;
         }
       }
       else {
-        foreach ($this->demand as $key => $value) {
-          if (!isset($args[$key])) {
-            $this->showError("Missing required options: " . implode(', ', $this->demand));
+        $missingKeys = array();
 
-            die;
+        foreach ($this->demand as $key => $value) {
+          if ( !isset($args[$key]) ) {
+            $missingKeys[] = $key;
           }
+        }
+
+        if ( $missingKeys ) {
+          $this->showError("Missing required options: " . implode(', ', $missingKeys));
+
+          die;
         }
       }
 
@@ -221,14 +227,14 @@ final class Optimist {
       $args = \utils::flattenArray($args);
 
       array_walk($args, function(&$value, $key) {
-        if (isset($this->types[$key])) {
-          if (!settype($value, $this->types[$key])) {
+        if ( isset($this->types[$key]) ) {
+          if ( !settype($value, $this->types[$key]) ) {
             $this->showError("Unable to cast $key into type $type.");
 
             die;
           }
         }
-        elseif (is_numeric($value)) {
+        elseif ( is_numeric($value) ) {
           $value = doubleval($value);
         }
       });
@@ -253,7 +259,7 @@ final class Optimist {
    * keys to aliases.
    */
   public function alias($key, $alias = NULL) {
-    if (!is_array($key)) {
+    if ( !is_array($key) ) {
       $key = array($key => $alias);
     }
 
@@ -274,7 +280,7 @@ final class Optimist {
    * keys to default values.
    */
   public function defaults($key, $value = NULL) {
-    if ($value !== NULL) {
+    if ( $value !== NULL ) {
       $key = array( $key => $value );
     }
 
@@ -301,19 +307,21 @@ final class Optimist {
    *                effect.
    */
   public function demand($key) {
-    if (is_numeric($key)) {
+    if ( is_numeric($key) ) {
       $this->demand = $key;
     }
     else {
-      if (!is_array($this->demand)) {
+      if ( !is_array($this->demand) ) {
         $this->demand = array();
       }
 
-      if (is_string($key)) {
+      if ( is_string($key) ) {
         $key = array($key => TRUE);
       }
 
-      $this->demand = $key + $this->demand;
+      // $key = \utils::wrapAssoc($key);
+
+      $this->demand = array_merge($this->demand, $key);
     }
 
     return $this; // chainable
@@ -347,7 +355,7 @@ final class Optimist {
 
     foreach ($key as $_key) {
       foreach ($opt as $option => $value) {
-        if (method_exists($this, $option)) {
+        if ( method_exists($this, $option) ) {
           $this->$option($_key, $value);
         }
       }
@@ -363,7 +371,7 @@ final class Optimist {
    *                 required option does not exists.
    */
   public function usage($message) {
-    if ($message) {
+    if ( $message ) {
       $this->usage = $message;
     }
 
@@ -387,7 +395,7 @@ final class Optimist {
       $ret = $e->getMessage();
     }
 
-    if ($ret === FALSE || is_string($ret)) {
+    if ( $ret === FALSE || is_string($ret) ) {
       $this->showError($ret);
 
       die;
@@ -480,10 +488,13 @@ final class Optimist {
     switch ($type) {
       case 'int':
       case 'integer':
+        $type = 'integer';
+        break;
+
       case 'double':
       case 'float':
       case 'numeric':
-        $type = 'number';
+        $type = 'float';
         break;
     }
 
@@ -495,9 +506,26 @@ final class Optimist {
 
     $result = array();
 
+    // TODO: Should do alias before anything.
+    /* Example:
+       > (new optimist())
+       >   ->alias('u', 'user')
+       >   ->describe('users...')
+       >   ->demand('user')
+       >   ->argv;
+
+       Will have error output like this:
+       > -u, --user    users....
+       > --user, -u
+       >
+       > Missing required options: user
+
+       Alias does not correctly taking reference against each other.
+    */
+
     $options = array_keys($this->descriptions);
 
-    if (is_array($this->demand)) {
+    if ( is_array($this->demand) ) {
       $options = array_unique(array_merge($options
         , array_keys($this->demand)));
     }
@@ -507,7 +535,7 @@ final class Optimist {
     foreach ($options as $option) {
       $message = (array) $option;
 
-      if (isset($alias[$option])) {
+      if ( isset($alias[$option]) ) {
         $message = array_merge($message, (array) $alias[$option]);
       } unset($alias[$option]);
 
@@ -517,20 +545,20 @@ final class Optimist {
 
       $message = implode(', ', $message);
 
-      if (@$this->descriptions[$option]) {
+      if ( @$this->descriptions[$option] ) {
         $message.= '  ' . $this->descriptions[$option];
       }
 
       $result[] = $message;
     } unset($message, $option, $options);
 
-    if ($result) {
+    if ( $result ) {
       echo "\n\nOptions:\n" . implode("\n", $result);
 
       unset($result);
     }
 
-    if ($customMessage) {
+    if ( $customMessage ) {
       echo "\n\n$customMessage";
     }
 
