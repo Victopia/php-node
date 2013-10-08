@@ -298,7 +298,17 @@ function prepends($prefix, $prop = NULL) {
 }
 
 function append($suffix, $object) {
-  return "$object$suffix";
+  if ( is_string($suffix) ) {
+    return "$object$suffix";
+  }
+
+  else if ( is_array($suffix) ) {
+    return $suffix + $object; // $suffix takes precedence.
+  }
+
+  else {
+    return $object + $suffix;
+  }
 }
 
 function appends($suffix, $prop = NULL) {
