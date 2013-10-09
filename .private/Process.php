@@ -14,6 +14,32 @@ $opts = (new optimist())
     ))
   ->argv;
 
+// Do periodic cleanup
+// Check orphaned process in process table and delete it.
+if ( @$opts['cleanup'] ) {
+  $res = array_filter(array_map(function($line) {
+    if ( preg_match('/^\w+\s+(\d+)/', $line, $matches) ) {
+      return (int) $matches[1];
+    }
+
+    return NULL;
+  }, explode("\n", `ps aux | grep php`)));
+
+  if ( $res ) {
+    $res = core\Database::query('DELETE FROM `'.FRAMEWORK_COLLECTION_PROCESS.'`
+      WHERE `pid` IS NOT NULL AND `pid` NOT IN ('.utils::fillArray($res).')', $res);
+
+    $res = $res->rowCount();
+  }
+  else {
+    $res = 0;
+  }
+
+  log::write(sprintf('Process cleanup, %d processes removed.', $res));
+
+  die;
+}
+
 // use nohup if internal forking is not supported.
 if ( !function_exists('pcntl_fork') || isset($opts['n']) ) {
   $ret = shell_exec('nohup ' . process::EXEC_PATH . ' --nohup >/dev/null 2>&1 & echo $!');
@@ -91,7 +117,7 @@ core\Database::unlockTables();
 
 $path = $process['path'];
 
-log::write("Running process: $path", 'Information', $pid);
+log::write("Running process: $path", 'Debug', $pid);
 
 // Kick off the process
 
