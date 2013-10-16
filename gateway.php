@@ -46,6 +46,14 @@ if (isset($_SERVER['HTTP_STATUS'])) {
 }
 
 //------------------------------
+//  JSON typed POST
+//------------------------------
+
+if ( @$_SERVER['REQUEST_METHOD'] == 'POST' && core\Request::headers('Content-Type') == 'application/json' ) {
+  $_POST = json_decode(file_get_contents('php://input'), TRUE);
+}
+
+//------------------------------
 //  Session & Authentication
 //------------------------------
 $sid = NULL;
@@ -141,7 +149,7 @@ unset($resolver);
 if (FRAMEWORK_ENVIRONMENT == 'debug') {
   log::write("$_SERVER[REQUEST_METHOD] $_SERVER[REQUEST_URI]", 'Debug', array_filter(array(
       'origin' => @$_SERVER['HTTP_REFERER']
-    , 'userAgent' => \utils::cascade(@$_SERVER['USER_AGENT'], 'Unknown')
+    , 'userAgent' => \utils::cascade(@$_SERVER['HTTP_USER_AGENT'], 'Unknown')
     , 'timeElapsed' => round(microtime(1) - $accessTime, 4) . ' secs'
     )));
 
