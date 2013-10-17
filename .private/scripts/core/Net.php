@@ -134,7 +134,10 @@ class Net {
 
         // The data contains traditional file POST value: "@/foo/bar"
         $hasPostFile = is_array($data) &&
-            array_reduce($data, function($ret, $val) { return $ret || is_string($val) && strpos($val, '@') === 0 && file_exists(substr($val, 1)); }, FALSE);
+            array_reduce($data, function($ret, $val) {
+              return $ret || is_string($val) && strpos($val, '@') === 0 &&
+                file_exists(Utility::unwrapAssoc(explode(';', substr($val, 1))));
+            }, FALSE);
 
         // Build query regardless if file exists on PHP < 5.2.0, otherwise
         // only build when there is NOT files to be POSTed.
@@ -148,9 +151,13 @@ class Net {
         if ( version_compare(PHP_VERSION, '5.5.0', '>=') && $hasPostFile ) {
           array_walk_recursive($data, function(&$value, $key) {
             if ( strpos($value, '@') === 0 ) {
-              $path = substr($value, 1);
+              list($path, $type) = @explode(';', substr($value, 1));
 
-              $value = new CurlFile($path, Utility::getInfo($path, FILEINFO_MIME_TYPE), $key);
+              if ( !$type ) {
+                $type = Utility::getInfo($path, FILEINFO_MIME_TYPE);
+              }
+
+              $value = new CurlFile($path, $type, $key);
             }
           });
         }
