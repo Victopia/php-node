@@ -7,18 +7,26 @@ class Request {
 
   public static /* array */
   function headers($name = NULL) {
-    if ( function_exists('getallheaders') ) {
-      $headers = getallheaders();
-    }
-    else {
-      $headers = array();
+    /* Request headers should not change during
+       execution period, cache them to improve
+       performance.
+    */
+    static $headers = NULL;
 
-      foreach ($_SERVER as $key => $value) {
-        if ( strpos($key, 'HTTP_') === 0 ) {
-          $key = substr($key, 5);
-          $key = implode('-', array_map('ucfirst', explode('-', $key)));
+    if ( $headers === NULL ) {
+      if ( function_exists('getallheaders') ) {
+        $headers = getallheaders();
+      }
+      else {
+        $headers = array();
 
-          $headers[$key] = $value;
+        foreach ($_SERVER as $key => $value) {
+          if ( strpos($key, 'HTTP_') === 0 ) {
+            $key = substr($key, 5);
+            $key = implode('-', array_map('ucfirst', explode('-', $key)));
+
+            $headers[$key] = $value;
+          }
         }
       }
     }
