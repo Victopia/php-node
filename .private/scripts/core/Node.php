@@ -110,9 +110,10 @@ class Node {
 
         $subQuery = array();
 
-        array_walk($contents, function($content) use($field, &$subQuery, &$params) {
-          $escapedField = Database::escape($field);
+        // Explicitly groups equality into expression: IN (...)
+        $inValues = array();
 
+        array_walk($contents, function($content) use(&$subQuery, &$params, &$inValues) {
           // Error checking
           if ( is_array($content) ) {
             throw new NodeException('Node does not support composite array types.');
@@ -120,8 +121,11 @@ class Node {
 
           // 1. Boolean comparison: true, false
           if ( is_bool($content) ) {
-            $subQuery[] = "$escapedField = ?";
+            /*
+            $subQuery[] = "IS ?";
             $params[] = $content;
+            */
+            $inValues[] = $content;
           }
           else
 
@@ -130,11 +134,13 @@ class Node {
             count($matches) > 2)
           {
             if ( !$matches[1] || $matches[1] == '==' ) {
-              $matches[1] = '=';
+              // $matches[1] = '=';
+              $inValues[] = $matches[2];
             }
-
-            $subQuery[] = "$escapedField $matches[1] ?";
-            $params[] = $matches[2];
+            else {
+              $subQuery[] = "$matches[1] ?";
+              $params[] = $matches[2];
+            }
           }
           else
 
@@ -142,7 +148,7 @@ class Node {
           if (preg_match('/^(?:<|<=|==|>=|>)\'([0-9- :]+)\'$/', trim($content), $matches) &&
             count($matches) > 2 && strtotime($matches[2]) !== FALSE)
           {
-            $subQuery[] = "$escapedField $matches[1] ?";
+            $subQuery[] = "$matches[1] ?";
             $params[] = $matches[2];
           }
           else
@@ -151,7 +157,7 @@ class Node {
           if (preg_match('/^\/([^\/]+)\/[\-gismx]*$/i', trim($content), $matches) &&
             count($matches) > 1)
           {
-            $subQuery[] = "$escapedField REGEXP ?";
+            $subQuery[] = "REGEXP ?";
             $params[] = $matches[1];
           }
           else
@@ -159,23 +165,31 @@ class Node {
           // 5. NULL types
           if ( is_null($content) || preg_match('/^((?:==|\!=)=?)\s*NULL$/i', trim($content), $matches) ) {
             $content = 'IS ' . (@$matches[1][0] == '!' ? 'NOT ' : '') . 'NULL';
-            $subQuery[] = "$escapedField $content";
+            $subQuery[] = "$content";
           }
           else
 
           // 6. Plain string.
           if ( is_string($content) ) {
             if ( preg_match('/^!\'([^\']+)\'$/', trim($content), $matches) ) {
-              $subQuery[] = "$escapedField NOT LIKE ?";
+              $subQuery[] = "NOT LIKE ?";
               $content = $matches[1];
             }
             else {
-              $subQuery[] = "$escapedField LIKE ?";
+              $subQuery[] = "LIKE ?";
             }
 
             $params[] = $content;
           }
         });
+
+        // Group equality comparators (=) into IN (...) statement.
+        $params = array_merge($params, $inValues);
+        $subQuery[] = 'IN (' . Utility::fillArray($inValues) . ')';
+
+        unset($inValues);
+
+        $subQuery = array_map(prepends(Database::escape($field) . ' '), $subQuery);
 
         /* Note by Vicary @ 4 Dec, 2012
            Inclusive search in real columns, within the same column.
