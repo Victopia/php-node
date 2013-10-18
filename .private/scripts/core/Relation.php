@@ -16,6 +16,7 @@ namespace core;
  * @author Vicary Arcahgnel <vicary@victopia.org>
  */
 class Relation {
+
   //--------------------------------------------------
   //
   //  Getters
@@ -122,7 +123,7 @@ class Relation {
     return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `Subject` = ?', array($subject))->rowCount();
   }
 
-  static function delete($collection, $object) {
-    return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `Subject` = ? OR `Object` = ?', array($object, $object))->rowCount();
+  static function delete($collection, $subject, $object) {
+    return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `Subject` = ? AND `Object` = ?', array($subject, $object))->rowCount();
   }
 }
