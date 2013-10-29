@@ -15,18 +15,18 @@ class Net {
   //--------------------------------------------------
 
   //------------------------------
-  //  maximumCalls
+  //  maximumReqeusts
   //------------------------------
 
-  private static $maximumCalls = 20;
+  private static $maximumRequests = 100;
 
   public static function
-  /* =int */ maximumCalls($value = NULL) {
+  /* =int */ maximumRequests($value = NULL) {
     if (is_null($value)) {
-      return self::$maximumCalls;
+      return self::$maximumRequests;
     }
-    elseif (self::$maximumCalls !== $value) {
-      self::$maximumCalls = $value;
+    elseif (self::$maximumRequests !== $value) {
+      self::$maximumRequests = $value;
     }
   }
 
@@ -369,7 +369,7 @@ class Net {
 
     $requestIndex = 0;
 
-    while ( $requestIndex < self::$maximumCalls && isset($options[$requestIndex]) ) {
+    while ( $requestIndex < self::$maximumRequests && isset($options[$requestIndex]) ) {
       curl_multi_add_handle( $multiHandle
                            , $options[$requestIndex++]['handle']
                            );
