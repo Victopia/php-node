@@ -446,7 +446,7 @@ final class Optimist {
       $this->types[$_key] = $type;
     }
 
-    return $this;
+    return $this; // chainable
   }
 
   /**
@@ -455,7 +455,7 @@ final class Optimist {
   public function wrap($columns) {
     $this->columns = $columns;
 
-    return $this;
+    return $this; // chainable
   }
 
   /**
@@ -475,7 +475,7 @@ final class Optimist {
   public function parse($args) {
     $this->argv = $args;
 
-    return $this;
+    return $this; // chainable
   }
 
   //--------------------------------------------------
