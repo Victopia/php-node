@@ -37,8 +37,8 @@ class Node {
    *
    * @returns Array of filtered data rows.
    */
-  static function
-  /* Array */ get($filter, $fieldsRequired = TRUE, $limit = NULL, $sorter = NULL) {
+  static /* Array */
+  function get($filter, $fieldsRequired = TRUE, $limit = NULL, $sorter = NULL) {
     if ( $limit !== NULL && (!$limit || !is_int($limit) && !is_array($limit)) ) {
       return array();
     }
@@ -184,8 +184,10 @@ class Node {
         });
 
         // Group equality comparators (=) into IN (...) statement.
-        $params = array_merge($params, $inValues);
-        $subQuery[] = 'IN (' . Utility::fillArray($inValues) . ')';
+        if ( $inValues ) {
+          $params = array_merge($params, $inValues);
+          $subQuery[] = 'IN (' . Utility::fillArray($inValues) . ')';
+        }
 
         unset($inValues);
 
@@ -388,8 +390,8 @@ class Node {
     }
   }
 
-  public static function
-  /* int */ nodeSorter($itemA, $itemB) {
+  public static /* int */
+  function nodeSorter($itemA, $itemB) {
     $itemIndex = strcmp($itemA[NODE_FIELD_COLLECTION], $itemB[NODE_FIELD_COLLECTION]);
 
     if ( $itemIndex === 0 ) {
@@ -442,8 +444,8 @@ class Node {
    * @throws NodeException thrown when more than one row is selected with the provided keys,
    *                       and $extendExists is TRUE.
    */
-  static function
-  /* Array */ set($contents = NULL, $extendExists = FALSE) {
+  static /* Array */
+  function set($contents = NULL, $extendExists = FALSE) {
     if ( !$contents ) {
       return array();
     }
@@ -554,8 +556,8 @@ class Node {
    *
    * @returns The total number of affected rows.
    */
-  static function
-  /* int */ delete($filter = NULL, $fieldsRequired = FALSE, $limit = NULL) {
+  static /* int */
+  function delete($filter = NULL, $fieldsRequired = FALSE, $limit = NULL) {
     $res = self::get($filter, $fieldsRequired, $limit);
 
     $affectedRows = 0;
@@ -589,8 +591,8 @@ class Node {
   //
   //-----------------------------------------------------------------------
 
-  private static function
-  /* String */ resolveCollection($tableName) {
+  private static /* String */
+  function resolveCollection($tableName) {
     if ( !$tableName ) {
       return NODE_COLLECTION;
     }
@@ -624,8 +626,8 @@ class Node {
    * @throws NodeException thrown when target table is no virtual column field.
    * @throws NodeException thrown when no physical field description ($fieldDesc) is given.
    */
-  public static function
-  /* Boolean */ makePhysical($collection, $fieldName = NULL, $fieldDesc = NULL) {
+  public static /* Boolean */
+  function makePhysical($collection, $fieldName = NULL, $fieldDesc = NULL) {
     // Create table
     if ( !Database::hasTable($collection) ) {
       throw new NodeException('Table creation is not supported in this version.');
