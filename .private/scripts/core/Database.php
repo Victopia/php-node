@@ -200,11 +200,10 @@ class Database {
    * @returns TRUE on table exists, FALSE otherwise.
    */
   public static /* Boolean */
-  function hasTable($table) {
+  function hasTable($table, $clearCache = FALSE) {
     $cache = &self::$schemaCache;
 
-    if ( isset($cache['timestamp']) &&
-         $cache['timestamp'] < strtotime('-30min') ) {
+    if ( $clearCache || (isset($cache['timestamp']) && $cache['timestamp'] < strtotime('-30min')) ) {
       unset($cache['collections']);
 
       $cache['timestamp'] = microtime(1);
