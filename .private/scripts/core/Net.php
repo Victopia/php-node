@@ -20,8 +20,8 @@ class Net {
 
   private static $maximumRequests = 100;
 
-  public static function
-  /* =int */ maximumRequests($value = NULL) {
+  public static /* =int */
+  function maximumRequests($value = NULL) {
     if (is_null($value)) {
       return self::$maximumRequests;
     }
@@ -36,8 +36,8 @@ class Net {
 
   private static $timeout = 10;
 
-  public static function
-  /* =int */ timeout($value = NULL) {
+  public static /* =int */
+  function timeout($value = NULL) {
     if (is_null($value)) {
       return self::$timeout;
     }
@@ -52,12 +52,6 @@ class Net {
   //
   //--------------------------------------------------
 
-  /**
-   * Send HTTP request to a URL.
-   *
-   * To initiate multiple requests, pass it as an array and wrapping parameters of
-   * each single request as an array.
-   */
   /*
     { 'url' => [string]
     , 'type' => 'GET' | 'POST' | 'HEAD'
@@ -73,8 +67,15 @@ class Net {
     , '__curlOpts' => array()
     }
   */
-  public static function
-  /* mixed */ httpRequest($options) {
+  /**
+   * Send HTTP request to a URL.
+   *
+   * To initiate multiple requests, pass it as an array and wrapping parameters of
+   * each single request as an array.
+   *
+   * @return void
+   */
+  public static function httpRequest($options) {
     $options = \utils::wrapAssoc((array) $options);
 
     $options = array_map(function(&$option) {
@@ -266,9 +267,9 @@ class Net {
    * , 'always'  => [Function]
    * );
    *
+   * @return void
    */
-  public static function
-  /* mixed */ curlRequest($options) {
+  public static function curlRequest($options) {
     $options = \utils::wrapAssoc(array_values((array) $options));
 
     $multiHandle = curl_multi_init();
@@ -470,5 +471,4 @@ class Net {
 
     curl_multi_close($multiHandle);
   }
-
 }
