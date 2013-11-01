@@ -73,8 +73,9 @@ class Node {
     $params = array();
 
     /* Merge $filter into SQL statements. */
-    $columns = Database::query("SHOW COLUMNS FROM $tableName;");
-    $columns = $columns->fetchAll(\PDO::FETCH_COLUMN, 0);
+    $columns = Database::getFields($tableName);
+    // $columns = Database::query("SHOW COLUMNS FROM $tableName;");
+    // $columns = $columns->fetchAll(\PDO::FETCH_COLUMN, 0);
 
     if ( isset($filter[NODE_FIELD_RAWQUERY]) ) {
       $rawQuery = (array) $filter[NODE_FIELD_RAWQUERY];
