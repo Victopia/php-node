@@ -146,11 +146,16 @@ class Node {
           else
 
           // 3. Datetime comparison: <'2010-07-31', >='1989-06-21' ... etc.
-          if (preg_match('/^(?:<|<=|==|>=|>)\'([0-9- :]+)\'$/', trim($content), $matches) &&
+          if (preg_match('/^(<|<=|==|>=|>)?\'([0-9- :]+)\'$/', trim($content), $matches) &&
             count($matches) > 2 && strtotime($matches[2]) !== FALSE)
           {
-            $subQuery[] = "$matches[1] ?";
-            $params[] = $matches[2];
+            if ( !$matches[1] || $matches[1] == '==' ) {
+              $inValues[] = $matches[2];
+            }
+            else {
+              $subQuery[] = "$matches[1] ?";
+              $params[] = $matches[2];
+            }
           }
           else
 
