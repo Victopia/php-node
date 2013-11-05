@@ -109,7 +109,7 @@ function propIsNot($prop, $value, $strict = FALSE) {
 
 function propIn($prop, array $values, $strict = FALSE) {
   return function($object) use($prop, $values, $strict) {
-    return in_array($object[$prop], $values, $strict);
+    return in_array(@$object[$prop], $values, $strict);
   };
 }
 
