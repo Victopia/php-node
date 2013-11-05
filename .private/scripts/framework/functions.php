@@ -46,11 +46,11 @@ function partial() {
 
 function funcAnd($inputA, $inputB) {
   return function($input) use($inputA, $inputB) {
-    if (is_callable($inputA)) {
+    if ( is_callable($inputA) ) {
       $inputA = $inputA($input);
     }
 
-    if (is_callable($inputB)) {
+    if ( is_callable($inputB) ) {
       $inputB = $inputB($input);
     }
 
@@ -60,11 +60,11 @@ function funcAnd($inputA, $inputB) {
 
 function funcOr($inputA, $inputB) {
   return function($input) use($inputA, $inputB) {
-    if (is_callable($inputA)) {
+    if ( is_callable($inputA) ) {
       $inputA = $inputA($input);
     }
 
-    if (is_callable($inputB)) {
+    if ( is_callable($inputB) ) {
       $inputB = $inputB($input);
     }
 
@@ -77,7 +77,7 @@ function not($value) {
 }
 
 function is($value, $strict = FALSE) {
-  if ($strict) {
+  if ( $strict ) {
     return function($input) use($value) {
       return $input === $value;
     };
@@ -144,7 +144,7 @@ function propHas($prop, array $values, $strict = FALSE) {
 
 function func($name, array $args = array()) {
   return function ($object) use($name, $args) {
-    if (is_array($object)) {
+    if ( is_array($object) ) {
       $func = @$object[$name];
     }
     else {
@@ -181,7 +181,7 @@ function remove($names, &$object) {
  * 2. remove(array($field1, $field2))
  */
 function removes($name) {
-  if (!is_array($name)) {
+  if ( !is_array($name) ) {
     $name = func_get_args();
   }
 
@@ -198,22 +198,22 @@ function removes($name) {
 //--------------------------------------------------
 
 function sortsAscend($subject, $object, $strict = FALSE) {
-  if ($strict) {
-    if ($subject === $object) {
+  if ( $strict ) {
+    if ( $subject === $object ) {
       return 0;
     }
   }
   else {
-    if ($subject == $object) {
+    if ( $subject == $object ) {
       return 0;
     }
   }
 
-  if (is_numeric($subject)) {
+  if ( is_numeric($subject) ) {
     $subject = doubleval($subject);
   }
 
-  if (is_numeric($object)) {
+  if ( is_numeric($object) ) {
     $object = doubleval($object);
   }
 
@@ -249,11 +249,11 @@ function sortsAscend($subject, $object, $strict = FALSE) {
 function sortsDescend($subject, $object, $strict = FALSE) {
   $ret = sortsAscend($subject, $object, $strict);
 
-  if ($ret >= 1) {
+  if ( $ret >= 1 ) {
     return -1;
   }
 
-  if ($ret <= -1) {
+  if ( $ret <= -1 ) {
     return 1;
   }
 
@@ -283,7 +283,7 @@ function prepend($prefix, $object) {
 }
 
 function prepends($prefix, $prop = NULL) {
-  if ($prop === NULL) {
+  if ( $prop === NULL ) {
     return function($object) use($prefix) {
       return prepend($prefix, $object);
     };
@@ -312,7 +312,7 @@ function append($suffix, $object) {
 }
 
 function appends($suffix, $prop = NULL) {
-  if ($prop === NULL) {
+  if ( $prop === NULL ) {
     return function($object) use($suffix) {
       return append($suffix, $object);
     };
@@ -320,6 +320,21 @@ function appends($suffix, $prop = NULL) {
   else {
     return function($object) use($suffix, $prop) {
       @$object[$prop] = append($suffix, @$object[$prop]);
+
+      return $object;
+    };
+  }
+}
+
+function assigns($value, $prop = NULL) {
+  if ( $prop === NULL ) {
+    return function($object) use($value) {
+      return $value;
+    };
+  }
+  else {
+    return function($object) use($prop, $value) {
+      $object[$prop] = $value;
 
       return $object;
     };
@@ -368,7 +383,7 @@ function endsWith($suffix, $ignoreCase = FALSE) {
  * Factory of array_filter($list, $filter);
  */
 function filters(/* callable */ $filter = NULL) {
-  if (is_null($filter)) {
+  if ( is_null($filter) ) {
     return function(array $list) {
       return array_filter($list);
     };
@@ -441,12 +456,12 @@ function object($list) {
 //
 //--------------------------------------------------
 
-if (!function_exists('array_select')) {
+if ( !function_exists('array_select') ) {
   function array_select($list, array $keys) {
     $result = array();
 
     foreach ($list as $key => &$value) {
-      if (in_array($key, $keys, TRUE)) {
+      if ( in_array($key, $keys, TRUE) ) {
         $result[$key] = &$value;
       }
 
@@ -458,7 +473,7 @@ if (!function_exists('array_select')) {
   }
 }
 
-if (!function_exists('array_remove')) {
+if ( !function_exists('array_remove') ) {
   function array_remove(&$list, $item, $strict = FALSE) {
     $items = (array) $item;
 
@@ -476,19 +491,19 @@ if (!function_exists('array_remove')) {
   }
 }
 
-if (!function_exists('array_mapdef')) {
+if ( !function_exists('array_mapdef') ) {
   function array_mapdef() {
     return call_user_func_array('mapdef', func_get_args());
   }
 }
 
-if (!function_exists('array_seldef')) {
+if ( !function_exists('array_seldef') ) {
   function array_seldef() {
     return call_user_func_array('seldef', func_get_args());
   }
 }
 
-if (!function_exists('array_filter_keys')) {
+if ( !function_exists('array_filter_keys') ) {
   function array_filter_keys($list, /* callable */ $func) {
     return array_select($list, array_filter(array_keys($list), $func));
   }
