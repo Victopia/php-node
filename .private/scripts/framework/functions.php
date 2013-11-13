@@ -329,11 +329,19 @@ function appends($suffix, $prop = NULL) {
 function assigns($value, $prop = NULL) {
   if ( $prop === NULL ) {
     return function($object) use($value) {
+      if ( is_callable($value) ) {
+        $value = $value($object);
+      }
+
       return $value;
     };
   }
   else {
     return function($object) use($prop, $value) {
+      if ( is_callable($value) ) {
+        $value = $value($object);
+      }
+
       $object[$prop] = $value;
 
       return $object;
