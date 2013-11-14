@@ -553,54 +553,66 @@ class Database {
    * Delete function.
    *
    * @param $table Target table name.
-   * @param $keys Array of keys to be deleted.
-   *       This can be multiple keys, use a two-dimensional array in such case.
+   * @param $filters Array of keys to be deleted.
+   *                 This can be multiple keys, use a two-dimensional array in such cases.
+   *                 Note that only real columns that is PRIMARY KEY or UNIQUE KEY is
+   *                 applied to the statement, the rest will be discarded.
    *
    * @returns The total number of affected rows.
    */
   public static /* NULL */
-  function delete($table, $keys) {
+  function delete($table, $keySets) {
     $columns = self::getFields($table, array('PRI', 'UNI'));
+
+    $keySets = Utility::wrapAssoc($keySets);
+
+    // Build queries from key sets.
+    array_walk($keySets, function(&$keySet) use($table, $columns) {
+      if ( !Utility::isAssoc($keySet) ) {
+        throw exceptions\CoreException('Key set for deletion must be associative array(s).');
+      }
+
+      $filter = array();
+
+      foreach ( $keySet as $key => $value ) {
+        if ( in_array($key, $columns) ) {
+          $key = self::escape($key, $table);
+
+          // Apply appropriate equality operators: =, IS
+          if ( is_null($value) ) {
+            $key.= ' IS ?';
+          }
+          else {
+            $key.= ' = ?';
+          }
+
+          $filter[$key] = $value;
+        }
+      }
+
+      if ( $filter ) {
+        $keySet = $filter;
+      }
+      else {
+        $keySet = NULL;
+      }
+    });
 
     $table = self::escape($table);
 
-    foreach ($columns as &$column) {
-      if (array_key_exists($column, $keys)) {
-        $column = self::escape($column) . ' = ?';
-      }
-      else {
-        $column = NULL;
-      }
-    }
+    // Execute queries and accumulate affected rows.
+    return array_reduce($keySets, function($result, $keySet) use($table) {
+      // $keySet
+      $res = sprintf('DELETE FROM %s WHERE ', $table) . implode(' AND ', array_keys($keySet));
 
-    $columns = array_filter($columns);
+      $res = self::query($res, array_values($keySet));
 
-    if (!is_array($keys) || (count($keys) > 0 && \utils::isAssoc($keys))) {
-      $keys = array($keys);
-    }
-
-    $res = "DELETE FROM $table WHERE " . implode(' AND ', $columns);
-
-    $affectedRows = 0;
-
-    foreach ($keys as $key) {
-      if (!is_array($key)) {
-        $key = array($key);
-      }
-      else {
-        $key = array_values($key);
+      if ( $res !== FALSE ) {
+        $result+= $res->rowCount();
       }
 
-      $res_1 = self::query($res, $key);
-
-      if ( $res_1 === FALSE ) {
-        return FALSE;
-      }
-
-      $affectedRows += $res_1->rowCount();
-    }
-
-    return $affectedRows;
+      return $result;
+    }, 0);
   }
 
   public static /* int */
