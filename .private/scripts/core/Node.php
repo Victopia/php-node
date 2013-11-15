@@ -564,11 +564,31 @@ class Node {
    */
   static /* int */
   function delete($filter = NULL, $fieldsRequired = FALSE, $limit = NULL) {
-    $tableName = self::resolveCollection(@$filter[NODE_FIELD_COLLECTION]);
+    $res = self::get($filter, $fieldsRequired, $limit);
 
-    unset($filter[NODE_FIELD_COLLECTION]);
+    $affectedRows = 0;
 
-    return Database::delete($tableName, $filter);
+    foreach ( $res as $key => $row ) {
+      $tableName = self::resolveCollection($row[NODE_FIELD_COLLECTION]);
+
+      $fields = Database::getFields($tableName, array('PRI', 'UNI'));
+
+      $deleteKeys = array();
+
+      foreach ( $fields as &$field ) {
+        if ( array_key_exists($field, $row) ) {
+          if ( !is_array(@$deleteKeys[$field]) ) {
+            $deleteKeys[$field] = array();
+          }
+
+          $deleteKeys[$field] = $row[$field];
+        }
+      }
+
+      $affectedRows += Database::delete($tableName, $deleteKeys);
+    }
+
+    return $affectedRows;
   }
 
   //-----------------------------------------------------------------------
