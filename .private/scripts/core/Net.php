@@ -158,7 +158,7 @@ class Net {
                 $type = Utility::getInfo($path, FILEINFO_MIME_TYPE);
               }
 
-              $value = new CurlFile($path, $type, $key);
+              $value = new \CurlFile($path, $type, $key);
             }
           });
         }
