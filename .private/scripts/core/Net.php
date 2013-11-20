@@ -152,7 +152,7 @@ class Net {
 
         if ( version_compare(PHP_VERSION, '5.5.0', '>=') && $hasPostFile ) {
           array_walk_recursive($data, function(&$value, $key) {
-            if ( strpos($value, '@') === 0 ) {
+            if ( is_string($value) && strpos($value, '@') === 0 ) {
               @list($path, $type) = explode(';', substr($value, 1));
 
               if ( !$type ) {
