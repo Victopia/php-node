@@ -61,7 +61,9 @@ class Node {
 
     $tableName = self::resolveCollection(@$filter[NODE_FIELD_COLLECTION]);
 
-    unset($filter[NODE_FIELD_COLLECTION]);
+    if ( $tableName !== NODE_COLLECTION ) {
+      unset($filter[NODE_FIELD_COLLECTION]);
+    }
 
     $selectField = isset($filter[NODE_FIELD_SELECT]) ? $filter[NODE_FIELD_SELECT] : '*';
 
@@ -599,16 +601,11 @@ class Node {
 
   private static /* String */
   function resolveCollection($tableName) {
-    if ( !$tableName ) {
+    if ( !Database::hasTable($tableName) ) {
       return NODE_COLLECTION;
     }
-
-    if ( isset($collectionCache[$tableName]) ) {
-      return $collectionCache[$tableName];
-    }
     else {
-      return $collectionCache[$tableName] =
-        Database::hasTable($tableName) ? $tableName : NODE_COLLECTION;
+      return $tableName;
     }
   }
 
