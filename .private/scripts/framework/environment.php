@@ -21,7 +21,7 @@ if (isset($_SERVER['REQUEST_URI']) && realpath(FRAMEWORK_PATH_VIRTUAL)) {
 
 // CRYPT_SHA512
 if (CRYPT_SHA512 !== 1) {
-	throw new Exception('CRYPT_SHA512 method is not supported, please enable it on your system.');
+  throw new Exception('CRYPT_SHA512 method is not supported, please enable it on your system.');
 }
 
 if (utils::isCLI()) {
@@ -34,22 +34,40 @@ if (utils::isCLI()) {
 
 // Starts HTTP session for browsers.
 else {
-	session_start();
+  session_start();
 
-	if (function_exists('getallheaders')) {
-  	// Parse custom headers
-  	$_REQUEST['HEADERS'] = array();
+  if (function_exists('getallheaders')) {
+    // Parse custom headers
+    $_REQUEST['HEADERS'] = array();
 
-  	foreach(getallheaders() as $key => $value) {
-  		if (preg_match(FRAMEWORK_CUSTOM_HEADER_PATTERN, $key)) {
-  			$_REQUEST['HEADERS'][$key] = $value;
-  		}
-  	} unset($key, $value);
+    foreach(getallheaders() as $key => $value) {
+      if (preg_match(FRAMEWORK_CUSTOM_HEADER_PATTERN, $key)) {
+        $_REQUEST['HEADERS'][$key] = $value;
+      }
+    } unset($key, $value);
 
-  	if (!$_REQUEST['HEADERS']) {
-  		unset($_REQUEST['HEADERS']);
-  	}
-	}
+    if (!$_REQUEST['HEADERS']) {
+      unset($_REQUEST['HEADERS']);
+    }
+  }
+}
+
+//--------------------------------------------------
+//
+//  Compatibility
+//
+//--------------------------------------------------
+
+if ( !function_exists('curl_file_create') ) {
+  function curl_file_create($path, $type = NULL, $name = NULL) {
+    $ret = "@$path";
+
+    if ( $type ) {
+      $ret.= ";type=$type";
+    }
+
+    return $ret;
+  }
 }
 
 //--------------------------------------------------
