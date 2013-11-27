@@ -128,9 +128,11 @@ class Process {
 
   /**
    * Remove target process from queue.
+   *
+   * Killing signal defaults to SIGKILL.
    */
   public static function
-  /* void */ kill($process) {
+  /* void */ kill($process, $signal = 9) {
     $res = array(
         NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
       );
@@ -145,15 +147,15 @@ class Process {
     $res = \node::get($res);
 
     if ( $res ) {
-      \node::delete($res);
+      array_walk($res, 'Node::delete');
 
       \log::write('Killing processes.', 'Debug', $res);
 
-      array_walk($res, function($process) {
+      array_walk($res, function($process) use($signal) {
         if ( @$process['pid'] && function_exists('posix_kill') ) {
           \log::write("Sending SIGKILL to pid $process[pid].", 'Debug');
-          // posix_kill(-$process['pid'], 2); // SIGINT
-          posix_kill(-$process['pid'], 15); // SIGTERM
+
+          posix_kill(-$process['pid'], $signal);
         }
       });
     }
