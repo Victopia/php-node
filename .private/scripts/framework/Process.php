@@ -169,7 +169,7 @@ class Process {
       ));
 
     if ( count($res) < self::MAX_PROCESS ) {
-      return (int) shell_exec(self::EXEC_PATH . ' >/dev/null & echo $!');
+      return (int) shell_exec(self::EXEC_PATH . ' >/dev/null & echo $?');
     }
 
     return FALSE;

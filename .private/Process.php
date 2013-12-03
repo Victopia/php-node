@@ -1,7 +1,7 @@
 <?php
 /* Process.php | Daemon dequeues and executes processes from the database. */
 
-require_once('.private/scripts/Initialize.php');
+require_once('scripts/Initialize.php');
 
 $opts = (new optimist())
   ->options('nohup', array(
@@ -41,7 +41,7 @@ if ( @$opts['cleanup'] ) {
 }
 
 // use nohup if internal forking is not supported.
-if ( !function_exists('pcntl_fork') || isset($opts['n']) ) {
+if ( !function_exists('pcntl_fork') ) {
   $ret = shell_exec('nohup ' . process::EXEC_PATH . ' --nohup >/dev/null 2>&1 & echo $!');
 
   if ( !$ret ) {
@@ -49,6 +49,9 @@ if ( !function_exists('pcntl_fork') || isset($opts['n']) ) {
   }
 
   die;
+}
+elseif ( @$opts['n'] ) {
+  $pid = 0; // fork mimic.
 }
 else {
   $pid = pcntl_fork();
@@ -60,7 +63,7 @@ $forked = $pid == 0;
 
 // parent will die here.
 if ( !$forked ) {
-  die;
+  exit($pid);
 }
 
 if ( function_exists('posix_setsid') ) {
@@ -152,7 +155,7 @@ if ( !$processSpawn ) {
   log::write('Unable to spawn process, process terminating.', 'Error');
 }
 
-unset($process['locked']);
+unset($process['locked'], $process['path']);
 
 if ( $output !== NULL ) {
   log::write("Output captured from command line $path:\n" . print_r($output, 1), 'Warning');
