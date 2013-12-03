@@ -1,5 +1,5 @@
 <?php
-/*! Log.php | https://github.com/victopia/php-node
+/*! Log.php | https://github.com/victopia/PHPNode
  *
  * CAUTION: This class is not production ready, use at own risk.
  */
@@ -7,14 +7,7 @@
 namespace core;
 
 class Log {
-
   static function write($message, $type = 'Notice', $context = NULL) {
-    // Skip Logging if database is not connected.
-    // TODO: Fallback to file based logging.
-    if (!Database::isConnected()) {
-      return;
-    }
-
     // Skip debug logs on production environment.
     if (FRAMEWORK_ENVIRONMENT != 'debug' && $type == 'Debug') {
       return;
@@ -57,11 +50,11 @@ class Log {
   static function sessionWrite($sid, $action, $remarks = NULL) {
     $userId = '0';
 
-    if ($sid !== NULL && \session::ensure($sid)) {
-      $userId = \session::currentUser('ID');
+    if ( $sid !== NULL ) {
+      \framework\Session::ensure($sid);
     }
 
-    $userId = intval($userId);
+    $userId = (int) \framework\Session::currentUser('ID');
 
     return Node::set(array(
         NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_LOG
