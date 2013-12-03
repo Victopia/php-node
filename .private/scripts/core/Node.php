@@ -38,8 +38,8 @@ class Node {
    * @returns Array of filtered data rows.
    */
   static /* Array */
-  function get($filter, $fieldsRequired = TRUE, $limit = NULL, $sorter = NULL) {
-    if ( $limit !== NULL && (!$limit || !is_int($limit) && !is_array($limit)) ) {
+  function get($filter, $fieldsRequired = TRUE, $limits = NULL, $sorter = NULL) {
+    if ( $limits !== NULL && (!$limits || !is_int($limits) && !is_array($limits)) ) {
       return array();
     }
 
@@ -249,50 +249,76 @@ class Node {
       }
     /* Merge $sorter into SQL statement, end of. */
 
-    $rowCount = Database::fetchField('SELECT COUNT(*) FROM ' . Database::escape($tableName) . $queryString, $params);
-    $rowOffset = 0;
-
-    if ( is_int($limit) ) {
-      $limit = array(0, $limit);
+    // Normalize $limits into the format of [offset, length].
+    if ( is_int($limits) ) {
+      $limits = array(0, $limits);
     }
-    elseif ( is_array($limit) ) {
-      $limit = array_slice($limit, 0, 2) + array(0, 0);
-    }
-
-    /* Added by Vicary @ 25 Sep 2013
-       Apply LIMIT to $rowOffset and $fetchSize if no $filter is left,
-       which implies everything is done in SQL statement.
-    */
-    if ( !$filter && $limit ) {
-      $rowOffset = $limit[0];
-      $rowCount-= min($rowOffset, $rowCount);
-
-      $limit[0] = 0;
+    elseif ( is_array($limits) ) {
+      $limits = array_slice($limits, 0, 2) + array(0, 0);
     }
 
     $result = array();
 
-    while ($rowCount > 0 && ($limit === NULL || $limit[1] > 0)) {
-      $fetchSize = (int) min(array_filter(array(NODE_FETCHSIZE, $limit[1])));
+    // Simple SQL statment when all filtering fields are real column.
+    if ( !$filter ) {
+      if ( $limits ) {
+        $queryString.= " LIMIT $limits[0], $limits[1]";
+      }
 
-      $res = Database::select($tableName, $selectField, "$queryString LIMIT $rowOffset, $fetchSize", $params);
+      $res = "SELECT $selectField FROM `$tableName` $queryString";
 
-      foreach ( $res as $key => &$row ) {
+      unset($limits);
+
+      $res = Database::query($res, $params);
+
+      $res->setFetchMode(\PDO::FETCH_ASSOC);
+
+      $decodesContent = function(&$row) use($tableName) {
         if ( isset($row[NODE_FIELD_VIRTUAL]) ) {
-          $content = json_decode($row[NODE_FIELD_VIRTUAL], true);
+          $contents = json_decode($row[NODE_FIELD_VIRTUAL], true);
 
-          unset($row[NODE_FIELD_VIRTUAL]); // unset beforehand, to preserve the same name in virtual field
+          unset($row[NODE_FIELD_VIRTUAL]);
 
-          $row = ((array) $content) + $row; // never use array_merge(), it will screw up numeric keys.
+          $row+= $contents;
 
-          unset($name, $value, $content);
+          unset($contents);
         }
 
-        if ( $tableName !== NODE_COLLECTION ) {
-          $row[NODE_FIELD_COLLECTION] = $tableName;
+        $row[NODE_FIELD_COLLECTION] = $tableName;
+
+        return $row;
+      };
+
+      foreach ( $res as $row ) {
+        $result[] = $decodesContent($row);
+      }
+
+      unset($res, $row, $decodesContent);
+    }
+
+    // otherwise goes vritual route with at least one virtual field.
+    else {
+      // Fetch until the fetched size is less than expected fetch size.
+      if ( $limits === NULL ) {
+        $limits = array(0, PHP_INT_MAX);
+      }
+
+      $fetchOffset = 0; // Always starts with zero as we are calculating virtual fields.
+      $fetchLength = NODE_FETCHSIZE; // Node fetch size, or the target size if smaller.
+
+      // Row decoding function.
+      $decodesContent = function(&$row) use($filter, $fieldsRequired) {
+        if ( isset($row[NODE_FIELD_VIRTUAL]) ) {
+          $contents = json_decode($row[NODE_FIELD_VIRTUAL], true);
+
+          unset($row[NODE_FIELD_VIRTUAL]);
+
+          $row+= $contents;
+
+          unset($contents);
         }
 
-        /* Start filtering. */
+        // Calculates if the row qualifies the $contentFilter or not.
         foreach ( $filter as $field => $expr ) {
           // Reuse $expr as it's own result here, do not confuse with the name.
           $expr = self::filterWalker($expr, array(
@@ -302,34 +328,40 @@ class Node {
             ));
 
           if ( !$expr ) {
-            $row = NULL;
-            break;
+            return false;
           }
         }
 
-        // If the row passes the filter, add it.
-        // if ( $row !== NULL ) {
-        if ( $row ) {
-          if ( $limit !== NULL && $limit[0] > 0 ) {
-            $limit[0]--;
-          }
-          elseif ( $limit === NULL || $limit[1] > 0 ) {
-            $result[] = $row;
+        return true;
+      };
 
-            if ( $limit[1] > 0 ) {
-              $limit[1]--;
+      while ( $res = Database::select($tableName, $selectField, "$queryString LIMIT $fetchOffset, $fetchLength", $params) ) {
+        $fetchOffset+= count($res);
+
+        while ( $row = array_shift($res) ) {
+          if ( $decodesContent($row) ) {
+            if ( $limits[0] ) {
+              $limits[0]--;
+            }
+            else {
+              $result[] = $row;
+
+              // Result size is less than specified size, it means end of data.
+              if ( !--$limits[1] ) {
+                break;
+              }
             }
           }
         }
-      }
 
-      $rowOffset += $fetchSize;
-      $rowCount -= $fetchSize;
+        // You'll never know if upcoming rows are qualifying.
+        // $fetchLength = min($limits[1], NODE_FETCHSIZE);
+      } unset($fetchOffset, $fetchLength, $res);
     }
 
     // Skip default nodeSorter when custom $sorter is provided.
-    if ( $sorter === NULL ) {
-      usort($result, array('self', 'nodeSorter'));
+    if ( $sorter === NULL && in_array('ID', $columns) ) {
+      usort($result, sortsPropAscend('ID'));
     }
 
     return $result;
