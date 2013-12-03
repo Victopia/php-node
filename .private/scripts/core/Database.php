@@ -26,7 +26,7 @@ class Database {
 
   public static /* NULL */
   function setOptions($options) {
-    if (!($options instanceof DatabaseOptions)) {
+    if ( !($options instanceof DatabaseOptions) ) {
       throw new \PDOException('Options must be an instance of DatabaseOptions class.');
     }
 
@@ -62,7 +62,7 @@ class Database {
         }
       }
 
-      if (!(self::$options instanceof DatabaseOptions)) {
+      if ( !(self::$options instanceof DatabaseOptions) ) {
         throw new \PDOException('Options must be an instance of DatabaseOptions class.');
       }
 
@@ -224,8 +224,8 @@ class Database {
    * Gets fields with specified key type.
    */
   public static /* Array */
-  function getFields($tableName, $key = NULL, $nameOnly = TRUE) {
-    $tables = \utils::wrapAssoc($tableName);
+  function getFields($tables, $key = NULL, $nameOnly = TRUE) {
+    $tables = \utils::wrapAssoc($tables);
 
     $cache = &self::$schemaCache;
 
@@ -238,14 +238,14 @@ class Database {
 
     array_walk($tables, function($tableName) use(&$cache) {
       if ( !Database::hasTable($tableName) ) {
-        throw new \PDOException("Table `$tableName` doesn't exists!");
+        throw new \PDOException("Table $tableName doesn't exists!");
       }
 
-      if ( !isset($cache['collections'][$tableName]) ) {
+      if ( @$cache['collections'][$tableName] ) {
         return;
       }
 
-      $res = Database::fetchArray("SHOW COLUMNS FROM $tableName");
+      $res = Database::fetchArray('SHOW COLUMNS FROM ' . Database::escape($tableName));
 
       $res = array_combine(
           array_map(prop('Field'), $res)
@@ -316,9 +316,21 @@ class Database {
   function query($query, $param = NULL, $options = array()) {
     $query = self::prepare($query);
 
-    $res = $query->execute($param);
+    $param = (array) $param;
 
-    if ($res) {
+    array_walk($param, function($param, $index) use(&$query) {
+      $parmType = \PDO::PARAM_STR;
+
+      if ( is_int($param) ) {
+        $parmType = \PDO::PARAM_INT;
+      }
+
+      $query->bindValue($index + 1, $param, $parmType);
+    });
+
+    $res = $query->execute();
+
+    if ( $res ) {
       return $query;
     }
 
@@ -343,10 +355,10 @@ class Database {
                      , $fetch_argument = NULL ) {
     $res = self::query($query, $param);
 
-    if ($res === FALSE) {
+    if ( $res === FALSE ) {
       return FALSE;
     }
-    elseif ($fetch_argument === NULL) {
+    elseif ( $fetch_argument === NULL ) {
       return $res->fetchAll($fetch_type);
     }
     else {
@@ -395,7 +407,7 @@ class Database {
     $res = self::query($query, $param);
 
     // fetch whatever I don't care.
-    while ($fetch_offset-- > 0 && $res->fetch());
+    while ( $fetch_offset-- > 0 && $res->fetch() );
 
     $field = $res->fetchColumn($field_offset);
 
@@ -493,7 +505,7 @@ class Database {
     $keys = array();
 
     // Setup keys.
-    foreach ($fields as $field => $value) {
+    foreach ( $fields as $field => $value ) {
       if (in_array($field, $columns)) {
         $keys[$field] = $value;
 
@@ -517,7 +529,7 @@ class Database {
         implode(', ', array_fill(0, count($keys), '?')) . ') ON DUPLICATE KEY UPDATE ';
 
     /* Performs upsert here. */
-    if (is_array($fields) && count($fields) > 0) {
+    if ( is_array($fields) && count($fields) > 0 ) {
       $res.= implode(', ', array_keys($fields));
     }
     else {
