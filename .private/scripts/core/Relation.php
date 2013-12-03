@@ -26,7 +26,7 @@ class Relation {
   static function getSubjects($collection, $object) {
     $result = (array) $object;
 
-    if ($result) {
+    if ( $result ) {
       $params = array_merge((array) $collection, $result);
 
       $result = Database::select(FRAMEWORK_COLLECTION_RELATION
@@ -44,12 +44,12 @@ class Relation {
   static function getObjects($collection, $subject) {
     $result = (array) $subject;
 
-    if ($result) {
+    if ( $result ) {
       $params = array_merge((array) $collection, $result);
 
       $result = Database::select(FRAMEWORK_COLLECTION_RELATION
         , 'Object'
-        , 'WHERE `@collection` = ? AND `Subject` IN ('. implode(',', array_fill(0, count($result), '?')) .')'
+        , 'WHERE `@collection` = ? AND `Subject` IN ('. Utility::fillArray($result) .')'
         , $params
         , \PDO::FETCH_COLUMN
         , 0
@@ -64,7 +64,7 @@ class Relation {
 
     $ancestors = array();
 
-    while ($result) {
+    while ( $result ) {
       $result = self::getSubjects($collection, $result);
 
       $ancestors = array_merge($ancestors, $result);
@@ -82,7 +82,7 @@ class Relation {
 
     $descendants = array();
 
-    while ($result) {
+    while ( $result ) {
       $result = self::getObjects($collection, $result);
 
       $descendants = array_merge($descendants, $result);
