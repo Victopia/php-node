@@ -279,7 +279,9 @@ class Node {
 
           unset($row[NODE_FIELD_VIRTUAL]);
 
-          $row+= $contents;
+          if ( is_array($contents) ) {
+            $row+= $contents;
+          }
 
           unset($contents);
         }
