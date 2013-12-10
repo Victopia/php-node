@@ -13,6 +13,111 @@
 
 */
 
+/* Note @ 13 Nov, 2013
+
+   Functional iterators is way more complicated with flow control,
+   it should be listenable, chainable iteration object instead of
+   compose() based, single dimension approach.
+
+   Common options:
+   invokes: Invokes when target is callable and this value is true.
+   pointer: Reads and writes with references "&" instead of values.
+
+*/
+
+//--------------------------------------------------
+//
+//  Reads
+//
+//--------------------------------------------------
+
+/*
+function reads($name, $options = array()) {
+  $names = \utils::wrapAssoc($name);
+
+  unset($name);
+
+  return function($object) use($names, $options) {
+    $node = &$object;
+
+    foreach ( $names as $name ) {
+      if ( @$options['invokes'] === true && is_callable(array($node, $name)) ) {
+        $node = &$node[$name]();
+      }
+
+      if ( @$options['pointer'] ) {
+        $node = &$node[$name];
+      }
+      else {
+        $node = @$node[$name];
+      }
+
+      if ( @$options['invokes'] === true && is_callable($node) ) {
+        $node = &$node[$name]();
+      }
+      else {
+        $node = &$node[$name];
+      }
+    }
+
+    return $node;
+  };
+
+  }
+  else {
+    return function($object) use($names) {
+      $node = &$object;
+
+      foreach ($names as $name) {
+        $node = &$node[$name];
+      }
+
+      return $node;
+    };
+  }
+}
+
+//--------------------------------------------------
+//
+//  Writes
+//
+//--------------------------------------------------
+
+function writesRef($value, $name = null, $invokesCallables = false) {
+  if ( $name === null ) {
+    return function(&$object) use($name, $value, $invokesCallables) {
+      if ( $invokesCallables && is_callable($value) ) {
+        $value = &$value($object);
+      }
+
+      if ( $name === null ) {
+        $object = &$value;
+      }
+      else {
+        $object[$name] = &$value;
+      }
+    }
+  }
+}
+
+function writes($value, $name = null, $invokesCallables = false) {
+  if ( $name === null ) {
+    return function(&$object) use($name, $value, $invokesCallables) {
+      if ( $invokesCallables && is_callable($value) ) {
+        $value = $value($object);
+      }
+
+      if ( $name === null ) {
+        $object = $value;
+      }
+      else {
+        $object[$name] = $value;
+      }
+    }
+  }
+}
+*/
+
 //--------------------------------------------------
 //
 //  Functional functions
@@ -76,7 +181,7 @@ function not($value) {
   return !$value;
 }
 
-function is($value, $strict = FALSE) {
+function is($value, $strict = false) {
   if ( $strict ) {
     return function($input) use($value) {
       return $input === $value;
@@ -89,7 +194,7 @@ function is($value, $strict = FALSE) {
   }
 }
 
-function isNot($value, $strict = FALSE) {
+function isNot($value, $strict = false) {
   return compose('not', is($value, $strict));
 }
 
@@ -99,27 +204,37 @@ function prop($name) {
   };
 }
 
-function propIs($prop, $value, $strict = FALSE) {
+function func($name) {
+  return function($object) use($name) {
+    if ( is_callable(array($object, $name)) ) {
+      return call_user_func(array($object, $name));
+    }
+
+    return @$object[$name];
+  };
+}
+
+function propIs($prop, $value, $strict = false) {
   return propIn($prop, (array) $value, $strict);
 }
 
-function propIsNot($prop, $value, $strict = FALSE) {
+function propIsNot($prop, $value, $strict = false) {
   return compose('not', propIs($prop, $value, $strict));
 }
 
-function propIn($prop, array $values, $strict = FALSE) {
+function propIn($prop, array $values, $strict = false) {
   return function($object) use($prop, $values, $strict) {
     return in_array(@$object[$prop], $values, $strict);
   };
 }
 
-function propInNot($prop, array $values, $strict = FALSE) {
+function propInNot($prop, array $values, $strict = false) {
   return compose('not', propIn($prop, $values, $strict));
 }
 
 /**
  * This differs from propIn() only when target property
- * is an array, this returns TRUE when at least one of
+ * is an array, this returns true when at least one of
  * the contents in targert property matches $values,
  * while propIn() does full array equality comparison.
  *
@@ -127,10 +242,10 @@ function propInNot($prop, array $values, $strict = FALSE) {
  * @param {array} $values Array of values to match against.
  * @param {bool} $strict Whether to perform a strict comparison or not.
  *
- * @returns {Closure} A function that returns TRUE on
- *                    at least one matches, FALSE othereise.
+ * @returns {Closure} A function that returns true on
+ *                    at least one matches, false othereise.
  */
-function propHas($prop, array $values, $strict = FALSE) {
+function propHas($prop, array $values, $strict = false) {
   return function($object) use($prop, $values, $strict) {
     $prop = \utils::wrapAssoc(@$object[$prop]);
 
@@ -138,11 +253,11 @@ function propHas($prop, array $values, $strict = FALSE) {
       return in_array($prop, $values, $strict);
     }, $prop);
 
-    return in_array(TRUE, $prop, TRUE);
+    return in_array(true, $prop, true);
   };
 }
 
-function func($name, array $args = array()) {
+function invokes($name, array $args = array()) {
   return function ($object) use($name, $args) {
     if ( is_array($object) ) {
       $func = @$object[$name];
@@ -155,11 +270,11 @@ function func($name, array $args = array()) {
   };
 }
 
-function funcEquals($name, $value, array $args = array(), $strict = FALSE) {
+function funcEquals($name, $value, array $args = array(), $strict = false) {
   return funcIn($name, (array) $value, $args, $strict);
 }
 
-function funcIn($name, array $values, array $args = array(), $strict = FALSE) {
+function funcIn($name, array $values, array $args = array(), $strict = false) {
   return function($object) use($name, $values, $args, $strict) {
     $ret = call_user_func_array($object, $name, $args);
 
@@ -197,7 +312,7 @@ function removes($name) {
 //
 //--------------------------------------------------
 
-function sortsAscend($subject, $object, $strict = FALSE) {
+function sortsAscend($subject, $object, $strict = false) {
   if ( $strict ) {
     if ( $subject === $object ) {
       return 0;
@@ -239,14 +354,14 @@ function sortsAscend($subject, $object, $strict = FALSE) {
       throw new Exception('Resource type comparison is not supported.');
       return 0;
 
-    case 'NULL':
+    case 'null':
     default:
-      throw new Exception('NULL or unknown type comparison is not supported.');
+      throw new Exception('null or unknown type comparison is not supported.');
       return 0;
   }
 }
 
-function sortsDescend($subject, $object, $strict = FALSE) {
+function sortsDescend($subject, $object, $strict = false) {
   $ret = sortsAscend($subject, $object, $strict);
 
   if ( $ret >= 1 ) {
@@ -260,13 +375,13 @@ function sortsDescend($subject, $object, $strict = FALSE) {
   return 0;
 }
 
-function sortsPropAscend($name, $strict = FALSE) {
+function sortsPropAscend($name, $strict = false) {
   return function($subject, $object) use($name, $strict) {
     return sortsAscend(@$subject[$name], @$object[$name], $strict);
   };
 }
 
-function sortsPropDescend($name, $strict = FALSE) {
+function sortsPropDescend($name, $strict = false) {
   return function($subject, $object) use($name, $strict) {
     return sortsDescend(@$subject[$name], @$object[$name], $strict);
   };
@@ -282,8 +397,8 @@ function prepend($prefix, $object) {
   return "$prefix$object";
 }
 
-function prepends($prefix, $prop = NULL) {
-  if ( $prop === NULL ) {
+function prepends($prefix, $prop = null) {
+  if ( $prop === null ) {
     return function($object) use($prefix) {
       return prepend($prefix, $object);
     };
@@ -311,8 +426,8 @@ function append($suffix, $object) {
   }
 }
 
-function appends($suffix, $prop = NULL) {
-  if ( $prop === NULL ) {
+function appends($suffix, $prop = null) {
+  if ( $prop === null ) {
     return function($object) use($suffix) {
       return append($suffix, $object);
     };
@@ -326,8 +441,8 @@ function appends($suffix, $prop = NULL) {
   }
 }
 
-function assigns($value, $prop = NULL) {
-  if ( $prop === NULL ) {
+function assigns($value, $prop = null) {
+  if ( $prop === null ) {
     return function($object) use($value) {
       if ( is_callable($value) ) {
         $value = $value($object);
@@ -355,7 +470,7 @@ function replaces($pattern, $replacement) {
   };
 }
 
-function startsWith($prefix, $ignoreCase = FALSE) {
+function startsWith($prefix, $ignoreCase = false) {
   if ( $ignoreCase ) {
     return function($object) use($prefix) {
       return strcasecmp(substr($object, 0, strlen($prefix)), $prefix) === 0;
@@ -368,7 +483,20 @@ function startsWith($prefix, $ignoreCase = FALSE) {
   }
 }
 
-function endsWith($suffix, $ignoreCase = FALSE) {
+function containsWith($string, $ignoreCase = false) {
+  if ( $ignoreCase ) {
+    return function($object) use($string) {
+      return stripos($object, $string) !== false;
+    };
+  }
+  else {
+    return function($object) use($string) {
+      return strpos($object, $string) !== false;
+    };
+  }
+}
+
+function endsWith($suffix, $ignoreCase = false) {
   if ( $ignoreCase ) {
     return function($object) use($prefix) {
       return strcasecmp(substr($object, -strlen($suffix)), $suffix) === 0;
@@ -390,7 +518,7 @@ function endsWith($suffix, $ignoreCase = FALSE) {
 /**
  * Factory of array_filter($list, $filter);
  */
-function filters(/* callable */ $filter = NULL) {
+function filters(/* callable */ $filter = null) {
   if ( is_null($filter) ) {
     return function(array $list) {
       return array_filter($list);
@@ -468,13 +596,10 @@ if ( !function_exists('array_select') ) {
   function array_select($list, array $keys) {
     $result = array();
 
-    foreach ($list as $key => &$value) {
-      if ( in_array($key, $keys, TRUE) ) {
-        $result[$key] = &$value;
+    foreach ( $keys as $key ) {
+      if ( array_key_exists($key, $list) ) {
+        $result[$key] = $list[$key];
       }
-
-      // Remove the copied value to save memory.
-      unset($list[$key]);
     }
 
     return $result;
@@ -482,14 +607,14 @@ if ( !function_exists('array_select') ) {
 }
 
 if ( !function_exists('array_remove') ) {
-  function array_remove(&$list, $item, $strict = FALSE) {
+  function array_remove(&$list, $item, $strict = false) {
     $items = (array) $item;
 
-    $hasRemoved = FALSE;
+    $hasRemoved = false;
 
     foreach ($items as $item) {
-      while (FALSE !== ($index = array_search($item, $list, $strict))) {
-        $hasRemoved = TRUE;
+      while (false !== ($index = array_search($item, $list, $strict))) {
+        $hasRemoved = true;
 
         array_splice($list, $index, 1);
       }
@@ -523,7 +648,7 @@ if ( !function_exists('array_filter_keys') ) {
 //
 //--------------------------------------------------
 
-function mapdef(/* callable */ $callback, $list, /* callable */ $filter = NULL) {
+function mapdef(/* callable */ $callback, $list, /* callable */ $filter = null) {
   $function = compose(
       filters($filter)
     , maps($callback)
@@ -532,7 +657,7 @@ function mapdef(/* callable */ $callback, $list, /* callable */ $filter = NULL) 
   return $function($list);
 }
 
-function seldef(array $keys, $list, /* callable */ $filter = NULL) {
+function seldef(array $keys, $list, /* callable */ $filter = null) {
   $function = compose(
       filters($filter)
     , selects($keys)
