@@ -346,6 +346,8 @@ class Node {
               $limits[0]--;
             }
             else {
+              $row[NODE_FIELD_COLLECTION] = $tableName;
+
               $result[] = $row;
 
               // Result size is less than specified size, it means end of data.
