@@ -65,6 +65,17 @@ class Node {
       unset($filter[NODE_FIELD_COLLECTION]);
     }
 
+    /* If index hint is specified, append the clause to collection. */
+    if ( @$filter[NODE_FIELD_INDEX_HINT] ) {
+      $indexHints = $filter[NODE_FIELD_INDEX_HINT];
+    }
+    else {
+      $indexHints = null;
+    }
+
+    /* Removes the index hint field. */
+    unset($filter[NODE_FIELD_INDEX_HINT]);
+
     $selectField = isset($filter[NODE_FIELD_SELECT]) ? $filter[NODE_FIELD_SELECT] : '*';
 
     unset($filter[NODE_FIELD_SELECT]);
@@ -179,15 +190,26 @@ class Node {
 
           // 6. Plain string.
           if ( is_string($content) ) {
-            if ( preg_match('/^!\'([^\']+)\'$/', trim($content), $matches) ) {
-              $subQuery[] = "NOT LIKE ?";
+            $content = trim($content);
+
+            if ( preg_match('/[^\\][\\*%_]/', $content) ) {
+              $operator = 'LIKE';
+            }
+            else {
+              $operator = '=';
+            }
+
+            if ( preg_match('/^!\'([^\']+)\'$/', $content, $matches) ) {
+              $subQuery[] = "NOT $operator ?";
               $content = $matches[1];
             }
             else {
-              $subQuery[] = "LIKE ?";
+              $subQuery[] = "$operator ?";
             }
 
             $params[] = $content;
+
+            unset($operator);
           }
         });
 
@@ -265,7 +287,11 @@ class Node {
         $queryString.= " LIMIT $limits[0], $limits[1]";
       }
 
-      $res = "SELECT $selectField FROM `$tableName` $queryString";
+      if ( is_array($indexHints) && array_key_exists($tableName, $indexHints) ) {
+        $indexHints = " $indexHints[$tableName] ";
+      }
+
+      $res = "SELECT $selectField FROM `$tableName` $indexHints $queryString";
 
       unset($limits);
 
@@ -275,7 +301,7 @@ class Node {
 
       $decodesContent = function(&$row) use($tableName) {
         if ( isset($row[NODE_FIELD_VIRTUAL]) ) {
-          $contents = json_decode($row[NODE_FIELD_VIRTUAL], true);
+          $contents = (array) json_decode($row[NODE_FIELD_VIRTUAL], true);
 
           unset($row[NODE_FIELD_VIRTUAL]);
 
@@ -336,6 +362,10 @@ class Node {
 
         return true;
       };
+
+      if ( @$indexHints[$tableName] ) {
+        $tableName = "`$tableName` $indexHints[$tableName]";
+      }
 
       while ( $res = Database::select($tableName, $selectField, "$queryString LIMIT $fetchOffset, $fetchLength", $params) ) {
         $fetchOffset+= count($res);
