@@ -198,6 +198,12 @@ function isNot($value, $strict = false) {
   return compose('not', is($value, $strict));
 }
 
+function has($needle, $strict = false) {
+  return function($input) use($needle, $strict) {
+    return in_array($needle, (array) $input, $strict);
+  };
+}
+
 function prop($name) {
   return function ($object) use($name) {
     return @$object[$name];
