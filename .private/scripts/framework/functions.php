@@ -198,6 +198,14 @@ function isNot($value, $strict = false) {
   return compose('not', is($value, $strict));
 }
 
+function in($values, $strict = false) {
+  $values = (array) $values;
+
+  return function($input) use($values, $strict) {
+    return in_array($input, $values, $strict);
+  };
+}
+
 function has($needle, $strict = false) {
   return function($input) use($needle, $strict) {
     return in_array($needle, (array) $input, $strict);
@@ -229,9 +237,7 @@ function propIsNot($prop, $value, $strict = false) {
 }
 
 function propIn($prop, array $values, $strict = false) {
-  return function($object) use($prop, $values, $strict) {
-    return in_array(@$object[$prop], $values, $strict);
-  };
+  return compose(in($values, $strict), prop($prop));
 }
 
 function propInNot($prop, array $values, $strict = false) {
@@ -476,41 +482,59 @@ function replaces($pattern, $replacement) {
   };
 }
 
-function startsWith($prefix, $ignoreCase = false) {
+function startsWith($prefixes, $ignoreCase = false) {
+  $prefixes = (array) $prefixes;
+
   if ( $ignoreCase ) {
-    return function($object) use($prefix) {
-      return strcasecmp(substr($object, 0, strlen($prefix)), $prefix) === 0;
+    return function($input) use($prefixes) {
+      return (bool) array_filter($prefixes, function($prefix) use($input) {
+        return stripos($input, $prefix) === 0;
+      });
     };
   }
   else {
-    return function($object) use($prefix) {
-      return strcmp(substr($object, 0, strlen($prefix)), $prefix) === 0;
+    return function($input) use($prefixes) {
+      return (bool) array_filter($prefixes, function($prefix) use($input) {
+        return strpos($input, $prefix) === 0;
+      });
     };
   }
 }
 
-function containsWith($string, $ignoreCase = false) {
+function containsWith($strings, $ignoreCase = false) {
+  $strings = (array) $strings;
+
   if ( $ignoreCase ) {
-    return function($object) use($string) {
-      return stripos($object, $string) !== false;
+    return function($input) use($strings) {
+      return (bool) array_filter($strings, function($string) use($input) {
+        return stripos($input, $string) !== false;
+      });
     };
   }
   else {
-    return function($object) use($string) {
-      return strpos($object, $string) !== false;
+    return function($input) use($strings) {
+      return (bool) array_filter($strings, function($string) use($input) {
+        return strpos($input, $string) !== false;
+      });
     };
   }
 }
 
-function endsWith($suffix, $ignoreCase = false) {
+function endsWith($suffixes, $ignoreCase = false) {
+  $suffixes = (array) $suffixes;
+
   if ( $ignoreCase ) {
-    return function($object) use($prefix) {
-      return strcasecmp(substr($object, -strlen($suffix)), $suffix) === 0;
+    return function($input) use($suffixes) {
+      return (bool) array_filter($suffixes, function($suffix) use($input) {
+        return strcasecmp(substr($input, -strlen($suffix)), $suffix) === 0;
+      });
     };
   }
   else {
-    return function($object) use($prefix) {
-      return strcmp(substr($object, -strlen($suffix)), $suffix) === 0;
+    return function($input) use($suffixes) {
+      return (bool) array_filter($suffixes, function($suffix) use($input) {
+        return strcmp(substr($input, -strlen($suffix)), $suffix) === 0;
+      });
     };
   }
 }
