@@ -376,7 +376,9 @@ class Node {
               $limits[0]--;
             }
             else {
-              $row[NODE_FIELD_COLLECTION] = $tableName;
+              if ( $tableName !== NODE_COLLECTION ) {
+                $row[NODE_FIELD_COLLECTION] = $tableName;
+              }
 
               $result[] = $row;
 
