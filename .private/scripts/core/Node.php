@@ -337,7 +337,7 @@ class Node {
       // Row decoding function.
       $decodesContent = function(&$row) use($filter, $fieldsRequired) {
         if ( isset($row[NODE_FIELD_VIRTUAL]) ) {
-          $contents = json_decode($row[NODE_FIELD_VIRTUAL], true);
+          $contents = (array) json_decode($row[NODE_FIELD_VIRTUAL], true);
 
           unset($row[NODE_FIELD_VIRTUAL]);
 
