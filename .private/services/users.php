@@ -10,16 +10,20 @@ class users implements framework\interfaces\IAuthorizableWebService {
   //--------------------------------------------------
 
   public function
-  /* boolean */ authorizeMethod($name, $args = NULL) {
+  /* boolean */ authorizeMethod($name, $args = null) {
     switch ($name) {
       case 'create':
         return session::checkStatus(session::USR_ADMINS);
+
+      // Only self is allowed, or it is super user.
+      case 'set':
+        return @$args[0] == '~' ^ utils::isLocal();
 
       case 'token':
         return @$args[1] || utils::isLocal() || session::current();
 
       default:
-        return TRUE;
+        return true;
     }
   }
 
@@ -33,12 +37,18 @@ class users implements framework\interfaces\IAuthorizableWebService {
    * Get target user with $username provided, if $username is omitted,
    * the current user will be returned.
    */
-  public function
-  /* array */ get($userId = '~') {
+  public /* array */
+  function get($userId = '~') {
     $user = session::currentUser();
 
-    if ($userId === '~' && $user === NULL) {
-      throw new Exception('Please login or specify a username.');
+    /* Allows null user context on local processes. */
+    if ( $userId === '~' && $user === null ) {
+      if ( !utils::isLocal() ) {
+        throw new framework\exceptions\ServiceException('Please login or specify a username.', 1000);
+      }
+      else {
+        return null;
+      }
     }
 
     $filter = is_numeric($userId) ? 'ID' : 'username';
@@ -61,6 +71,41 @@ class users implements framework\interfaces\IAuthorizableWebService {
   }
 
   /**
+   * Updates users' information.
+   *
+   * Fields that need special catering will be done inside this function,
+   * like password, email and others.
+   */
+  public /* bool */
+  function set($userId = '~', $contents = null) {
+    if ($contents === null) {
+      if ($_POST) {
+        $contents = $_POST;
+      }
+      else {
+        return false;
+      }
+    }
+
+    $user = $this->get($userId);
+
+    // Restrict updatable fields
+    remove(array('ID', 'username', NODE_FIELD_COLLECTION, 'timestamp'), $contents);
+
+    // Cater special fields.
+
+    // - Password
+    if (@$contents['password']) {
+      $contents['password'] = $this->hash($user['username'], $contents['password']);
+    }
+
+    $user = array_filter($contents + $user, compose('not', 'is_null'));
+
+    // Update user
+    return node::set($user);
+  }
+
+  /**
    * Get server data associated with the current user.
    *
    * The $_POST data should be stored under the property name 'data',
@@ -69,20 +114,20 @@ class users implements framework\interfaces\IAuthorizableWebService {
    * Goddamn PHP parser!
    */
   public function
-  /* array */ data($name = NULL, $userId = '~') {
+  /* array */ data($name = null, $userId = '~') {
     $user = $this->get($userId);
 
-    if ((@$_POST['data'] || @$_SERVER['REQUEST_METHOD'] == 'DELETE') && $name === NULL) {
+    if ((@$_POST['data'] || @$_SERVER['REQUEST_METHOD'] == 'DELETE') && $name === null) {
       throw new framework\exceptions\ServiceException('You must specify the name to modify.');
     }
 
     // Set
     if (@$_SERVER['REQUEST_METHOD'] !== 'DELETE' && @$_POST['data']) {
-      if ($name !== NULL && (session::checkStatus(session::USR_ADMINS) || \utils::isLocal())) {
+      if ($name !== null && (session::checkStatus(session::USR_ADMINS) || \utils::isLocal())) {
         $data = array( $name => $_POST['data'] );
 
         // flatten the data with '::'.
-        $data = utils::flattenArray($data, '::', FALSE);
+        $data = utils::flattenArray($data, '::', false);
 
         array_walk($data, function($data, $key) use($user, &$result) {
           $result[] = array(
@@ -131,7 +176,7 @@ class users implements framework\interfaces\IAuthorizableWebService {
       return $item;
     }, node::get($res));
 
-    if ($name !== NULL) {
+    if ($name !== null) {
       if ($res) {
         // Delete
         if (@$_SERVER['REQUEST_METHOD'] == 'DELETE') {
@@ -149,7 +194,7 @@ class users implements framework\interfaces\IAuthorizableWebService {
         }
       }
       else {
-        return NULL;
+        return null;
       }
     }
 
@@ -161,7 +206,7 @@ class users implements framework\interfaces\IAuthorizableWebService {
     $res = utils::unflattenArray($res, '::');
 
     // Named queries.
-    if ($name !== NULL) {
+    if ($name !== null) {
       $name = explode('::', $name);
 
       while ($name) {
@@ -169,15 +214,15 @@ class users implements framework\interfaces\IAuthorizableWebService {
       }
     }
 
-    return $res ? $res : NULL;
+    return $res ? $res : null;
   }
 
   /**
    * Retrieve tokens assciated with target user.
    */
   public function
-  /* array */ token($name = NULL, $formatDates = TRUE, $userId = '~') {
-    return service::call('tokens', $name === NULL ? 'let' : 'get', array($name, $formatDates, $userId));
+  /* array */ token($name = null, $formatDates = true, $userId = '~') {
+    return service::call('tokens', $name === null ? 'let' : 'get', array($name, $formatDates, $userId));
   }
 
   public function
@@ -226,5 +271,4 @@ class users implements framework\interfaces\IAuthorizableWebService {
 
     return $hash;
   }
-
 }
