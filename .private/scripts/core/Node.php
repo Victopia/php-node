@@ -50,6 +50,39 @@ class Node {
       );
     }
 
+    $filter['@fieldsRequired'] = $fieldsRequired;
+    $filter['@limits'] = $limits;
+    $filter['@sorter'] = $sorter;
+
+    $result = array();
+
+    $emitter = self::getEmitter($filter, function($data) use(&$result) {
+      $result[] = $data;
+    });
+
+    return $result;
+  }
+
+  /**
+   * New cursor approach, invokes $dataCallback the moment we found a matching row.
+   */
+  static /* void */
+  function getEmitter($filter, $dataCallback) {
+    // Defaults string to collections.
+    if ( is_string($filter) ) {
+      $filter = array(
+        NODE_FIELD_COLLECTION => $filter
+      );
+    }
+
+    $fieldsRequired = (bool) @$filter['@fieldsRequired'];
+    $limits = @$filter['@limits'];
+    $sorter = @$filter['@sorter'];
+
+    if ( $limits !== NULL && (!$limits || !is_int($limits) && !is_array($limits)) ) {
+      return;
+    }
+
     // Defaults numbers to ID
     if ( is_numeric($filter) ) {
       $filter = array(
@@ -279,7 +312,7 @@ class Node {
       $limits = array_slice($limits, 0, 2) + array(0, 0);
     }
 
-    $result = array();
+    $filter = array_select($filter, array_filter(array_keys($filter), compose('not', startsWith('@'))));
 
     // Simple SQL statment when all filtering fields are real column.
     if ( !$filter ) {
@@ -318,7 +351,7 @@ class Node {
       };
 
       foreach ( $res as $row ) {
-        $result[] = $decodesContent($row);
+        $dataCallback($decodesContent($row));
       }
 
       unset($res, $row, $decodesContent);
@@ -380,7 +413,7 @@ class Node {
                 $row[NODE_FIELD_COLLECTION] = $tableName;
               }
 
-              $result[] = $row;
+              $dataCallback($row);
 
               // Result size is less than specified size, it means end of data.
               if ( !--$limits[1] ) {
@@ -394,13 +427,6 @@ class Node {
         // $fetchLength = min($limits[1], NODE_FETCHSIZE);
       } unset($fetchOffset, $fetchLength, $res);
     }
-
-    // Skip default nodeSorter when custom $sorter is provided.
-    if ( $sorter === NULL && in_array('ID', $columns) ) {
-      usort($result, sortsPropAscend('ID'));
-    }
-
-    return $result;
   }
 
   private static function filterWalker($content, $data) {
