@@ -56,7 +56,7 @@ class Node {
 
     $result = array();
 
-    $emitter = self::getEmitter($filter, function($data) use(&$result) {
+    $emitter = self::getAsync($filter, function($data) use(&$result) {
       $result[] = $data;
     });
 
@@ -67,7 +67,7 @@ class Node {
    * New cursor approach, invokes $dataCallback the moment we found a matching row.
    */
   static /* void */
-  function getEmitter($filter, $dataCallback) {
+  function getAsync($filter, $dataCallback) {
     // Defaults string to collections.
     if ( is_string($filter) ) {
       $filter = array(
