@@ -152,7 +152,7 @@ class Node {
     $columnsFilter = array_select($filter, $columns);
 
     /* Merge $filter into SQL statement. */
-      array_walk($columnsFilter, function(&$contents, $field) use(&$query, &$params) {
+      array_walk($columnsFilter, function(&$contents, $field) use(&$query, &$params, $tableName) {
         $contents = \utils::wrapAssoc($contents);
 
         $subQuery = array();
@@ -254,7 +254,7 @@ class Node {
 
         unset($inValues);
 
-        $subQuery = array_map(prepends(Database::escape($field) . ' '), $subQuery);
+        $subQuery = array_map(prepends(Database::escape($field, $tableName) . ' '), $subQuery);
 
         /* Note by Vicary @ 4 Dec, 2012
            Inclusive search in real columns, within the same column.
