@@ -13,11 +13,14 @@ date_default_timezone_set('Asia/Hong_Kong');
 
 // Setup class autoloading on-demand.
 function __autoload($name) {
-  // Namespace fix
-  $name = str_replace('\\', '/', $name);
+  // Namespace path fix
+  $name = str_replace('\\', DIRECTORY_SEPARATOR, ltrim($name, '\\'));
+
+  // Classname path fix
+  $name = dirname($name) . DIRECTORY_SEPARATOR . str_replace('_', DIRECTORY_SEPARATOR, basename($name));
 
   // Look up current folder
-  if (file_exists("./$name.php")) {
+  if ( file_exists("./$name.php") ) {
     require_once("./$name.php");
   }
 
@@ -28,9 +31,9 @@ function __autoload($name) {
       );
 
     foreach ($lookupPaths as $lookupPath) {
-      $lookupPath = FRAMEWORK_PATH_ROOT . "/$lookupPath/$name.php";
+      $lookupPath = FRAMEWORK_PATH_ROOT . "$lookupPath/$name.php";
 
-      if (file_exists($lookupPath)) {
+      if ( file_exists($lookupPath) ) {
         try {
           require_once($lookupPath);
         }
