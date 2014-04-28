@@ -159,7 +159,7 @@ class Net {
                 $type = Utility::getInfo($path, FILEINFO_MIME_TYPE);
               }
 
-              $value = new \CurlFile($path, $type, $key);
+              $value = curl_file_create($path, $type, $key);
             }
           });
         }
@@ -233,7 +233,8 @@ class Net {
       }
 
       $curlOption['callbacks'] = array_filter(array(
-          'success' => @$option['success']
+          'progress' => @$option['progress']
+        , 'success' => @$option['success']
         , 'failure' => @$option['failure']
         , 'complete' => @$option['complete']
         ));
@@ -290,14 +291,15 @@ class Net {
 
       // 2. Progress function
       $progressCallback = &$option['callbacks']['progress'];
-      if ($progressCallback) {
-        $option[CURLOPT_NOPROGRESS] = FALSE;
 
-        $option[CURLOPT_PROGRESSFUNCTION] = function($dSize, $dLen, $uSize, $uLen) use(&$progressCallback) {
-          if ($dSize || $dLen) {
+      if ( $progressCallback ) {
+        $option[CURLOPT_NOPROGRESS] = false;
+
+        $option[CURLOPT_PROGRESSFUNCTION] = function($req, $dSize, $dLen, $uSize, $uLen) use(&$progressCallback) {
+          if ( $dSize || $dLen ) {
             static $_dLen = 0;
 
-            if ($_dLen != $dLen) {
+            if ( $_dLen != $dLen ) {
               $_dLen = $dLen;
 
               /* Note by Vicary @ 2.Oct.2012
@@ -310,7 +312,7 @@ class Net {
                  3. if $dLen < 100M, assume 100M.
                  4. if $dLen < 1G, assume 1G.
                */
-              if (!$dSize) {
+              if ( !$dSize ) {
                 // Do not assume when size under 1K
                 if ($dLen < 5000) {
                   return;
@@ -335,10 +337,10 @@ class Net {
             }
           }
           else
-          if ($uSize) {
+          if ( $uSize ) {
             static $_uLen = 0;
 
-            if ($_uLen != $uLen) {
+            if ( $_uLen != $uLen ) {
               $_uLen = $uLen;
 
               $uSize *= -1;
@@ -354,10 +356,10 @@ class Net {
 
           $tOffset = microtime(1);
 
-          if (isset($progressArgs) && $tOffset - $_tOffset > FRAMEWORK_NET_PROGRESS_INTERVAL) {
+          if ( isset($progressArgs) && $tOffset - $_tOffset > FRAMEWORK_NET_PROGRESS_INTERVAL ) {
             $_tOffset = $tOffset;
 
-            \utils::forceInvoke($progressCallback, $progressArgs);
+            Utility::forceInvoke($progressCallback, $progressArgs);
           }
         };
       }
