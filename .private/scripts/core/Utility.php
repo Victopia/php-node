@@ -20,7 +20,7 @@ class Utility {
    * Returns whether the current process is in CLI environment.
    */
   static function isCLI() {
-    return php_sapi_name() == 'cli'/* && empty($_SERVER['REMOTE_ADDR'])*/;
+    return php_sapi_name() == 'cli' && empty($_SERVER['REMOTE_ADDR']);
   }
 
   /**
@@ -137,7 +137,7 @@ class Utility {
     // PORT (optional)
     $urlregex .= '(\:[0-9]{2,5})?';
     // PATH (optional)
-    $urlregex .= '(\/([a-z0-9+$_\-\=~\!\(\),]\.?)+)*\/?';
+    $urlregex .= '(\/([a-z0-9%+$_\-\=~\!\(\),]\.?)+)*\/?';
     // GET Query (optional)
     $urlregex .= '(\?[a-z+&$_.-][a-z0-9;:@\/&%=+$_.-]*)?';
     // ANCHOR (optional)
@@ -565,6 +565,13 @@ class Utility {
   }
 
   /**
+   * Validate if specified input is a parsable date.
+   */
+  static function validateDateTime($value) {
+    return strtotime($value) === false ? false : $value;
+  }
+
+  /**
    * Expanding 2 digit year to 4 digits.
    *
    * FALSE will be returned when parse failure.
@@ -676,6 +683,32 @@ class Utility {
     $finfo = new \finfo($options);
 
     return $finfo->file($file);
+  }
+
+  /**
+   * Get offset data from request headers.
+   *
+   * This HTTP header is a simplified version of the HTTP Range header.
+   * List-Range: (\d+)?-(\d+)?
+   *
+   * Unlike the Range header, only one range is allowed in this header.
+   */
+  static function getListRange($defaultLength = 20) {
+    $range = Request::headers('List-Range');
+
+    if ( !preg_match('/^(\d*)-(\d*|\*)$/', trim($range), $matches) ) {
+      return NULL;
+    }
+
+    if ( !$matches[2] ) {
+      $matches[2] = $defaultLength;
+    }
+
+    if ( $matches[2] == '*' ) {
+      $matches[2] = PHP_INT_MAX;
+    }
+
+    return array((int) $matches[1], (int) $matches[2]);
   }
 
   /**
