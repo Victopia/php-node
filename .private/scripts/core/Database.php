@@ -24,7 +24,7 @@ class Database {
   //
   //----------------------------------------------------------------------------------------
 
-  public static /* NULL */
+  public static /* null */
   function setOptions($options) {
     if ( !($options instanceof DatabaseOptions) ) {
       throw new \PDOException('Options must be an instance of DatabaseOptions class.');
@@ -32,7 +32,7 @@ class Database {
 
     self::$options = $options;
 
-    self::$con = NULL;
+    self::$con = null;
     self::$preparedStatments = array();
   }
 
@@ -52,13 +52,13 @@ class Database {
    */
   private static /* PDO */
   function getConnection() {
-    if ( self::$con === NULL ) {
-      if ( self::$options === NULL ) {
+    if ( self::$con === null ) {
+      if ( self::$options === null ) {
         if (error_reporting()) {
           throw new \PDOException('Please specify connection options with setOptions() before accessing database.');
         }
         else {
-          return NULL;
+          return null;
         }
       }
 
@@ -80,7 +80,7 @@ class Database {
       } catch(\PDOException $e) {
         throw new exceptions\CoreException("Unable to connect to database, error: " . $e->getMessage(), 0);
 
-        self::$con = NULL;
+        self::$con = null;
       }
     }
 
@@ -92,16 +92,16 @@ class Database {
    *
    * If there is no active connection, nothing will happen.
    */
-  public static /* NULL */
+  public static /* null */
   function disconnect() {
     if ( self::isConnected() ) {
-      self::$con = NULL;
+      self::$con = null;
     }
   }
 
   public static /* Boolean */
   function isConnected() {
-    return @self::getConnection() !== NULL && self::ping();
+    return @self::getConnection() !== null && self::ping();
   }
 
   public static /* Boolean */
@@ -110,7 +110,7 @@ class Database {
       $res = self::fetchField('SELECT 1');
     }
     catch (\PDOException $e) {
-      return FALSE;
+      return false;
     }
 
     return @$res[0][0] == 1;
@@ -124,8 +124,8 @@ class Database {
    *                          options when reconnecting.
    */
   public static /* Boolean */
-  function reconnect($dbOptions = NULL) {
-    self::$con = NULL;
+  function reconnect($dbOptions = null) {
+    self::$con = null;
 
     // Temporarily apply new options
     if ( $dbOptions && $dbOptions instanceof DatabaseOptions ) {
@@ -139,7 +139,7 @@ class Database {
       list($dbOptions, self::$options) = array(self::$options, $dbOptions);
     }
 
-    return $con !== NULL;
+    return $con !== null;
   }
 
   /**
@@ -147,9 +147,9 @@ class Database {
    * and should only be used to quote table names and field names.
    */
   public static /* String */
-  function escape($value, $tables = NULL) {
+  function escape($value, $tables = null) {
     // Escape with column determination.
-    if ( $tables !== NULL ) {
+    if ( $tables !== null ) {
       // Force array casting.
       $values = (array) $value;
 
@@ -162,7 +162,7 @@ class Database {
       $values = array_map(function($value) use($sourceFields, $quotedFields) {
         $index = array_search($value, $sourceFields);
 
-        if ($index !== FALSE) {
+        if ($index !== false) {
           return $quotedFields[$index];
         }
         else {
@@ -197,10 +197,10 @@ class Database {
    *
    * @param $table String that carrries the name of target table.
    *
-   * @returns TRUE on table exists, FALSE otherwise.
+   * @returns true on table exists, false otherwise.
    */
   public static /* Boolean */
-  function hasTable($table, $clearCache = FALSE) {
+  function hasTable($table, $clearCache = false) {
     $cache = &self::$schemaCache;
 
     if ( $clearCache || (isset($cache['timestamp']) && $cache['timestamp'] < strtotime('-30min')) ) {
@@ -210,7 +210,7 @@ class Database {
     }
 
     if ( !isset($cache['collections']) ) {
-      $tables = (array) @self::fetchArray('SHOW TABLES', NULL, \PDO::FETCH_COLUMN);
+      $tables = (array) @self::fetchArray('SHOW TABLES', null, \PDO::FETCH_COLUMN);
 
       $cache['collections'] = array_fill_keys($tables, array());
     }
@@ -224,7 +224,7 @@ class Database {
    * Gets fields with specified key type.
    */
   public static /* Array */
-  function getFields($tables, $key = NULL, $nameOnly = TRUE) {
+  function getFields($tables, $key = null, $nameOnly = true) {
     $tables = \utils::wrapAssoc($tables);
 
     $cache = &self::$schemaCache;
@@ -258,11 +258,11 @@ class Database {
         foreach ($info as &$value) {
           switch ($value) {
             case 'YES':
-              $value = TRUE;
+              $value = true;
               break;
 
             case 'NO':
-              $value = FALSE;
+              $value = false;
               break;
           }
         }
@@ -276,7 +276,7 @@ class Database {
     $tables = array_map(function($tableName) use($cache, $key, $nameOnly) {
       $cache = $cache['collections'][$tableName];
 
-      if ( $key !== NULL ) {
+      if ( $key !== null ) {
         $key = \utils::wrapAssoc($key);
 
         $cache = array_filter($cache, propHas('Key', $key));
@@ -313,7 +313,7 @@ class Database {
    * Return the PDOStatement result.
    */
   public static /* PDOStatement */
-  function query($query, $param = NULL, $options = array()) {
+  function query($query, $param = null, $options = array()) {
     $query = self::prepare($query);
 
     $param = (array) $param;
@@ -342,7 +342,7 @@ class Database {
 
     throw $ex;
 
-    return FALSE;
+    return false;
   }
 
   /**
@@ -350,15 +350,15 @@ class Database {
    */
   public static /* Array */
   function fetchArray( $query
-                     , $param = NULL
+                     , $param = null
                      , $fetch_type = \PDO::FETCH_ASSOC
-                     , $fetch_argument = NULL ) {
+                     , $fetch_argument = null ) {
     $res = self::query($query, $param);
 
-    if ( $res === FALSE ) {
-      return FALSE;
+    if ( $res === false ) {
+      return false;
     }
-    elseif ( $fetch_argument === NULL ) {
+    elseif ( $fetch_argument === null ) {
       return $res->fetchAll($fetch_type);
     }
     else {
@@ -371,7 +371,7 @@ class Database {
    */
   public static /* Array */
   function fetchRow( $query
-                   , $param = NULL
+                   , $param = null
                    , $fetch_offset = 0
                    , $fetch_type = \PDO::FETCH_ASSOC ) {
     /* Note by Vicary @ 8.Nov.2012
@@ -401,7 +401,7 @@ class Database {
    */
   public static /* Mixed */
   function fetchField( $query
-                     , $param = NULL
+                     , $param = null
                      , $field_offset = 0
                      , $fetch_offset = 0 ) {
     $res = self::query($query, $param);
@@ -467,10 +467,10 @@ class Database {
   public static /* Array */
   function select( $tables
                  , $fields = '*'
-                 , $criteria = NULL
-                 , $param = NULL
+                 , $criteria = null
+                 , $param = null
                  , $fetch_type = \PDO::FETCH_ASSOC
-                 , $fetch_argument = NULL ) {
+                 , $fetch_argument = null ) {
     // Escape fields
     $fields = self::escape($fields, $tables);
 
@@ -542,7 +542,7 @@ class Database {
 
     $res = self::query($res, $values);
 
-    if ( $res !== FALSE ) {
+    if ( $res !== false ) {
       $res->closeCursor();
 
       // Inserted, return the new ID.
@@ -551,10 +551,10 @@ class Database {
         $res = (int) self::getConnection()->lastInsertId();
         //$res = self::fetchField("SELECT MAX(ID) FROM `$table`;");
       }
-      // Updated, return TRUE.
+      // Updated, return true.
       // rowCount() should be 2 here as long as it stays in MySQL driver.
       else {
-        $res = TRUE;
+        $res = true;
       }
     }
 
@@ -572,7 +572,7 @@ class Database {
    *
    * @returns The total number of affected rows.
    */
-  public static /* NULL */
+  public static /* null */
   function delete($table, $keySets) {
     $columns = self::getFields($table, array('PRI', 'UNI'));
 
@@ -606,7 +606,7 @@ class Database {
         $keySet = $filter;
       }
       else {
-        $keySet = NULL;
+        $keySet = null;
       }
     });
 
@@ -620,7 +620,7 @@ class Database {
 
         $res = self::query($res, array_values($keySet));
 
-        if ( $res !== FALSE ) {
+        if ( $res !== false ) {
           $result+= $res->rowCount();
         }
       }
@@ -639,7 +639,7 @@ class Database {
     return self::getConnection()->errorInfo();
   }
 
-  public static /* NULL */
+  public static /* null */
   function lockTables($tables) {
     if ( !is_array($tables) ) {
       $tables = func_get_args();
@@ -654,7 +654,7 @@ class Database {
     self::query('LOCK TABLES ' . implode(', ', $tables));
   }
 
-  public static /* NULL */
+  public static /* null */
   function unlockTables() {
     self::query('UNLOCK TABLES');
   }

@@ -14,8 +14,8 @@ class Process {
   // Assume gateway redirection, pwd should always at DOCUMENT_ROOT.
   const EXEC_PATH = '/usr/bin/php .private/Process.php';
 
-  public static function
-  /* Boolean */ enqueue($command, $spawnProcess = TRUE) {
+  public static /* Boolean */
+  function enqueue($command, $spawnProcess = TRUE) {
     $args = explode(' ', $command);
 
     if ( !$args ) {
@@ -74,8 +74,8 @@ class Process {
    *                                 processes when considering whether
    *                                 the same process is already in queue.
    */
-  public static function
-  /* Boolean */ enqueueOnce($command, $spawnProcess = TRUE, $requeue = FALSE, $includeActive = FALSE) {
+  public static /* Boolean */
+  function enqueueOnce($command, $spawnProcess = TRUE, $requeue = FALSE, $includeActive = FALSE) {
     \core\Database::lockTables(array(
         FRAMEWORK_COLLECTION_LOG
       , FRAMEWORK_COLLECTION_PROCESS
@@ -131,8 +131,8 @@ class Process {
    *
    * Killing signal defaults to SIGKILL.
    */
-  public static function
-  /* void */ kill($process, $signal = 9) {
+  public static /* void */
+  function kill($process, $signal = 9) {
     $res = array(
         NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
       );
@@ -161,8 +161,8 @@ class Process {
     }
   }
 
-  private static function
-  /* void */ spawn() {
+  private static /* void */
+  function spawn() {
     $res = \node::get(array(
         NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
       , 'locked' => TRUE

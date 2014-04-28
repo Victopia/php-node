@@ -1,5 +1,5 @@
 <?php
-/*! files.php | A service to give HTTP interface to files in database. */
+/* files.php | A service to give HTTP interface to files in database. */
 
 /* Note by Vicary @ 24 Mar, 2013
    This class also act as a sample service, further demonstrates how to
@@ -15,20 +15,27 @@ class files implements framework\interfaces\IAuthorizableWebService {
   //--------------------------------------------------
 
   public function authorizeMethod($name, $args = NULL) {
-    // Only allow deletion from file owners.
-    // Two ways:
+    // Two ways to delete a file:
     // 1. files/get/$userId/$fileId
     // 2. files/$userId/$fileId
-    if (@$_SERVER['REQUEST_METHOD'] === 'DELETE') {
-      // The second method, normalize it.
-      if (count($args) == 1) {
+
+    if ( strcasecmp($_SERVER['REQUEST_METHOD'], 'DELETE') === 0 ) {
+      // Normalize method 2.
+      if ( count($args) == 1 ) {
         array_unshift($args, $name);
       }
 
-      $user = service::call('users', 'get', array($args[0]));
+      // If local redirect, username must exists.
+      if ( utils::isLocal() ) {
+        return isset($args[0]);
+      }
 
-      if (!@$user['ID'] || @$user['ID'] !== session::currentUser('ID')) {
-        return FALSE;
+      // Otherwise, only allow logged in session to access themselves.
+      else {
+        // Session will be enforced in this service, don't need to do again.
+        $user = service::call('users', 'get', array($args[0]));
+
+        return @$user['ID'] == session::currentUser('ID');
       }
     }
   }
@@ -53,20 +60,20 @@ class files implements framework\interfaces\IAuthorizableWebService {
   //
   //--------------------------------------------------
 
-  function let($userId = '~') {
+  function let($username = '~') {
     $fileObj = self::$fileDef;
 
     unset($fileObj['@contents']);
 
     $res = array_select($_GET, array_keys($fileObj));
 
-    $res = self::getQuery($res, $fileObj, $userId);
+    $res = self::getQuery($res, $fileObj, $username);
 
     $res->setFetchMode(PDO::FETCH_BOUND);
 
     $result = array();
 
-    foreach ($res as $row) {
+    foreach ( $res as $row ) {
       $result[] = array_map(function($i){return $i;},$fileObj);
     }
 
@@ -76,8 +83,8 @@ class files implements framework\interfaces\IAuthorizableWebService {
   /**
    * Get stats of target file.
    *
-   * @param $userId (int) user ID or (string) username, '~' indicates current user.
    * @param $fileId Either (int) file ID or (string) file name.
+   * @param $username (int) user ID or (string) username.
    *
    * @returns (array) with following properties:
    *                  'id' => (int) The file ID.
@@ -85,19 +92,19 @@ class files implements framework\interfaces\IAuthorizableWebService {
    *                  'name' => (string) file name.
    *                  'timestamp' => (string) Date string of last modified time.
    */
-  function stat($userId, $fileId) {
+  function stat($username, $fileId) {
     $fileObj = self::$fileDef;
 
-    if (is_numeric($fileId)) {
+    if ( is_numeric($fileId) ) {
       $res = array('id' => (int) $fileId);
     }
     else {
       $res = array('name' => $fileId);
     }
 
-    $res = self::getQuery($res, $fileObj, $userId);
+    $res = self::getQuery($res, $fileObj, $username);
 
-    if (!$res->fetch(PDO::FETCH_BOUND)) {
+    if ( !$res->fetch(PDO::FETCH_BOUND) ) {
       return NULL;
     }
 
@@ -107,57 +114,78 @@ class files implements framework\interfaces\IAuthorizableWebService {
   }
 
   /**
-   * Download or deletes target file, according to the HTTP request method.
+   * Download target file.
    *
-   * Use GET to download, DELETE to delete.
-   *
-   * @param $userId (int) user ID or (string) username, '~' indicated current user.
    * @param $fileId Either (int) file ID or (string) file name.
+   * @param $username (int) user ID or (string) username.
    *
    * @returns Binary data of the file.
    */
-  function get($userId, $fileId) {
+  function get($username, $fileId) {
     $fileObj = self::$fileDef;
 
-    if (is_numeric($fileId)) {
+    if ( is_numeric($fileId) ) {
       $res = array('id' => (int) $fileId);
     }
     else {
       $res = array('name' => "$fileId");
     }
 
-    $res = self::getQuery($res, $fileObj, $userId);
+    $res = self::getQuery($res, $fileObj, $username);
 
-    if (!$res->fetch(PDO::FETCH_BOUND)) {
-      return NULL;
+    if ( !$res->fetch(PDO::FETCH_BOUND) ) {
+      throw new framework\exceptions\ResolverException(404);
+
+      return null;
     }
 
     // File deletion
-    if (@$_SERVER['REQUEST_METHOD'] == 'DELETE') {
-      return node::delete($fileObj);
+    if ( strcasecmp(@$_SERVER['REQUEST_METHOD'], 'DELETE') === 0 ) {
+      return node::delete(array(
+          NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_FILE
+        , 'id' => $fileObj['id']
+        ));
     }
 
-    if (is_string($fileObj['@contents'])) {
+    if ( is_string($fileObj['@contents']) ) {
       $fileObj['@contents'] = fopen('data://text/plain;base64,'.base64_encode($fileObj['@contents']), 'r');
     }
+
+    /* Quoted by Eric @ 3 Dec, 2012
+        Unused mime types and constants.
+
+    // Hold on for internally locked files
+    switch ($fileObj['mime']) {
+      case FRAMEWORK_MIME_INTERMEDIATE:
+        if (is_resource($fileObj['@contents'])) {
+          $fileObj['@contents'] = stream_get_contents($fileObj['@contents']);
+        }
+
+        return $fileObj['@contents'];
+
+      case FRAMEWORK_MIME_LOCKED:
+        throw new framework\exceptions\ResolverException(405);
+        break;
+    }
+    */
 
     // HTTP cache headers
     $this->sendCacheHeaders($fileObj);
 
-    if (isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) &&
-      strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= strtotime($fileObj['timestamp'])) {
+    if ( isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) &&
+      strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= strtotime($fileObj['timestamp']) ) {
       redirect(304);
     }
 
     $meta = stream_get_meta_data($fileObj['@contents']);
 
-    if (@$meta['unread_bytes']) {
+    if ( @$meta['unread_bytes'] ) {
       header('Content-Length: ' . $meta['unread_bytes'], TRUE);
     }
 
     header("Content-Type: $fileObj[mime]", TRUE);
 
-    if (isset($_GET['dl'])) {
+    if ( isset($_GET['dl']) ) {
       header('Content-Disposition: attachment;filename="'.$fileObj['name'].'"', TRUE);
     }
 
@@ -167,13 +195,8 @@ class files implements framework\interfaces\IAuthorizableWebService {
     die;
   }
 
-  /**
-   * Updates a file according to $_FILES.
-   *
-   * @param $userId (int) User ID or (string) username.
-   */
-  function set($userId = '~') {
-    if (!$_FILES) {
+  function set($username = '~') {
+    if ( !$_FILES ) {
       throw new framework\exceptions\ServiceException('Please upload a file via POST.');
     }
     else {
@@ -182,7 +205,7 @@ class files implements framework\interfaces\IAuthorizableWebService {
 
     $result = array();
 
-    foreach ($_FILES as $key => $file) {
+    foreach ( $_FILES as $key => $file ) {
       $fileObj = array(
           'id' => @$_POST['id'][$key]
         , 'name' => $file['name']
@@ -190,25 +213,10 @@ class files implements framework\interfaces\IAuthorizableWebService {
         , '@contents' => fopen($file['tmp_name'], 'rb')
         );
 
-      $result[$key] = $this->setQuery($fileObj, $userId);
+      $result[$key] = $this->setQuery($fileObj, $username);
     }
 
     return $result;
-  }
-
-  function delete($userId, $fileId) {
-    $filter = array(
-        NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_FILE
-      );
-
-    if (is_numeric($fileId)) {
-      $filter['ID'] = $fileId;
-    }
-    else {
-      $filter['name'] = $fileId;
-    }
-
-    return node::delete($filter);
   }
 
   //--------------------------------------------------
@@ -222,8 +230,8 @@ class files implements framework\interfaces\IAuthorizableWebService {
    * the "/get" method and retrieve the file.
    */
   function __call($name, $params) {
-    // Dirty check, assume file/get if parameter count is one.
-    if (count($params) == 1) {
+    // Dirty check, assume file/get if parameter count is two ($username, $fileId).
+    if ( count($params) <= 2 ) {
       return $this->get($name, $params[0]);
     }
     else {
@@ -254,9 +262,9 @@ class files implements framework\interfaces\IAuthorizableWebService {
   }
 
   private static function
-  /* PDOStatement */ getQuery($filter, &$bindArray, $userId = '~') {
+  /* PDOStatement */ getQuery($filter, &$bindArray, $username = '~') {
     // Use ~ to specify current user
-    $user = service::call('users', 'get', array($userId));
+    $user = service::call('users', 'get', array($username));
 
     $fields = core\Database::getFields(FRAMEWORK_COLLECTION_FILE);
 
@@ -281,21 +289,21 @@ class files implements framework\interfaces\IAuthorizableWebService {
   }
 
   private static function
-  /* void */ setQuery($bindArray, $userId = '~') {
-    /* Note by Vicary @ 8.Nov.2012
+  /* void */ setQuery($bindArray, $username = '~') {
+    /* Note by Eric @ 8.Nov.2012
         As of PHP 5.4.8, PDO still has no solution on streaming PARMA_LOB
         when database driver has no native support for it.
 
         Now we read stream contents into memory and pass it down.
      */
-    if (is_resource(@$bindArray['@contents'])) {
+    if ( is_resource(@$bindArray['@contents']) ) {
       $bindArray['@contents'] = stream_get_contents($bindArray['@contents']);
     }
 
-    $user = service::call('users', 'get', array($userId));
+    $user = service::call('users', 'get', array($username));
 
     // Try to search for the exact same file.
-    if (!@$bindArray['id'] && @$bindArray['name']) {
+    if ( !@$bindArray['id'] && @$bindArray['name'] ) {
       $bindArray['id'] = core\Database::fetchField('SELECT id FROM `'.FRAMEWORK_COLLECTION_FILE.'`
         WHERE UserID = ? AND name = ?', array($user['ID'], $bindArray['name']));
     }
@@ -313,10 +321,10 @@ class files implements framework\interfaces\IAuthorizableWebService {
 
     $ret = $query->execute();
 
-    if ($ret) {
+    if ( $ret ) {
       $query->closeCursor();
 
-      if ($query->rowCount() == 1) {
+      if ( $query->rowCount() == 1 ) {
         return core\Database::lastInsertId();
       }
       else {

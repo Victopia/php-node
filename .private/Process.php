@@ -22,7 +22,7 @@ if ( @$opts['cleanup'] ) {
       return (int) $matches[1];
     }
 
-    return NULL;
+    return null;
   }, explode("\n", `ps aux | grep php`)));
 
   if ( $res ) {
@@ -57,8 +57,8 @@ else {
   $pid = pcntl_fork();
 }
 
-// parent: $forked == FALSE
-// child:  $forked == TRUE
+// parent: $forked == false
+// child:  $forked == true
 $forked = $pid == 0;
 
 // parent will die here.
@@ -82,7 +82,7 @@ core\Database::lockTables(array(
 // Get working processes.
 $res = Node::get(array(
     NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
-  , 'locked' => TRUE
+  , 'locked' => true
   ));
 
 if ( count($res) >= process::MAX_PROCESS ) {
@@ -92,7 +92,7 @@ if ( count($res) >= process::MAX_PROCESS ) {
 
 $res = node::get(array(
     NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
-  , 'locked' => FALSE
+  , 'locked' => false
   ));
 
 // No waiting jobs in queue.
@@ -111,7 +111,7 @@ if ( !$res ) {
 
 $process = $res[0];
 
-$process['locked'] = TRUE;
+$process['locked'] = true;
 $process['pid'] = getmypid();
 
 Node::set($process);
@@ -124,9 +124,9 @@ log::write("Running process: $path", 'Debug', $pid);
 
 // Kick off the process
 
-$output = NULL;
+$output = null;
 $retryCount = 0;
-$processSpawn = FALSE;
+$processSpawn = false;
 
 /* Added @ 3 Sep, 2013
    Explicity release the database connection before spawning concurrent processes.
@@ -139,7 +139,7 @@ while (!$processSpawn && $retryCount++ < FRAMEWORK_PROCESS_SPAWN_RETRY_COUNT) {
   try {
     $output = `$path 2>&1`;
 
-    $processSpawn = TRUE;
+    $processSpawn = true;
   }
   catch (ErrorException $e) {
     log::write("Error spawning child process, retry count $retryCount.", 'Warning', array(
@@ -151,13 +151,15 @@ while (!$processSpawn && $retryCount++ < FRAMEWORK_PROCESS_SPAWN_RETRY_COUNT) {
   }
 }
 
+// core\Database::reconnect();
+
 if ( !$processSpawn ) {
   log::write('Unable to spawn process, process terminating.', 'Error');
 }
 
 unset($process['locked'], $process['path']);
 
-if ( $output !== NULL ) {
+if ( $output !== null ) {
   log::write("Output captured from command line $path:\n" . print_r($output, 1), 'Warning');
 }
 

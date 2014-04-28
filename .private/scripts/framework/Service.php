@@ -45,7 +45,7 @@ class Service {
    * @param $httpOptions (Array) Optional, will do a GET request without any parameters by default.
    */
   static function redirect($service, $httpOptions = array()) {
-    $result = NULL;
+    $result = null;
 
     if ( is_string($httpOptions) ) {
       switch (strtoupper($httpOptions)) {
@@ -94,9 +94,9 @@ class Service {
         throw new exceptions\ServiceException("Error making local request to $service, HTTP status: $curlOptions[status].");
       }
 
-      $result = @json_decode($response, TRUE);
+      $result = @json_decode($response, true);
 
-      if ( $response && $response !== 'null' && $result === NULL ) {
+      if ( $response && $response !== 'null' && $result === null ) {
         throw new exceptions\ServiceException('Response is not a well-formed JSON string: ' . $response);
       }
     };
@@ -127,7 +127,7 @@ class Service {
 
     if (!\utils::isCLI() &&
       $service instanceof \framework\interfaces\IAuthorizableWebService &&
-      $service->authorizeMethod($method, $parameters) === FALSE) {
+      $service->authorizeMethod($method, $parameters) === false) {
       throw new \framework\exceptions\ResolverException( 401 );
     }
 
