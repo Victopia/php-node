@@ -11,9 +11,9 @@ class ImageConverter {
   //
   //--------------------------------------------------
 
-  private $image = NULL;
+  private $image = null;
 
-  private $mime = NULL;
+  private $mime = null;
 
   //--------------------------------------------------
   //
@@ -21,7 +21,7 @@ class ImageConverter {
   //
   //--------------------------------------------------
 
-  function __construct($file = NULL) {
+  function __construct($file = null) {
     if ($file) {
       $this->open($file);
     }
@@ -55,6 +55,9 @@ class ImageConverter {
 
       case 'image/png':
         $image = imagecreatefrompng($file);
+
+        imagealphablending($image, true);
+        imagesavealpha($image, true);
         break;
 
       case 'image/bmp':
@@ -69,11 +72,11 @@ class ImageConverter {
       case 'image/tif':
       case 'image/tiff':
       default:
-        $image = NULL;
+        $image = null;
         break;
     }
 
-    if (!$image) {
+    if ( !$image ) {
       throw new exceptions\CoreException("Invalid image format \"$stat\", this class supports a limited set of image formats. Read the code for more details.");
     }
 
@@ -88,28 +91,49 @@ class ImageConverter {
    * Closes and destroys an image file.
    */
   function close() {
-    if (is_resource($this->image)) {
+    if ( is_resource($this->image) ) {
       imagedestroy($this->image);
 
-      $this->image = NULL;
+      $this->image = null;
     }
   }
 
-  function getImage($mime = NULL, $quality = 85) {
-    if (!is_resource($this->image)) {
-      return NULL;
+  /**
+   * The image width in pixels.
+   */
+  function getWidth() {
+    $this->checkImage();
+
+    return imagesx($this->image);
+  }
+
+  /**
+   * The image height in pixels.
+   */
+  function getHeight() {
+    $this->checkImage();
+
+    return imagesy($this->image);
+  }
+
+  /**
+   * Returns the binary image data, optionally with specified format.
+   */
+  function getImage($mime = null, $quality = 85) {
+    if ( !is_resource($this->image) ) {
+      return null;
     }
 
-    if ($mime === NULL) {
+    if ( $mime === null ) {
       $mime = $this->mime;
     }
 
     ob_start();
 
-    switch ($mime) {
+    switch ( $mime ) {
       case 'image/jpeg':
       case 'image/jpg':
-        imagejpeg($this->image, NULL, $quality);
+        imagejpeg($this->image, null, $quality);
         break;
 
       case 'image/gif':
@@ -117,7 +141,7 @@ class ImageConverter {
         break;
 
       case 'image/png':
-        imagepng($this->image, NULL, $quality / 10, PNG_FILTER_PAETH);
+        imagepng($this->image, null, $quality / 10, PNG_FILTER_PAETH);
         break;
 
       case 'image/vnd.wap.wbmp':
@@ -131,11 +155,142 @@ class ImageConverter {
       case 'image/tif':
       case 'image/tiff':
       default:
-        $image = NULL;
+        $image = null;
         break;
     }
 
     return ob_get_clean();
+  }
+
+  /**
+   * Add text into the image.
+   *
+   * @param {string} Desired text to apply.
+   * @param {float} $fontSize Defaults to 12 pt, or 2 in imagestring.
+   * @param {mixed} #position Array in pixels of [x, y], or a space separated string.
+   *                          String values can be numeric, "top", "center" or "bottom".
+   * @param {float} $angle Angle in counter-clockwise degrees, default 0.
+   * @param {mixed} $color Either color in HEX code or the color index returned from
+   *                       imagecolor* functions, default 0.
+   * @param {string} $font Target font file, defaults to "Arial".
+   * @param {array} $options Font type specific options.
+   *                         1. For FreeType2 fonts, extrainfo in imagefttext.
+   *                         2. For PostScript fonts, it's [ background, space, tightness, antialias_steps ]
+   */
+  function addText($text = '', $fontSize = null, $position = array(0, 0), $angle = 0, $color = 0, $font = '') {
+    $this->checkImage();
+
+    if ( !$font ) {
+      return false;
+    }
+
+    if ( is_null($fontSize) ) {
+      $fontSize = 12;
+    }
+
+    // Position
+    if ( is_string($position) ) {
+      if ( preg_match('/^\s*(\w+|\d+%?)\s+(\w+|\d+%?)\s*$/', strtolower($position), $matches) ) {
+        $position = array(0, 0);
+
+        $iD = array(
+            'width' => imagesx($this->image)
+          , 'height'=> imagesy($this->image)
+          );
+
+        $fD = imagettfbbox($fontSize, $angle, $font, $text);
+
+        $fD = array(
+            'width' => abs($fD[4] - $fD[0])
+          , 'height' => abs($fD[5] - $fD[1])
+          );
+
+        switch ( $matches[1] ) {
+          case 'top':
+            $position[1] = 0;
+            break;
+
+          case 'bottom':
+            $position[1] = $iD['height'] - $fD['height'];
+            break;
+
+          case 'center':
+          case 'middle':
+            $position[1] = ($iD['height'] - $fD['height']) / 2;
+            break;
+
+          default:
+            if ( preg_match('/(\d+)(%)?/', $matches[1], $_matches) ) {
+              if ( @$_matches[2] ) {
+                $position[1] = $iD['height'] * ($_matches[1] / 100);
+              }
+              else {
+                $position[1] = intval($_matches[1]);
+              }
+            }
+
+            unset($_matches);
+        }
+
+        $position[1]+= $fD['height'];
+
+        switch ( $matches[2] ) {
+          case 'left':
+            $position[0] = 0;
+            break;
+
+          case 'right':
+            $position[0] = $iD['width'] - $fD['width'];
+            break;
+
+          case 'center':
+          case 'middle':
+            $position[0] = ($iD['width'] - $fD['width']) / 2;
+            break;
+
+          default:
+            if ( preg_match('/(\d+)(%)?/', $matches[2], $_matches) ) {
+              if ( @$_matches[2] ) {
+                $position[0] = $iD['width'] * ($_matches[1] / 100) + $fD['width'];
+              }
+              else {
+                $position[0] = intval($_matches[1]);
+              }
+            }
+
+            unset($_matches);
+        }
+
+        unset($iD, $fD);
+      }
+    }
+
+    if ( preg_match('/#?([0-9A-F][0-9A-F])([0-9A-F][0-9A-F])([0-9A-F][0-9A-F])([0-9A-F][0-9A-F])?/i', $color, $matches) ) {
+      $color = array_map('hexdec', array_slice($matches, 1));
+    } unset($matches);
+
+    // Color
+    if ( is_array($color) ) {
+      if ( count($color) == 3 ) {
+        $color = imagecolorallocate($this->image, $color[0], $color[1], $color[2]);
+      }
+      else
+      if ( count($color) == 4 ) {
+        if ( $color[3] > 127 ) {
+          $color[3] = 127;
+        }
+
+        $color = imagecolorallocatealpha($this->image, $color[0], $color[1], $color[2], $color[3]);
+        log::write('color dump', 'Information', $color);
+      }
+    }
+
+    // No text is gonna be written.
+    if ( !$text ) {
+      return;
+    }
+
+    return imagettftext($this->image, $fontSize, $angle, $position[0], $position[1], $color, $font, $text);
   }
 
   /**
@@ -145,7 +300,7 @@ class ImageConverter {
    *
    * @param $height (int) Height of the image in pixels.
    *
-   * @param $keepRatio (Optional) (bool) TRUE to resize
+   * @param $keepRatio (Optional) (bool) true to resize
    *        the image within the dimension provided.
    *
    * @param $ratioPicker (Optional) (callable) A function
@@ -162,95 +317,59 @@ class ImageConverter {
    *        dimensions, this has no meaning when using the default
    *        min() ratio picker.
    *
-   * @returns (bool) TRUE on success, FALSE otherwise.
+   * @returns (bool) true on success, false otherwise.
    */
-  function resizeTo($width, $height, $options = NULL) {
-    $options = (array) $options;
-
+  function resizeTo($width, $height, $keepRatio = false, $ratioPicker = 'min', $cropToBounds = false) {
     $this->checkImage();
 
-    $src = array(
-        'w' => imagesx($this->image)
-      , 'h' => imagesy($this->image)
-      );
+    $srcWidth  = imagesx($this->image);
+    $srcHeight = imagesy($this->image);
 
-    $ratio = array(
-        'x' => $width / $src['w']
-      , 'y' => $height / $src['h']
-      );
+    $ratioX = $width / $srcWidth;
+    $ratioY = $height / $srcHeight;
 
-    if (@$options['ratioPicker'] === TRUE) {
-      $options['ratioPicker'] = 'min';
+    // Set scale ratio identical to maintain aspect ratio.
+    if ($keepRatio) {
+      $ratioX = $ratioY = call_user_func_array($ratioPicker, array($ratioX, $ratioY));
     }
 
-    // Set scale ratio identical to maintain aspect ratio, with the specified function.
-    if (@$options['ratioPicker']) {
-      $ratio['x'] = $ratio['y'] =
-        call_user_func_array(@$options['ratioPicker'], array($ratio['x'], $ratio['y']));
-    }
+    // image fill rect.
+    $dstWidth = round($srcWidth * $ratioX);
+    $dstHeight = round($srcHeight * $ratioY);
 
-    // Image fill rect
-    $dst = array(
-        'w' => round($src['w'] * $ratio['x'])
-      , 'h' => round($src['h'] * $ratio['y'])
-      );
-
-    // Image bounds
-    if (@$options['cropsTarget']) {
+    // image bounds
+    if ($cropToBounds) {
       $image = imagecreatetruecolor($width, $height);
-
-      switch (@$options['cropsTarget']['x']) {
-        case 'auto':
-        case 'center':
-          if ($dst['w'] > $width) { // width needs cropping
-            $dst['x'] = round($width / 2 - $dst['w'] / 2);
-          }
-          else {
-            // nothing needs to do here.
-          }
-          break;
-
-        default:
-          $dst['x'] = intval($options['cropsTarget']['x']);
-          break;
-      }
-
-      switch (@$options['cropsTarget']['y']) {
-        case 'auto':
-        case 'center':
-          if ($dst['h'] > $height) { // height needs cropping
-            $dst['y'] = round($height / 2 - $dst['h'] / 2);
-          }
-          else {
-            // nothing needs to do here.
-          }
-          break;
-
-        default:
-          $dst['y'] = intval($options['cropsTarget']['y']);
-          break;
-      }
+    }
+    else {
+      $image = imagecreatetruecolor($dstWidth, $dstHeight);
     }
 
-    // Take only smaller edges, automatically crop empty pixels
-    $image = imagecreatetruecolor(
-        min($dst['w'], $width)
-      , min($dst['h'], $height)
-      );
+    if ( !$image ) {
+      return false;
+    }
 
-    // Creates an image with transparent background
+    /* Note by Eric @ 24 Jan, 2013
+       Filling the area with transparent is not the way to preserve transparency.
+
+    // Creates an image with transparent background.
     imagefilledrectangle($image
       , 0, 0
       , $width, $height
       , imagecolorallocatealpha($image, 0, 0, 0, 127)
       );
+    */
+
+    // Disable alpha blending will have the alpha channel directly be replaced.
+    imagealphablending($image, false);
+
+    // And we will surely be saving the alpha data.
+    imagesavealpha($image, true);
 
     // Perform resample and copy
     imagecopyresampled($image, $this->image
-      , (int) @$dst['x'], (int) @$dst['y']
-      , (int) @$src['x'], (int) @$src['y']
-      , $dst['w'], $dst['h']
-      , $src['w'], $src['h']
+      , 0, 0, 0, 0
+      , $dstWidth, $dstHeight, $srcWidth, $srcHeight
       );
 
     // Destroy the old image
@@ -259,7 +378,7 @@ class ImageConverter {
     // Assign the new image
     $this->image = $image;
 
-    return TRUE;
+    return true;
   }
 
   //--------------------------------------------------
@@ -274,7 +393,7 @@ class ImageConverter {
    * Check if an appropiate image has already been loaded.
    */
   private function checkImage() {
-    if (!$this->image || !is_resource($this->image)) {
+    if ( !$this->image || !is_resource($this->image) ) {
       throw new exceptions\CoreException('Image has not been properly loaded, please call ImageConverter::open() first.');
     }
   }
@@ -285,13 +404,13 @@ class ImageConverter {
    * Raw import BMP file.
    */
   private static function importBMP($file) {
-    if (!($file = @fopen($file, 'rb'))) {
-      return FALSE;
+    if ( !($file = @fopen($file, 'rb')) ) {
+      return false;
     }
 
     $buffer = fread($file, 10);
 
-    while (!foef($file) && $buffer) {
+    while ( !foef($file) && $buffer ) {
       $buffer.= fread($file, 1024);
     }
 
@@ -316,7 +435,7 @@ class ImageConverter {
     }
     else {
       // TODO: No dimensions defined???
-      return FALSE;
+      return false;
     }
 
     unset($header);
@@ -367,19 +486,19 @@ class ImageConverter {
    *
    * Raw output of BMP file
    */
-  private static function exportBMP($image, $writeSteam = NULL) {
-    if (!is_resource($image)) {
-      return FALSE;
+  private static function exportBMP($image, $writeSteam = null) {
+    if ( !is_resource($image) ) {
+      return false;
     }
 
-    if ($writeSteam === NULL) {
+    if ( $writeSteam === null ) {
       $writeSteam = 'php://output';
     }
 
     $writeSteam = fopen($writeSteam, 'w');
 
-    if (!$writeSteam) {
-      return FALSE;
+    if ( !$writeSteam ) {
+      return false;
     }
 
     $dimensions = array(
@@ -419,7 +538,7 @@ class ImageConverter {
 
     fclose($writeSteam);
 
-    return TRUE;
+    return true;
   }
 
 }
