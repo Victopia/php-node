@@ -113,7 +113,7 @@ class Database {
       return false;
     }
 
-    return @$res[0][0] == 1;
+    return @$res == 1;
   }
 
   /**
