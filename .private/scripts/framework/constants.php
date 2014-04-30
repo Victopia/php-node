@@ -17,6 +17,8 @@ define('NODE_FIELD_COLLECTION', '@collection');
 define('NODE_FIELD_VIRTUAL', '@contents');
 // Define selecting fields in a node filter, default to *
 define('NODE_FIELD_SELECT', md5('@@select'));
+// Array of index hints mappings to specific collection(s)
+define('NODE_FIELD_INDEX_HINT', md5('@@useIndex'));
 // Untapped queries passed directly into SQL statements
 define('NODE_FIELD_RAWQUERY', md5('@@rawQuery'));
 // Row limit for each data fetch, be careful on setting this.
