@@ -1,8 +1,5 @@
 <?php
-/*! FileResolver.php \ IRequestResolver
- *
- *  Physical file resolver, subsequence
- */
+/* FileResolver.php \ IRequestResolver | Physical file resolver, creating minified versions on demand. */
 
 namespace resolvers;
 
@@ -14,29 +11,49 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
   //--------------------------------------------------
 
   //------------------------------
+  //  defaultPath
+  //------------------------------
+  private $defaultPath = '.';
+
+  /**
+   * Target path to serve.
+   */
+  public function defaultPath($value = null) {
+    if ( $value === null ) {
+      return $this->defaultPath;
+    }
+
+    if ( $value ) {
+      $value = preg_replace('/\/$/', '', $value);
+    }
+
+    $this->defaultPath = $value;
+  }
+
+  //------------------------------
   //  directoryIndex
   //------------------------------
-  private static $directoryIndex;
+  private $directoryIndex;
 
   /**
    * Emulate DirectoryIndex chain
    */
-  public function directoryIndex($value = NULL) {
-    if ( $value === NULL ) {
-      return self::$directoryIndex;
+  public function directoryIndex($value = null) {
+    if ( $value === null ) {
+      return $this->directoryIndex;
     }
 
     if ( is_string($value) ) {
       $value = explode(' ', $value);
     }
 
-    self::$directoryIndex = $value;
+    $this->directoryIndex = $value;
   }
 
   //------------------------------
   //  cacheExclusions
   //------------------------------
-  private static $cacheExclusions = array('php');
+  private $cacheExclusions = array('php');
 
   /**
    * Conditional request is disregarded when
@@ -50,16 +67,16 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
    * 1. If-Modified-Since
    * 2. If-None-Match
    */
-  public function cacheExclusions($value = NULL) {
-    if ( $value === NULL ) {
-      return self::$cacheExclusions;
+  public function cacheExclusions($value = null) {
+    if ( $value === null ) {
+      return $this->cacheExclusions;
     }
 
     if ( is_string($value) ) {
       $value = explode(' ', $value);
     }
 
-    self::$cacheExclusions = $value;
+    $this->cacheExclusions = $value;
   }
 
   //--------------------------------------------------
@@ -68,8 +85,10 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
   //
   //--------------------------------------------------
 
-  public
-  /* Boolean */ function resolve($path) {
+  public /* Boolean */
+  function resolve($path) {
+    $path = $this->defaultPath . DIRECTORY_SEPARATOR . $path;
+
     $res = explode('?', $path, 2);
 
     $queryString = isset($res[1]) ? $res[1] : '';
@@ -106,7 +125,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
           // Not a fully resolved path at the moment,
           // starts resolve sub-chain.
-          if ( $file !== FALSE ) {
+          if ( $file !== false ) {
             return $file;
           }
         }
@@ -119,7 +138,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     $this->chainResolve($res);
 
     if ( !is_file($res) ) {
-      return FALSE;
+      return false;
     }
 
     $this->handle($res);
@@ -135,10 +154,10 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
   private function handles($file) {
     // Ignore hidden files
     if ( preg_match('/^\..*$/', basename($file)) ) {
-      return FALSE;
+      return false;
     }
 
-    return TRUE;
+    return true;
   }
 
   /**
@@ -152,7 +171,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     $mtime = filemtime($path);
 
     $mime = $this->mimetype($path);
-    $this->sendCacheHeaders($path, $mime !== NULL);
+    $this->sendCacheHeaders($path, $mime !== null);
 
     if ( isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) &&
       strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= $mtime ) {
@@ -297,7 +316,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     $_SERVER['SCRIPT_NAME'] = $_SERVER['REQUEST_URI'];
     $_SERVER['PHP_SELF'] = $_SERVER['REQUEST_URI'];
 
-    if ( $mime !== NULL ) {
+    if ( $mime !== null ) {
       header("Content-Type: $mime", true);
     }
 
@@ -325,7 +344,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
       // mime-types that possibly be PHP script.
       case 'text/html':
       case 'text/x-php':
-      case NULL: // ... ahem
+      case null: // ... ahem
         unset($mtime, $mime);
 
         include_once($path);
@@ -338,10 +357,10 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
     // Send HTTP header Content-Length according to the output buffer if it is not sent.
     $headers = headers_list();
-    $contentLengthSent = FALSE;
+    $contentLengthSent = false;
     foreach ( $headers as $header ) {
-      if ( stripos($header, 'Content-Length') !== FALSE ) {
-        $contentLengthSent = TRUE;
+      if ( stripos($header, 'Content-Length') !== false ) {
+        $contentLengthSent = true;
         break;
       }
     }
@@ -470,26 +489,25 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
   /**
    * @private
    */
-  private function sendCacheHeaders($path, $permanant = FALSE) {
-    if (array_search(pathinfo($path , PATHINFO_EXTENSION),
-      self::$cacheExclusions) !== FALSE) {
+  private function sendCacheHeaders($path, $permanant = false) {
+    if ( false !== array_search(pathinfo($path , PATHINFO_EXTENSION), $this->cacheExclusions) ) {
       return;
     }
 
     if ( $permanant ) {
       header_remove('Pragma');
-      header('Cache-Control: max-age=' . FRAMEWORK_RESPONSE_CACHE_PERMANANT, TRUE);
-      header('Expires: ' . gmdate(DATE_RFC1123, time() + FRAMEWORK_RESPONSE_CACHE_PERMANANT), TRUE);
-      header('ETag: "' . $this->fileETag($path) . '"', TRUE); // Strong ETag
+      header('Cache-Control: max-age=' . FRAMEWORK_RESPONSE_CACHE_PERMANANT, true);
+      header('Expires: ' . gmdate(DATE_RFC1123, time() + FRAMEWORK_RESPONSE_CACHE_PERMANANT), true);
+      header('ETag: "' . $this->fileETag($path) . '"', true); // Strong ETag
     }
     else {
-      header('Cache-Control: private, max-age=' . FRAMEWORK_RESPONSE_CACHE_TEMPORARY . ', must-revalidate', TRUE);
-      header('ETag: W/"' . $this->fileETag($path) . '"', TRUE); // Weak ETag
+      header('Cache-Control: private, max-age=' . FRAMEWORK_RESPONSE_CACHE_TEMPORARY . ', must-revalidate', true);
+      header('ETag: W/"' . $this->fileETag($path) . '"', true); // Weak ETag
     }
 
     // TODO: Generates an ETag base on target mime type.
 
-    header('Last-Modified: ' . date(DATE_RFC1123, filemtime($path)), TRUE);
+    header('Last-Modified: ' . date(DATE_RFC1123, filemtime($path)), true);
   }
 
   /**
@@ -519,7 +537,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
       case 'php':
       case 'phps':
       case 'html':
-        $mime = NULL;
+        $mime = null;
         break;
       case 'cff':
         $mime = 'application/font-cff';
@@ -543,7 +561,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
         break;
       default:
         if ( !preg_match('/(^image|pdf$)/', $mime) ) {
-          $mime = NULL;
+          $mime = null;
         }
         break;
     }
