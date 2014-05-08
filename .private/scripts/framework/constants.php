@@ -1,8 +1,5 @@
 <?php
-/*! constants.php
- *
- *  Define framework wide constants.
- */
+/* constants.php | Define framework wide constants. */
 
 // Global system constants
 
