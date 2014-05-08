@@ -173,6 +173,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     $mime = $this->mimetype($path);
     $this->sendCacheHeaders($path, $mime !== null);
 
+    // Request header: If-Modified-Since
     if ( isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) &&
       strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']) >= $mtime ) {
       throw new \framework\exceptions\ResolverException(304);
@@ -316,8 +317,23 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     $_SERVER['SCRIPT_NAME'] = $_SERVER['REQUEST_URI'];
     $_SERVER['PHP_SELF'] = $_SERVER['REQUEST_URI'];
 
-    if ( $mime !== null ) {
-      header("Content-Type: $mime", true);
+    // Send appropriate mime headers.
+    switch ( $mime ) {
+      case 'text/x-php':
+        header('Content-Type: text/html; charset=utf8', true);
+        break;
+
+      default:
+        $headerString = $mime;
+
+        if ( preg_match('/^text\//', $mime) ) {
+          $headerString.= '; charset=utf-8';
+        }
+
+        header("Content-Type: $headerString", true);
+
+        unset($headerString);
+        break;
     }
 
     ob_start();
@@ -341,13 +357,13 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
         readfile($path);
         break;
 
-      // mime-types that possibly be PHP script.
-      case 'text/html':
       case 'text/x-php':
-      case null: // ... ahem
-        unset($mtime, $mime);
-
         include_once($path);
+        break;
+
+      case 'text/html':
+      case null: // ... ahem
+        readfile($path);
         break;
     }
 
@@ -357,7 +373,9 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
     // Send HTTP header Content-Length according to the output buffer if it is not sent.
     $headers = headers_list();
+
     $contentLengthSent = false;
+
     foreach ( $headers as $header ) {
       if ( stripos($header, 'Content-Length') !== false ) {
         $contentLengthSent = true;
@@ -426,7 +444,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
         }
         break;
       case 'css':
-        // When requesting *.min.css, minify it from the original source.
+        // Auto minify *.min.css it from the original *.css.
         $opath = preg_replace('/\.min(\.css)$/', '\\1', $path, -1, $count);
 
         if ( $count > 0 && is_file($opath) ) {
@@ -434,31 +452,21 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
           $ctime = \cache::get($path);
 
-          // Whenever orginal source exists and is newer,
-          // udpate minified version.
+          /* Whenever orginal source exists and is newer, update minified version. */
           if ( !is_file($path) || $mtime > filemtime($path) ) {
             // Store the offset in cache, enabling a waiting time before HTTP retry.
             \cache::delete($path);
             \cache::set($path, time());
 
             $opath = realpath($opath);
+            $contents = $this->resolve($opath);
+            $contents = $this->minifyCSS($contents);
 
-            \core\Net::httpRequest(array(
-                'url' => 'http://cssminifier.com/raw'
-              , 'type' => 'post'
-              , 'data' => array( 'input' => file_get_contents($opath) )
-              , '__curlOpts' => array(
-                  CURLOPT_TIMEOUT => 2
-                )
-              , 'success' => function($response, $request) use($path) {
-                  if ( @$request['status'] == 200 && $response ) {
-                    file_put_contents($path, $response);
-                  }
-                }
-              , 'failure' => function() use($path) {
-                  @unlink($path);
-                }
-              ));
+            if ( $contents ) {
+              file_put_contents($path, $contents);
+            }
+
+            unset($contents);
           }
 
           if ( !is_file($path) ) {
@@ -471,8 +479,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
         break;
       default:
         // Extension-less
-        if (!is_file($path) &&
-          preg_match('/^[^\.]+$/', basename($path))) {
+        if (!is_file($path) && preg_match('/^[^\.]+$/', basename($path))) {
           $files = glob("./$path.*");
 
           foreach ( $files as &$file ) {
@@ -520,6 +527,29 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
   /**
    * @private
    */
+  private function minifyCSS($contents) {
+    $result = '';
+
+    \core\Net::httpRequest(array(
+        'url' => 'http://cssminifier.com/raw'
+      , 'type' => 'post'
+      , 'data' => array( 'input' => $contents )
+      , '__curlOpts' => array(
+          CURLOPT_TIMEOUT => 2
+        )
+      , 'success' => function($response, $request) use(&$result) {
+          if ( @$request['status'] == 200 && $response ) {
+            $result = $response;
+          }
+        }
+      ));
+
+    return $result;
+  }
+
+  /**
+   * @private
+   */
   private function mimetype($path) {
     $mime = new \finfo(FILEINFO_MIME_TYPE);
     $mime = $mime->file($path);
@@ -537,7 +567,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
       case 'php':
       case 'phps':
       case 'html':
-        $mime = null;
+        $mime = 'text/x-php';
         break;
       case 'cff':
         $mime = 'application/font-cff';
