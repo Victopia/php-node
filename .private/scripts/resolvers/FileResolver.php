@@ -589,6 +589,72 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
       case 'svg':
         $mime = 'image/svg+xml; charset=utf-8';
         break;
+      case 'doc':
+      case 'dot':
+        $mime = 'application/msword';
+        break;
+      case 'docx':
+        $mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        break;
+      case 'dotx':
+        $mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.template';
+        break;
+      case 'docm':
+        $mime = 'application/vnd.ms-word.document.macroEnabled.12';
+        break;
+      case 'dotm':
+        $mime = 'application/vnd.ms-word.template.macroEnabled.12';
+        break;
+      case 'xls':
+      case 'xlt':
+      case 'xla':
+        $mime = 'application/vnd.ms-excel';
+        break;
+      case 'xlsx':
+        $mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        break;
+      case 'xltx':
+        $mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.template';
+        break;
+      case 'xlsm':
+        $mime = 'application/vnd.ms-excel.sheet.macroEnabled.12';
+        break;
+      case 'xltm':
+        $mime = 'application/vnd.ms-excel.template.macroEnabled.12';
+        break;
+      case 'xlam':
+        $mime = 'application/vnd.ms-excel.addin.macroEnabled.12';
+        break;
+      case 'xlsb':
+        $mime = 'application/vnd.ms-excel.sheet.binary.macroEnabled.12';
+        break;
+      case 'ppt':
+      case 'pot':
+      case 'pps':
+      case 'ppa':
+        $mime = 'application/vnd.ms-powerpoint';
+        break;
+      case 'pptx':
+        $mime = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+        break;
+      case 'potx':
+        $mime = 'application/vnd.openxmlformats-officedocument.presentationml.template';
+        break;
+      case 'ppsx':
+        $mime = 'application/vnd.openxmlformats-officedocument.presentationml.slideshow';
+        break;
+      case 'ppam':
+        $mime = 'application/vnd.ms-powerpoint.addin.macroEnabled.12';
+        break;
+      case 'pptm':
+        $mime = 'application/vnd.ms-powerpoint.presentation.macroEnabled.12';
+        break;
+      case 'potm':
+        $mime = 'application/vnd.ms-powerpoint.template.macroEnabled.12';
+        break;
+      case 'ppsm':
+        $mime = 'application/vnd.ms-powerpoint.slideshow.macroEnabled.12';
+        break;
       default:
         if ( !preg_match('/(^image|pdf$)/', $mime) ) {
           $mime = null;
