@@ -15,7 +15,7 @@ class Process {
   const EXEC_PATH = '/usr/bin/php .private/Process.php';
 
   public static /* Boolean */
-  function enqueue($command, $spawnProcess = TRUE) {
+  function enqueue($command, $spawnProcess = true) {
     $args = explode(' ', $command);
 
     if ( !$args ) {
@@ -24,11 +24,11 @@ class Process {
 
     $res = \Node::set(array(
         NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
-      , 'status' => NULL
+      , 'status' => null
       , 'path' => $command
       ));
 
-    if ( $res === FALSE ) {
+    if ( $res === false ) {
       throw new \Exception('[Process] Unable to enqueue process.', self::ERR_ENQUE);
     }
 
@@ -49,7 +49,7 @@ class Process {
     }
 
     if ( !$spawnProcess ) {
-      return TRUE;
+      return true;
     }
 
     $ret = self::spawn();
@@ -66,16 +66,16 @@ class Process {
    * otherwise return the process descriptor instead.
    *
    * @param {String} Command to be executed.
-   * @param {Boolean} $spawnProcess FALSE to not spawn the queued
-   *                                process right away, default TRUE.
-   * @param {Boolean} $requeue If TRUE, the existing path will be put
+   * @param {Boolean} $spawnProcess false to not spawn the queued
+   *                                process right away, default true.
+   * @param {Boolean} $requeue If true, the existing path will be put
    *                           at the back of the queue.
-   * @param {Boolean} $includeActive Specify TRUE to include active
+   * @param {Boolean} $includeActive Specify true to include active
    *                                 processes when considering whether
    *                                 the same process is already in queue.
    */
   public static /* Boolean */
-  function enqueueOnce($command, $spawnProcess = TRUE, $requeue = FALSE, $includeActive = FALSE) {
+  function enqueueOnce($command, $spawnProcess = true, $requeue = false, $includeActive = false) {
     \core\Database::lockTables(array(
         FRAMEWORK_COLLECTION_LOG
       , FRAMEWORK_COLLECTION_PROCESS
@@ -87,7 +87,7 @@ class Process {
       );
 
     if ( !$includeActive ) {
-      $res['locked'] = FALSE;
+      $res['locked'] = false;
     }
 
     $res = \node::get($res);
@@ -161,18 +161,18 @@ class Process {
     }
   }
 
-  private static /* void */
+  public static /* void */
   function spawn() {
     $res = \node::get(array(
         NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
-      , 'locked' => TRUE
+      , 'locked' => true
       ));
 
     if ( count($res) < self::MAX_PROCESS ) {
       return (int) shell_exec(self::EXEC_PATH . ' >/dev/null & echo $?');
     }
 
-    return FALSE;
+    return false;
   }
 
 }
