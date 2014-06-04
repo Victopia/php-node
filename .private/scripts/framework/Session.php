@@ -26,8 +26,7 @@
 
 namespace framework;
 
-class Session
-{
+class Session {
   //------------------------------
   //  Error constants
   //------------------------------
@@ -63,7 +62,7 @@ class Session
 
   // Session ID is stored when validate(), ensure(), or
   // restore() is called without failure.
-  private static $currentSession = NULL;
+  private static $currentSession = null;
 
   /**
    *  Login function, application commencement point.
@@ -76,9 +75,9 @@ class Session
    *  @returns Possible return values are:
    *           1. Session identifier string on success,
    *           2. Empty string on session exists without override, or
-   *           3. FALSE on login mismatch.
+   *           3. false on login mismatch.
    */
-  static function validate($username, $password, $overrideExist = FALSE) {
+  static function validate($username, $password, $overrideExist = false) {
     // Username
     $res = array(
       NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_USER,
@@ -87,14 +86,14 @@ class Session
 
     $res = \node::get($res);
 
-    if (!is_array($res) || count($res) == 0) {
+    if ( !is_array($res) || count($res) == 0 ) {
       return self::ERR_MISMATCH;
     }
 
     $res = $res[0];
 
     // Password crypt matching
-    if (crypt($password, $res['password']) !== $res['password']) {
+    if ( crypt($password, $res['password']) !== $res['password'] ) {
       return self::ERR_MISMATCH;
     }
 
@@ -103,7 +102,7 @@ class Session
       FROM `'.FRAMEWORK_COLLECTION_SESSION.'` WHERE `UserID` = ?', Array($res['ID']));
 
     // Session exists and not overriding, return error.
-    if (is_array($session) && $session['valid'] && $overrideExist === FALSE) {
+    if ( is_array($session) && $session['valid'] && $overrideExist === false ) {
       return self::ERR_EXISTS;
     }
 
@@ -117,7 +116,7 @@ class Session
     \core\Database::upsert(FRAMEWORK_COLLECTION_SESSION, array(
         'UserID' => $res['ID'],
         'sid' => $sid,
-        'timestamp' => NULL
+        'timestamp' => null
       ));
 
     // Updates user timestamp.
@@ -132,22 +131,19 @@ class Session
   /**
    *  Logout function, application terminating point.
    */
-  static function invalidate($sid = NULL) {
-    if ($sid === NULL) {
+  static function invalidate($sid = null) {
+    if ( $sid === null ) {
       $sid = self::$currentSession;
     }
 
-    \log::sessionWrite($sid, __CLASS__, 'invalidate', $sid);
+    $res = \core\Database::query('DELETE FROM `'.FRAMEWORK_COLLECTION_SESSION.'` WHERE `sid` = ?', array($sid));
 
-    \node::delete(array(
-      NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION
-    , 'sid' => $sid
-    ));
-
-    //\core\Database::query('DELETE FROM `'.FRAMEWORK_COLLECTION_SESSION.'` WHERE `sid` = ?', array($sid));
+    if ( $sid && $res->rowCount() > 0 ) {
+      \log::sessionWrite($sid, __CLASS__, 'invalidate', $sid);
+    }
 
     /* Clear reference */
-    self::$currentSession = NULL;
+    self::$currentSession = null;
   }
 
   /**
@@ -160,10 +156,10 @@ class Session
    *  CAUTION: When specified, extended security is performed on the current session.
    *           Current session can expire with constant Session::ERR_EXPIRED after 30 minutes of inactivity.
    *
-   *  @returns TRUE on access permitted, FALSE otherwise.
+   *  @returns true on access permitted, false otherwise.
    */
-  static function ensure($sid, $token = NULL) {
-    if (!$sid) {
+  static function ensure($sid, $token = null) {
+    if ( !$sid ) {
       return self::ERR_INVALID;
     }
 
@@ -172,34 +168,34 @@ class Session
       FROM `'.FRAMEWORK_COLLECTION_SESSION.'` WHERE `sid` = ?', array($sid));
 
     // Session validation
-    if ($res !== FALSE && Count($res) > 0) {
+    if ( $res !== false && Count($res) > 0 ) {
       /* Token validation. */
-      if ($token !== NULL && $token != $res['token']) {
-        if (!$res['valid']) {
+      if ( $token !== null && $token != $res['token'] ) {
+        if ( !$res['valid'] ) {
           return self::ERR_EXPIRED;
         }
 
-        return FALSE;
+        return false;
       }
 
       /* Session keep-alive update. */
       \core\Database::upsert(FRAMEWORK_COLLECTION_SESSION, array(
         'UserID' => $res['UserID'],
-        'token' => NULL,
-        'timestamp' => NULL
+        'token' => null,
+        'timestamp' => null
       ));
 
       /* Reference to current session. */
       self::$currentSession = $sid;
 
-      return TRUE;
+      return true;
     }
 
     else {
       return self::ERR_INVALID;
     }
 
-    return FALSE;
+    return false;
   }
 
   /**
@@ -210,10 +206,10 @@ class Session
    *
    *  @param $sid Session identifier string returned by the validate() method.
    *
-   *  @returns TRUE on access permitted, false otherwise.
+   *  @returns true on access permitted, false otherwise.
    */
   static function restore($sid) {
-    if (!isset($sid) || !$sid) {
+    if ( !isset($sid) || !$sid ) {
       return self::ERR_INVALID;
     }
 
@@ -222,15 +218,15 @@ class Session
       , 'WHERE `sid` = ?', array($sid));
 
     /* Session validation. */
-    if ($res !== FALSE && count($res) > 0) {
+    if ( $res !== false && count($res) > 0 ) {
       /* Session keep-alive update. */
       $res = \core\Database::upsert(FRAMEWORK_COLLECTION_SESSION, array(
           'UserID' => $res[0]['UserID']
-        , 'token' => NULL
-        , 'timestamp' => NULL
+        , 'token' => null
+        , 'timestamp' => null
         ));
 
-      if ( $res !== FALSE ) {
+      if ( $res !== false ) {
         // Store to PHP session.
         $sid = $sid;
 
@@ -248,7 +244,7 @@ class Session
       return self::ERR_INVALID;
     }
 
-    return FALSE;
+    return false;
   }
 
   /**
@@ -257,7 +253,7 @@ class Session
    *
    *  Each additional call to this function overwrites the token generated last time.
    *
-   *  @returns One-time token string, or NULL on invalid session.
+   *  @returns One-time token string, or null on invalid session.
    */
   static function generateToken($sid) {
     self::ensure($sid);
@@ -266,8 +262,8 @@ class Session
 
     $res = \core\Database::upsert(FRAMEWORK_COLLECTION_SESSION, array('UserID' => $res, 'token' => $token));
 
-    if ( $res === FALSE ) {
-      return NULL;
+    if ( $res === false ) {
+      return null;
     }
 
     return $token;
@@ -278,10 +274,10 @@ class Session
    *
    *  This will only be set on first call of validate(), ensure() or restore().
    */
-  static function current($property = NULL) {
+  static function current($property = null) {
     $res = self::$currentSession;
 
-    if (is_null($property)) {
+    if ( is_null($property) ) {
       return $res;
     }
 
@@ -291,8 +287,8 @@ class Session
       , 'sid' => self::$currentSession
       ));
 
-      if (count($res) == 0) {
-        return NULL;
+      if ( count($res) == 0 ) {
+        return null;
       }
 
       return @$res[0][$property];
@@ -307,7 +303,7 @@ class Session
   static function checkStatus($status) {
     $res = self::currentUser();
 
-    if (!$res) {
+    if ( !$res ) {
       return $status === self::USR_PUBLIC;
     }
 
@@ -319,18 +315,18 @@ class Session
   /**
    *  Shortcut function for getting user information.
    */
-  static function currentUser($property = NULL) {
+  static function currentUser($property = null) {
     $sid = self::$currentSession;
 
-    if (!$sid) {
-      return NULL;
+    if ( !$sid ) {
+      return null;
     }
 
     $res = 'SELECT `UserID` FROM `'.FRAMEWORK_COLLECTION_SESSION.'` WHERE `sid` = ?;';
     $res = \core\Database::fetchField($res, array($sid));
 
     if ( !$res ) {
-      return NULL;
+      return null;
     }
 
     $res = \Node::get(array(
@@ -338,8 +334,8 @@ class Session
     , 'ID' => $res
     ));
 
-    if ($res) {
-      if ($property !== NULL) {
+    if ( $res ) {
+      if ( $property !== null ) {
         return @$res[0][$property];
       }
       else {
@@ -347,7 +343,7 @@ class Session
       }
     }
     else {
-      return NULL;
+      return null;
     }
   }
 }
