@@ -295,7 +295,14 @@ class Net {
       if ( $progressCallback ) {
         $option[CURLOPT_NOPROGRESS] = false;
 
-        $option[CURLOPT_PROGRESSFUNCTION] = function($req, $dSize, $dLen, $uSize, $uLen) use(&$progressCallback) {
+        $option[CURLOPT_PROGRESSFUNCTION] = function() use(&$progressCallback) {
+          if ( func_num_args() == 4 ) {
+            list($dSize, $dLen, $uSize, $uLen) = func_get_args();
+          }
+          else {
+            list($req, $dSize, $dLen, $uSize, $uLen) = func_get_args();
+          }
+
           if ( $dSize || $dLen ) {
             static $_dLen = 0;
 
