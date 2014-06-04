@@ -42,13 +42,13 @@ class Service {
    * This will issue a local request to the server itself.
    *
    * @param $service (String) Typical service request path on this. e.g. "/class/method/param1/param2"
-   * @param $httpOptions (Array) Optional, will do a GET request without any parameters by default.
+   * @param $options (Array) Optional, will do a GET request without any parameters by default.
    */
-  static function redirect($service, $httpOptions = array()) {
+  static function redirect($service, $options = array()) {
     $result = null;
 
-    if ( is_string($httpOptions) ) {
-      switch (strtoupper($httpOptions)) {
+    if ( is_string($options) ) {
+      switch (strtoupper($options)) {
         // Request methods, according to RFC2616 section 9.
         case 'GET':
         case 'POST':
@@ -58,14 +58,14 @@ class Service {
         case 'PUT':
         case 'TRACE':
         case 'CONNECT':
-          $httpOptions = array(
-            'type' => $httpOptions
+          $options = array(
+            'type' => $options
           );
           break;
 
         default:
-          $httpOptions = array(
-            'url' => $httpOptions
+          $options = array(
+            'url' => $options
           );
           break;
       }
@@ -80,15 +80,15 @@ class Service {
       $service = (@$_SERVER['HTTPS'] ? 'https' : 'http') . '://' . FRAMEWORK_SERVICE_HOSTNAME . $service;
     }
 
-    $httpOptions['url'] = $service;
+    $options['url'] = $service;
 
     // Must send this header to determine local redirection.
-    @$httpOptions['headers'][] = 'Host: ' . FRAMEWORK_SERVICE_HOSTNAME;
-    @$httpOptions['headers'][] = 'User-Agent: X-PHP';
+    @$options['headers'][] = 'Host: ' . FRAMEWORK_SERVICE_HOSTNAME;
+    @$options['headers'][] = 'User-Agent: X-PHP';
 
-    @$httpOptions['__curlOpts'][CURLOPT_REFERER] = FRAMEWORK_SERVICE_HOSTNAME;
+    @$options['__curlOpts'][CURLOPT_REFERER] = FRAMEWORK_SERVICE_HOSTNAME;
 
-    $httpOptions['success'] = function($response, $curlOptions) use($service, &$result) {
+    $options['success'] = function($response, $curlOptions) use($service, &$result) {
       // Not 2xx, should be an error.
       if ( $curlOptions['status'] >= 300 ) {
         throw new exceptions\ServiceException("Error making local request to $service, HTTP status: $curlOptions[status].");
@@ -101,14 +101,14 @@ class Service {
       }
     };
 
-    $httpOptions['failure'] = function($num, $str, $curlOptions) {
+    $options['failure'] = function($num, $str, $curlOptions) {
       // This should not occurs, errors are supposed to be thrown as an exception object.
       throw new exceptions\ServiceException("An error occurred when making local service redirection. #$num $str");
     };
 
-    $httpOptions += self::$defaultHttpOptions;
+    $options += self::$defaultHttpOptions;
 
-    \core\Net::httpRequest($httpOptions);
+    \core\Net::httpRequest($options);
 
     return $result;
   }
