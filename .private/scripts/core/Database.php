@@ -506,7 +506,7 @@ class Database {
 
     // Setup keys.
     foreach ( $fields as $field => $value ) {
-      if (in_array($field, $columns)) {
+      if ( in_array($field, $columns) ) {
         $keys[$field] = $value;
 
         unset($fields[$field]);
@@ -515,17 +515,18 @@ class Database {
 
     $values = array_merge(array_values($keys), array_values($fields), array_values($fields));
 
-    $table = self::escape( $table );
-    $keys = self::escape( array_merge(array_keys($keys), array_keys($fields)) );
+    $keys = self::escape( array_merge(array_keys($keys), array_keys($fields)), $table );
 
     // Setup fields.
-    foreach ($fields as $field => $value) {
+    foreach ( $fields as $field => $value ) {
       $fields["`$field` = ?"] = $value;
 
       unset($fields[$field]);
     }
 
-    $res = 'INSERT INTO ' . $table . ' (' . implode(', ', $keys) . ') VALUES (' .
+    unset($columns);
+
+    $res = 'INSERT INTO ' . self::escape( $table ) . ' (' . implode(', ', $keys) . ') VALUES (' .
         implode(', ', array_fill(0, count($keys), '?')) . ') ON DUPLICATE KEY UPDATE ';
 
     /* Performs upsert here. */
@@ -533,7 +534,7 @@ class Database {
       $res.= implode(', ', array_keys($fields));
     }
     else {
-      foreach ($keys as $key => $column) {
+      foreach ( $keys as $key => $column ) {
         $keys[$key] = "$column = $column";
       }
 
