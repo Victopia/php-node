@@ -1,9 +1,5 @@
 <?php
-//------------------------------------------------------------
-// Initialize.php
-//
-// Define general methods and setup global usage classes.
-//------------------------------------------------------------
+/* Initialize.php | Define general methods and setup global usage classes. */
 
 // Global system constants
 require_once(__DIR__ . '/framework/constants.php');
@@ -142,7 +138,7 @@ function authorize($status, $rejectTarget = '/Login') {
  * @author Vicary Archangel
  */
 function redirect($response) {
-  if (is_string($response)) {
+  if ( is_string($response) ) {
     $self = parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH);
 
     $dest = dirname($self) . $response;
@@ -151,9 +147,17 @@ function redirect($response) {
       return;
     }
 
+    if ( $response[0] != '/' ) {
+      $response = "/$response";
+    }
+
+    if ( !preg_match('/^https?:/', $response) ) {
+      $response = '//' . FRAMEWORK_SERVICE_HOSTNAME . $response;
+    }
+
     header("Location: $response", true, 302);
   }
-  else if (is_integer($response)) {
+  else if ( is_integer($response) ) {
     // FastCGI and CGI expects Status: instead of HTTP/1.0 for status code.
     $statusPrefix = FALSE !== strpos(@$_SERVER['GATEWAY_INTERFACE'], 'CGI') ? 'Status:' : 'HTTP/1.0';
 
@@ -200,7 +204,7 @@ function redirect($response) {
 
     $response = "assets/errordocs/$response.php";
 
-    if (is_file($response)) {
+    if ( is_file($response) ) {
       include($response);
     }
   }
