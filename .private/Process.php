@@ -74,6 +74,9 @@ if ( @$opts['cron'] ) {
   log::write('Cron started process.', 'Information');
 }
 
+// for forking safety reasons, reconnect at this point.
+core\Database::reconnect();
+
 core\Database::lockTables(array(
     FRAMEWORK_COLLECTION_PROCESS
   , FRAMEWORK_COLLECTION_LOG
@@ -150,8 +153,6 @@ while (!$processSpawn && $retryCount++ < FRAMEWORK_PROCESS_SPAWN_RETRY_COUNT) {
     usleep(FRAMEWORK_PROCESS_SPAWN_RETRY_INTERVAL * 1000000);
   }
 }
-
-// core\Database::reconnect();
 
 if ( !$processSpawn ) {
   log::write('Unable to spawn process, process terminating.', 'Error');
