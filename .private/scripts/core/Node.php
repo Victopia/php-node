@@ -26,20 +26,20 @@ class Node {
    *                        2. Name of target collection, all contents will be
    *                           fetched.
    *                        3. ID from the default collection, usually be 'Nodes'.
-   * @param $fieldsRequired (bool) If TRUE, rows must contain all fields
+   * @param $fieldsRequired (bool) If true, rows must contain all fields
    *                               specified in argument filter to survive.
    * @param $limit (mixed) Can be integer specifying the row count from
    *                       first row, or an array specifying the starting
    *                       row and row count.
    * @parma $sorter (array) Optional. 1. fields to be ordered ascending, or
    *                                  2. Hashmap with fields as keys and boolean values
-   *                                  with TRUE interprets as ascending and FALSE otherwise.
+   *                                  with true interprets as ascending and false otherwise.
    *
    * @returns Array of filtered data rows.
    */
   static /* Array */
-  function get($filter, $fieldsRequired = TRUE, $limits = NULL, $sorter = NULL) {
-    if ( $limits !== NULL && (!$limits || !is_int($limits) && !is_array($limits)) ) {
+  function get($filter, $fieldsRequired = true, $limits = null, $sorter = null) {
+    if ( $limits !== null && (!$limits || !is_int($limits) && !is_array($limits)) ) {
       return array();
     }
 
@@ -79,7 +79,7 @@ class Node {
     $limits = @$filter['@limits'];
     $sorter = @$filter['@sorter'];
 
-    if ( $limits !== NULL && (!$limits || !is_int($limits) && !is_array($limits)) ) {
+    if ( $limits !== null && (!$limits || !is_int($limits) && !is_array($limits)) ) {
       return;
     }
 
@@ -193,7 +193,7 @@ class Node {
 
           // 3. Datetime comparison: <'2010-07-31', >='1989-06-21' ... etc.
           if (preg_match('/^(<|<=|==|>=|>)?\'([0-9- :]+)\'$/', trim($content), $matches) &&
-            count($matches) > 2 && strtotime($matches[2]) !== FALSE)
+            count($matches) > 2 && strtotime($matches[2]) !== false)
           {
             if ( !$matches[1] || $matches[1] == '==' ) {
               $inValues[] = $matches[2];
@@ -214,9 +214,9 @@ class Node {
           }
           else
 
-          // 5. NULL types
-          if ( is_null($content) || preg_match('/^((?:==|\!=)=?)\s*NULL$/i', trim($content), $matches) ) {
-            $content = 'IS ' . (@$matches[1][0] == '!' ? 'NOT ' : '') . 'NULL';
+          // 5. null types
+          if ( is_null($content) || preg_match('/^((?:==|\!=)=?)\s*null$/i', trim($content), $matches) ) {
+            $content = 'IS ' . (@$matches[1][0] == '!' ? 'NOT ' : '') . 'null';
             $subQuery[] = "$content";
           }
           else
@@ -269,7 +269,7 @@ class Node {
       // Remove real columns from the filter
       remove($columns, $filter);
 
-      $queryString = $query ? ' WHERE ' . implode(' AND ', $query) : NULL;
+      $queryString = $query ? ' WHERE ' . implode(' AND ', $query) : null;
     /* Merge $filter into SQL statement, end of. */
 
     /* Merge $sorter into SQL statement. */
@@ -290,7 +290,7 @@ class Node {
               }
 
               $field = $direction;
-              $direction = TRUE;
+              $direction = true;
             }
 
             $query[] = Database::escape($field, $tableName) . ($direction ? ' ASC' : ' DESC');
@@ -339,7 +339,7 @@ class Node {
           unset($row[NODE_FIELD_VIRTUAL]);
 
           if ( is_array($contents) ) {
-            $row+= $contents;
+            $row = $contents + $row;
           }
 
           unset($contents);
@@ -360,7 +360,7 @@ class Node {
     // otherwise goes vritual route with at least one virtual field.
     else {
       // Fetch until the fetched size is less than expected fetch size.
-      if ( $limits === NULL ) {
+      if ( $limits === null ) {
         $limits = array(0, PHP_INT_MAX);
       }
 
@@ -434,9 +434,9 @@ class Node {
     $required = $data['fieldsRequired'];
 
     // Just skip the field on optional matcher.
-    // Return TURE to include those fields, FALSE to drop them.
+    // Return TURE to include those fields, false to drop them.
     if ( !$required && !isset($data['row'][$field]) ) {
-      return TRUE;
+      return true;
     }
 
     $value = &$data['row'][$field];
@@ -448,7 +448,7 @@ class Node {
         return self::filterWalker($content, $data);
       }, $content);
 
-      return in_array(TRUE, $content, TRUE);
+      return in_array(true, $content, true);
     }
     else {
       // Normalize numeric values into exact match.
@@ -460,7 +460,7 @@ class Node {
       if ($required && !isset($value) ||
       // Boolean comparison: true, false
           ( is_bool($content) && $content !== (bool) $value ) ||
-      // NULL type: NULL
+      // null type: null
           ( is_null($content) && $value !== $content ) ||
 
       /* Quoted by Vicary @ 1 Jan, 2013
@@ -477,18 +477,18 @@ class Node {
             !eval('return strtotime($value)' . $matches[1] . strtotime($matches[2]) . ';')) ||
       // Regexp matching: "/^AB\d+/"
           ( preg_match('/^\/.+\/g?i?$/i', $content, $matches) ? preg_match( $content, $value ) == 0 :
-      // NULL type: ==NULL, !=NULL, ===NULL, !==NULL
-            ( preg_match('/^((?:==|!=)=?)\s*NULL\s*$/i', $content, $matches) && !eval('return $value' . $content . ';') ) ||
+      // null type: ==null, !=null, ===null, !==null
+            ( preg_match('/^((?:==|!=)=?)\s*null\s*$/i', $content, $matches) && !eval('return $value' . $content . ';') ) ||
       // Plain string
       // This was "count($matches) > 0", find out why.
-            ( count($matches) == 0 && is_string($content) && FALSE == preg_match('/^(<|<=|==|>=|>)/', $content) && $content !== $value )
+            ( count($matches) == 0 && is_string($content) && false == preg_match('/^(<|<=|==|>=|>)/', $content) && $content !== $value )
           ))
       {
-        // $data['row'] = NULL;
-        return FALSE;
+        // $data['row'] = null;
+        return false;
       }
 
-      return TRUE;
+      return true;
     }
   }
 
@@ -537,17 +537,17 @@ class Node {
    * Important: All "timestamp" properties in argument $contents will be removed.
    *
    * @param $contents An array of data to be updated, data row will be identified by id.
-   * @param $extendExists TRUE means $contents can be partial update, fields not specified
+   * @param $extendExists true means $contents can be partial update, fields not specified
    *        will have their old value retained instead of replacing the whole row.
    *
-   * @returns Array of Booleans, TRUE on success of specific row, FALSE otherwises.
+   * @returns Array of Booleans, true on success of specific row, false otherwises.
    *
    * @throws NodeException thrown when $contents did not specify a collection.
    * @throws NodeException thrown when more than one row is selected with the provided keys,
-   *                       and $extendExists is TRUE.
+   *                       and $extendExists is true.
    */
   static /* Array */
-  function set($contents = NULL, $extendExists = FALSE) {
+  function set($contents = null, $extendExists = false) {
     if ( !$contents ) {
       return array();
     }
@@ -571,9 +571,9 @@ class Node {
 
       // Get physical columns of target collection,
       // merges into SQL for physical columns.
-      $res = Database::getFields($tableName, NULL, FALSE);
+      $res = Database::getFields($tableName, null, false);
 
-      // This is used only when $extendExists is TRUE,
+      // This is used only when $extendExists is true,
       // contains primary keys and unique keys for retrieving
       // the exact existing object.
       $keys = array_filter($res, propHas('Key', array('PRI', 'UNI')));
@@ -588,7 +588,7 @@ class Node {
       // Note that this process will break when one of the primary key
       // is not provided inside $content object, thus unable to search
       // the exact row.
-      if ( $extendExists === TRUE ) {
+      if ( $extendExists === true ) {
         $res = array(
           NODE_FIELD_COLLECTION => $tableName === NODE_COLLECTION ?
             $row[NODE_FIELD_COLLECTION] : $tableName
@@ -600,7 +600,7 @@ class Node {
 
         if ( count($res) > 1 ) {
           throw new NodeException('More than one row is selected when extending '.
-            'current object, please provide ALL keys when calling with $extendExists = TRUE.');
+            'current object, please provide ALL keys when calling with $extendExists = true.');
         }
 
         if ( $res ) {
@@ -659,7 +659,7 @@ class Node {
    * @returns The total number of affected rows.
    */
   static /* int */
-  function delete($filter = NULL, $fieldsRequired = FALSE, $limit = NULL) {
+  function delete($filter = null, $fieldsRequired = false, $limit = null) {
     $res = self::get($filter, $fieldsRequired, $limit);
 
     $affectedRows = 0;
@@ -717,21 +717,21 @@ class Node {
    * @param $fieldDesc Database specific column definition, should beware of data type and length.
    *                   This must exists when $fieldName is specified.
    *
-   * @returns TRUE on success, FALSE otherwise;
+   * @returns true on success, false otherwise;
    *
    * @throws NodeException thrown when the call tries to make a virtual collection physical.
    * @throws NodeException thrown when target table is no virtual column field.
    * @throws NodeException thrown when no physical field description ($fieldDesc) is given.
    */
   public static /* Boolean */
-  function makePhysical($collection, $fieldName = NULL, $fieldDesc = NULL) {
+  function makePhysical($collection, $fieldName = null, $fieldDesc = null) {
     // Create table
     if ( !Database::hasTable($collection) ) {
       throw new NodeException('Table creation is not supported in this version.');
 
       // Mimic result after table creation.
-      if ( $fieldName === NULL ) {
-        return TRUE;
+      if ( $fieldName === null ) {
+        return true;
       }
     }
 
@@ -744,7 +744,7 @@ class Node {
                              );
     }
 
-    if ( $fieldName !== NULL && !$fieldDesc ) {
+    if ( $fieldName !== null && !$fieldDesc ) {
       throw new NodeException('You must specify $fieldDesc when adding physical column.');
     }
 
@@ -754,8 +754,8 @@ class Node {
                           . $field . ' ' . str_replace(';', '', $fieldDesc)
                           );
 
-    if ( $res === FALSE ) {
-      return FALSE;
+    if ( $res === false ) {
+      return false;
     }
 
     $fields = Database::getFields($collection, array('PRI'));
@@ -765,7 +765,7 @@ class Node {
     $fields = Database::escape($fields);
 
     // Data migration.
-    $migrated = TRUE;
+    $migrated = true;
 
     $res = Database::query('SELECT ' . implode(', ', $fields) . ' FROM ' . $collection);
 
@@ -781,8 +781,8 @@ class Node {
       $row[NODE_FIELD_VIRTUAL] = json_encode($contents);
       $row[NODE_FIELD_COLLECTION] = $collection;
 
-      if ( self::set($row) === FALSE ) {
-        $migrated = FALSE;
+      if ( self::set($row) === false ) {
+        $migrated = false;
       }
     }
 
