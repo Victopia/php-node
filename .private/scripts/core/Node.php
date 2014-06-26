@@ -396,7 +396,10 @@ class Node {
         return true;
       };
 
-      if ( @$indexHints[$tableName] ) {
+      if ( is_string($indexHints) ) {
+        $tableName.= " $indexHints";
+      }
+      else if ( is_array($indexHints) && array_key_exists($indexHints, $tableName) ) {
         $tableName = "`$tableName` $indexHints[$tableName]";
       }
 
