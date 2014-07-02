@@ -2,5 +2,5 @@
 	path = .private/test/simpletest
 	url = git://github.com/99designs/simpletest.git
 [submodule ".private/scipts/lib/lessc"]
-	path = .private/scripts/lib/lessc
+	path = .private/scipts/lib/lessc
 	url = git://github.com/leafo/lessphp.git
