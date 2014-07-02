@@ -87,7 +87,11 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
   public /* Boolean */
   function resolve($path) {
-    $path = $this->defaultPath . DIRECTORY_SEPARATOR . $path;
+    if ( $path[0] !== DIRECTORY_SEPARATOR ) {
+      $path = DIRECTORY_SEPARATOR . $path;
+    }
+
+    $path = $this->defaultPath . $path;
 
     $res = explode('?', $path, 2);
 
@@ -199,7 +203,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
       // Entity tag
       if ( preg_match('/^("|W\/")/', $_SERVER['HTTP_IF_RANGE']) ) {
-        preg_match_all('/(?:^\*$|("[^\*"]+")(?:\s*,\s*("[^\*"]+")))$/', $_SERVER['HTTP_IF_NONE_MATCH'], $eTags);
+        preg_match_all('/(?:^\*$|("[^\*"]+")(?:\s*,\s*("[^\*"]+")))$/', @$_SERVER['HTTP_IF_NONE_MATCH'], $eTags);
 
         if ( @$eTags[1] && in_array($eTag, (array) $eTags[1]) ) {
           throw new \framework\exceptions\ResolverException(304);
@@ -384,7 +388,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     }
     unset($headers, $header);
 
-    if ( !$contentLengthSent ) {
+    if ( !$contentLengthSent && !headers_sent() ) {
       header("Content-Length: $contentLength", true);
     }
 
@@ -406,7 +410,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
           // Whenever orginal source exists and is newer,
           // udpate minified version.
           if ( !is_file($path) || $mtime > filemtime($path) ) {
-            $output = shell_exec("cat $opath | .private/uglifyjs -o $path 2>&1");
+            $output = shell_exec("cat $opath | uglifyjs -o $path 2>&1");
 
             if ( $output ) {
               $output = "[uglifyjs] $output.";
@@ -444,6 +448,22 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
         }
         break;
       case 'css':
+        // Auto compile CSS from LESS
+        $lessPath = preg_replace('/(?:\.min)?\.css$/', '.less', $path);
+
+        if ( file_exists($lessPath) ) {
+          try {
+            (new \lessc)->checkedCompile($lessPath, $path);
+          }
+          catch (\Exception $e) {
+            \log::write('Unable to compile CSS from less.', 'Exception', $e);
+
+            die;
+          }
+        }
+
+        unset($lessPath);
+
         // Auto minify *.min.css it from the original *.css.
         $opath = preg_replace('/\.min(\.css)$/', '\\1', $path, -1, $count);
 
