@@ -4,3 +4,6 @@
 [submodule ".private/scipts/lib/lessc"]
 	path = .private/scipts/lib/lessc
 	url = git://github.com/leafo/lessphp.git
+[submodule ".private/scripts/lib/lessc"]
+	path = .private/scripts/lib/lessc
+	url = git://github.com/leafo/lessphp.git
