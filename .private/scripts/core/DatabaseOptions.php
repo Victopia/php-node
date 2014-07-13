@@ -14,7 +14,7 @@ class DatabaseOptions {
   public function __construct($driver = null,
                               $host = null,
                               $port = null,
-                              $schema = null,
+                              $database = null,
                               $username = null,
                               $password = null) {
     if (!is_null($driver))
@@ -26,8 +26,8 @@ class DatabaseOptions {
     if (!is_null($port))
       $this->port = $port;
 
-    if (!is_null($schema))
-      $this->schema = $schema;
+    if (!is_null($database))
+      $this->database = $database;
 
     if (!is_null($username))
       $this->username = $username;
@@ -42,7 +42,7 @@ class DatabaseOptions {
 
   public $port = 3306;
 
-  public $schema;
+  public $database;
 
   public $username;
 
