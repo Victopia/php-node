@@ -87,28 +87,28 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
   public /* Boolean */
   function resolve($path) {
-    if ( $path[0] !== DIRECTORY_SEPARATOR ) {
-      $path = DIRECTORY_SEPARATOR . $path;
+    $path = str_replace('/', DIRECTORY_SEPARATOR, $path);
+
+    if ( $path[0] == DIRECTORY_SEPARATOR ) {
+      $path = substr($path, 1);
     }
 
-    $path = $this->defaultPath . $path;
+    $prefix = $this->defaultPath . DIRECTORY_SEPARATOR;
+
+    if ( stripos($path, $prefix) !== 0 ) {
+      $path = $prefix . $path;
+    }
 
     $res = explode('?', $path, 2);
 
     $queryString = isset($res[1]) ? $res[1] : '';
 
-    if ( @$res[0][0] === '/' ) {
-      $res = ".$res[0]";
-    }
-    else {
-      $res = $res[0];
-    }
-
-    $res = urldecode($res);
+    $res = urldecode($res[0]);
 
     //------------------------------
     //  Emulate DirectoryIndex
     //------------------------------
+
     if ( is_dir($res) ) {
       // apache_lookup_uri($path)
       if ( false && function_exists('apache_lookup_uri') ) {
