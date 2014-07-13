@@ -69,7 +69,7 @@ class Database {
       $connectionString = self::$options->driver
         . ':host=' . self::$options->host
         . ';port=' . self::$options->port
-        . ';dbname=' . self::$options->schema;
+        . ';dbname=' . self::$options->database;
 
       try {
         self::$con = new \PDO($connectionString
