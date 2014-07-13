@@ -10,10 +10,17 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
   //
   //--------------------------------------------------
 
+  /**
+   * @private
+   *
+   * Current working path this script resides, calculated on instantiate.
+   */
+  private $currentPath;
+
   //------------------------------
   //  defaultPath
   //------------------------------
-  private $defaultPath = '.';
+  private $defaultPath;
 
   /**
    * Target path to serve.
@@ -24,7 +31,8 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     }
 
     if ( $value ) {
-      $value = preg_replace('/\/$/', '', $value);
+      $value = str_replace('/', DIRECTORY_SEPARATOR, $value);
+      $value = preg_replace('/\'' . DIRECTORY_SEPARATOR . '$/', '', $value);
     }
 
     $this->defaultPath = $value;
@@ -81,6 +89,29 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
   //--------------------------------------------------
   //
+  //  Constructor
+  //
+  //--------------------------------------------------
+
+  public function __construct($defaultPath = '.') {
+    // Calculate current working path.
+    $path = getcwd();
+    $root = realpath($_SERVER['DOCUMENT_ROOT']);
+
+    if ( strpos($path, $root) !== 0 ) {
+      throw new \framework\exceptions\ResolverException('Document root does not align with current working directory.');
+    }
+
+    $path = substr($path, strlen($root));
+
+    $this->currentPath = $path;
+
+    // Apply serving directory.
+    $this->defaultPath($defaultPath);
+  }
+
+  //--------------------------------------------------
+  //
   //  Methods: IPathResolver
   //
   //--------------------------------------------------
@@ -89,13 +120,17 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
   function resolve($path) {
     $path = str_replace('/', DIRECTORY_SEPARATOR, $path);
 
-    if ( $path[0] == DIRECTORY_SEPARATOR ) {
-      $path = substr($path, 1);
+    if ( strpos($path, $this->currentPath) === 0 ) {
+      $path = substr($path, strlen($this->currentPath));
     }
 
     $prefix = $this->defaultPath . DIRECTORY_SEPARATOR;
 
-    if ( stripos($path, $prefix) !== 0 ) {
+    if ( !preg_match('/^' . preg_quote($this->defaultPath) . '/', $path) ) {
+      if ( $path[0] == DIRECTORY_SEPARATOR ) {
+        $path = substr($path, 1);
+      }
+
       $path = $prefix . $path;
     }
 
@@ -431,6 +466,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
           }
         }
         break;
+
       case 'png':
         // When requesting *.png, we search for svg for conversion.
         $opath = preg_replace('/\.png$/', '.svg', $path, -1, $count);
@@ -447,6 +483,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
           }
         }
         break;
+
       case 'css':
         // Auto compile CSS from LESS
         $lessPath = preg_replace('/(?:\.min)?\.css$/', '.less', $path);
@@ -494,15 +531,17 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
           }
         }
         break;
+
       case 'csv':
         header('Content-Disposition: attachment;', true);
         break;
+
       default:
         // Extension-less
         if (!is_file($path) && preg_match('/^[^\.]+$/', basename($path))) {
           $files = glob("./$path.*");
 
-          foreach ( $files as &$file ) {
+          foreach ( $files as $file ) {
             if ( is_file($file) && $this->handles($file) ) {
               $path = $file;
               return;
