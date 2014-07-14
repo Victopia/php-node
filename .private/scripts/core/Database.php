@@ -55,7 +55,7 @@ class Database {
     if ( self::$con === null ) {
       if ( self::$options === null ) {
         if (error_reporting()) {
-          throw new \PDOException('Please specify connection options with setOptions() before accessing database.');
+          throw new \PDOException('Please specify connection options before connecting database.');
         }
         else {
           return null;
@@ -184,7 +184,7 @@ class Database {
         return Database::escape($field);
       }, $value);
     }
-    elseif (preg_match('/^[^\s\(\)\*]*$/', $value)) {
+    elseif ( preg_match('/^[^\s\(\)\*]*$/', $value) ) {
       return '`' . str_replace('`', '``', $value) . '`';
     }
     else {
@@ -210,7 +210,7 @@ class Database {
     }
 
     if ( !isset($cache['collections']) ) {
-      $tables = (array) @self::fetchArray('SHOW TABLES', null, \PDO::FETCH_COLUMN);
+      $tables = (array) self::fetchArray('SHOW TABLES', null, \PDO::FETCH_COLUMN);
 
       $cache['collections'] = array_fill_keys($tables, array());
     }
