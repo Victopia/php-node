@@ -4,3 +4,6 @@
 [submodule ".private/scripts/lib/lessc"]
 	path = .private/scripts/lib/lessc
 	url = git://github.com/leafo/lessphp.git
+[submodule ".private/scripts/lib/Mustache"]
+	path = .private/scripts/lib/Mustache
+	url = git://github.com/bobthecow/mustache.php
