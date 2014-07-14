@@ -68,6 +68,10 @@ class Node {
    */
   static /* void */
   function getAsync($filter, $dataCallback) {
+    if ( !self::ensureConnection() ) {
+      return null;
+    }
+
     // Defaults string to collections.
     if ( is_string($filter) ) {
       $filter = array(
@@ -551,6 +555,10 @@ class Node {
    */
   static /* Array */
   function set($contents = null, $extendExists = false) {
+    if ( !self::ensureConnection() ) {
+      return false;
+    }
+
     if ( !$contents ) {
       return array();
     }
@@ -698,12 +706,30 @@ class Node {
 
   private static /* String */
   function resolveCollection($tableName) {
+    if ( !self::ensureConnection() ) {
+      return null;
+    }
+
     if ( !Database::hasTable($tableName) ) {
       return NODE_COLLECTION;
     }
     else {
       return $tableName;
     }
+  }
+
+  private static /* void */
+  function ensureConnection() {
+    if ( !Database::isConnected() ) {
+      if ( error_reporting() ) {
+        throw new NodeException('Database is not connected.');
+      }
+      else {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   //-----------------------------------------------------------------------
