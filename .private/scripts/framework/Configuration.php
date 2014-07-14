@@ -71,7 +71,7 @@ class Configuration implements \Iterator, \ArrayAccess {
 	//  contents
 	//------------------------------
 
-	private $contents = NULL;
+	private $contents = null;
 
 	function &getContents() {
 		return $this->contents;
@@ -83,15 +83,15 @@ class Configuration implements \Iterator, \ArrayAccess {
 	//
 	//--------------------------------------------------
 
-	function __construct($key, Configuration $parentObject = NULL) {
+	function __construct($key, Configuration $parentObject = null) {
 		// Root objects will get value from database upon creation
-		if ($parentObject === NULL) {
+		if ( $parentObject === NULL ) {
 			$confObj = array(
-				NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_CONFIGURATION
-			, '@key' => $key
-			);
+					NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_CONFIGURATION
+				, '@key' => $key
+				);
 
-			if ($res = \Node::get($confObj)) {
+			if ( $res = \node::get($confObj) ) {
 				$confObj = $res[0];
 			} unset($res);
 
@@ -117,7 +117,7 @@ class Configuration implements \Iterator, \ArrayAccess {
 
 	// Shorthand accessor
 	static function get($key) {
-		if (strpos($key, '::') !== FALSE) {
+		if ( strpos($key, '::') !== false ) {
 			list($key, $property) = explode('::', $key, 2);
 
 			$key = new Configuration($key);
@@ -231,7 +231,7 @@ class Configuration implements \Iterator, \ArrayAccess {
 	}
 
 	function offsetGet($offset) {
-		return $this->contents[$offset];
+		return @$this->contents[$offset];
 	}
 
 	function offsetSet($offset, $value) {
