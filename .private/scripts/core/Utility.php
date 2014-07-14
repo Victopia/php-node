@@ -48,7 +48,7 @@ class Utility {
    * Returns whether current request is made by local redirect.
    */
   static function isLocalRedirect() {
-    return @$_SERVER['HTTP_REFERER'] == FRAMEWORK_SERVICE_HOSTNAME;
+    return @$_SERVER['HTTP_HOST'] == FRAMEWORK_SERVICE_HOSTNAME && @$_SERVER['HTTP_USER_AGENT'] == 'X-PHP';
   }
 
   /**
