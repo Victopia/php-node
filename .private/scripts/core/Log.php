@@ -7,9 +7,9 @@
 namespace core;
 
 class Log {
-  static function write($message, $type = 'Notice', $context = NULL) {
+  static function write($message, $type = 'Notice', $context = null) {
     // Skip debug logs on production environment.
-    if (FRAMEWORK_ENVIRONMENT != 'debug' && $type == 'Debug') {
+    if ( FRAMEWORK_ENVIRONMENT != 'debug' && $type == 'Debug' ) {
       return;
     }
 
@@ -27,7 +27,7 @@ class Log {
     // Try to backtrace the callee, performance impact at this point.
     $backtrace = \utils::getCallee();
 
-    if (!@$backtrace['file']) {
+    if ( !@$backtrace['file'] ) {
       $backtrace = array( 'file' => __FILE__, 'line' => 0 );
     }
 
@@ -36,7 +36,7 @@ class Log {
     $message['subject'] = '['.getmypid()."@$backtrace[file]:$backtrace[line]]";
     $message['action'] = @"$backtrace[class]$backtrace[type]$backtrace[function]";
 
-    if ($context !== NULL) {
+    if ( $context !== null ) {
       $message['context'] = $context;
     }
 
@@ -47,10 +47,10 @@ class Log {
     return Node::set($message);
   }
 
-  static function sessionWrite($sid, $action, $remarks = NULL) {
+  static function sessionWrite($sid, $action, $remarks = null ) {
     $userId = '0';
 
-    if ( $sid !== NULL ) {
+    if ( $sid !== null ) {
       \framework\Session::ensure($sid);
     }
 
