@@ -29,20 +29,20 @@ require_once('.private/scripts/Initialize.php');
 //------------------------------
 //  Environment variables
 //------------------------------
-foreach ($_SERVER as $key => $value) {
-	if ($key == 'REDIRECT_URL') continue;
+foreach ( $_SERVER as $key => $value ) {
+  if ($key == 'REDIRECT_URL') continue;
 
-	$res = preg_replace('/^REDIRECT_/', '', $key, -1, $count);
+  $res = preg_replace('/^REDIRECT_/', '', $key, -1, $count);
 
-	if ($count > 0) {
-		unset($_SERVER[$key]);
+  if ( $count > 0 ) {
+    unset($_SERVER[$key]);
 
-		$_SERVER[$res] = $value;
-	}
+    $_SERVER[$res] = $value;
+  }
 }
 
-if (isset($_SERVER['HTTP_STATUS'])) {
-	redirect(intval($_SERVER['HTTP_STATUS']));
+if ( isset($_SERVER['HTTP_STATUS']) ) {
+  redirect(intval($_SERVER['HTTP_STATUS']));
 }
 
 //------------------------------
@@ -50,50 +50,47 @@ if (isset($_SERVER['HTTP_STATUS'])) {
 //------------------------------
 
 if ( @$_SERVER['REQUEST_METHOD'] == 'POST' && core\Request::headers('Content-Type') == 'application/json' ) {
-  $_POST = json_decode(file_get_contents('php://input'), TRUE);
+  $_POST = json_decode(file_get_contents('php://input'), true);
 }
 
 //------------------------------
 //  Session & Authentication
 //------------------------------
-$sid = NULL;
-
-// Follow variables_order, i.e. POST > GET > COOKIES.
-if (isset($_REQUEST['sid'])) {
-	$sid = $_REQUEST['sid'];
-}
-else
-if (isset($_COOKIE['sid'])) {
-	$sid = $_COOKIE['sid'];
-}
-// Discouraged usage but still, check for PHP sessions.
-// elseif (isset($_SESSION['sid'])) { $sid = $_SESSION['sid']; }
+$sid = utils::cascade(@$_REQUEST['__sid'], @$_COOKIE['__sid']);
 
 // Session ID provided, validate it.
-if ($sid !== NULL) {
-	$res = session::ensure($sid);
+if ( $sid !== null ) {
+  $res = session::ensure($sid, @$_REQUEST['__token']);
 
-	if ($res === FALSE) {
-		// Session doesn't exists, delete exsting cookie.
-		setcookie('sid', '', time() - 3600);
-	}
-	else if (is_integer($res)) {
-		switch ($res) {
-			// Reserved error code for client use
-			case session::ERR_EXPIRED:
-				throw new framework\exceptions\ServiceException('Current user is restricted.');
-				break;
-			// Treat as public user.
-			case session::ERR_INVALID:
-				break;
-		}
-	}
-	else {
-		// Success, proceed.
-	}
+  if ( $res === false ) {
+    // Session doesn't exists, delete exsting cookie.
+    setcookie('__sid', '', time() - 3600);
+  }
+  else if ( is_integer($res) ) {
+    switch ( $res ) {
+      // Reserved error code for client use
+      case session::ERR_EXPIRED:
+        redirect('notice/user/expired');
+        break;
+      // Treat as public user.
+      case session::ERR_INVALID:
+        break;
+    }
+  }
+  else {
+    // Success, proceed.
+  }
 }
 
-unset($sid, $_POST['sid'], $_GET['sid'], $_REQUEST['sid'], $_COOKIE['sid']);
+$res = array(&$_POST, &$_GET, &$_REQUEST, &$_COOKIE);
+
+foreach ( $res as &$ref ) {
+  remove(['__sid', '__token'], $ref);
+}
+
+unset($res, $ref);
+
+unset($sid, $res);
 
 //--------------------------------------------------
 //
@@ -104,7 +101,7 @@ unset($sid, $_POST['sid'], $_GET['sid'], $_REQUEST['sid'], $_COOKIE['sid']);
 //------------------------------
 //  Access log
 //------------------------------
-if (FRAMEWORK_ENVIRONMENT == 'debug') {
+if ( FRAMEWORK_ENVIRONMENT == 'debug' ) {
   $accessTime = microtime(1);
 }
 
@@ -114,6 +111,8 @@ if (FRAMEWORK_ENVIRONMENT == 'debug') {
 
 $resolver = 'framework\Resolver';
 
+$localeChain = utils::cascade(@conf::get('core.i18n::localeChain'), 'en_US');
+
 // Web Services
 $resolver::registerResolver(new resolvers\WebServiceResolver('/:service/'), 60);
 
@@ -121,7 +120,13 @@ $resolver::registerResolver(new resolvers\WebServiceResolver('/:service/'), 60);
 $resolver::registerResolver(new resolvers\CacheResolver('/:cache/'), 50);
 
 // Template resolver
-$resolver::registerResolver(new resolvers\TemplateResolver(), 40);
+$templateResolver = new resolvers\TemplateResolver($localeChain);
+
+$templateResolver->directoryIndex('Home index');
+
+$resolver::registerResolver($templateResolver, 40);
+
+unset($templateResolver);
 
 // Database resources
 $resolver::registerResolver(new resolvers\ResourceResolver('/:resource/'), 30);
@@ -138,16 +143,18 @@ $fileResolver->cacheExclusions('htm html php');
 
 $resolver::registerResolver($fileResolver, 10);
 
+unset($fileResolver);
+
 // Perform resolving
 $response = $resolver::resolve($_SERVER['REQUEST_URI']);
 
-unset($resolver);
+unset($localeChain, $resolver);
 
 //------------------------------
 //  Access log
 //------------------------------
-if (FRAMEWORK_ENVIRONMENT == 'debug') {
-  log::write("$_SERVER[REQUEST_METHOD] $_SERVER[REQUEST_URI]", 'Debug', array_filter(array(
+if ( FRAMEWORK_ENVIRONMENT == 'debug' ) {
+  @log::write("$_SERVER[REQUEST_METHOD] $_SERVER[REQUEST_URI]", 'Debug', array_filter(array(
       'origin' => @$_SERVER['HTTP_REFERER']
     , 'userAgent' => \utils::cascade(@$_SERVER['HTTP_USER_AGENT'], 'Unknown')
     , 'timeElapsed' => round(microtime(1) - $accessTime, 4) . ' secs'
@@ -157,6 +164,6 @@ if (FRAMEWORK_ENVIRONMENT == 'debug') {
 }
 
 // HTTP status code returned
-if (is_integer($response)) {
-	redirect($response);
+if ( is_integer($response) ) {
+  redirect($response);
 }
