@@ -2,10 +2,10 @@
 /*! sessions.php | Service for framework Session. */
 
 class sessions implements framework\interfaces\IWebService {
-	function validate($username, $password, $overrideExists = FALSE) {
+	function validate($username, $password, $overrideExists = false) {
 		$res = session::validate($username, $password, $overrideExists);
 
-		if (is_int($res)) {
+		if ( is_int($res) ) {
 			switch ($res) {
 				case session::ERR_MISMATCH:
 					throw new framework\exceptions\ServiceException('Username and password mismatch.', $res);
@@ -19,7 +19,7 @@ class sessions implements framework\interfaces\IWebService {
 		return $res;
 	}
 
-	function ensure($sid, $token = NULL) {
+	function ensure($sid, $token = null) {
 		$res = session::ensure($sid, $token);
 
 		if (is_int($res)) {
