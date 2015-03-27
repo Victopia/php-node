@@ -3,6 +3,10 @@
 
 namespace framework;
 
+use core\Database;
+use core\Log;
+use core\Utility;
+
 class ExceptionsHandler {
   public static function setHandlers() {
         set_error_handler('framework\ExceptionsHandler::handleError');
@@ -29,7 +33,15 @@ class ExceptionsHandler {
     $eN = $e->getCode();
 
     if ( $e instanceof exceptions\GeneralException ) {
-      $eS = Resource::getString($eS);
+      $r = new Resource;
+
+      $r = (string) $r->$eS;
+
+      if ( $r ) {
+        $eS = $r;
+      }
+
+      unset($r);
     }
 
     if ( $e instanceof \ErrorException ) {
@@ -73,8 +85,11 @@ class ExceptionsHandler {
     }
 
     // Prevent recursive errors on logging when database fails to connect.
-    if ( \core\Database::isConnected() ) {
-      if ( \utils::isCLI() ) {
+    if ( Database::isConnected() ) {
+      // Release table locks of current session.
+      @Database::unlockTables(false);
+
+      if ( Utility::isCLI() ) {
         $logContext = $eC;
       }
       else {
@@ -82,13 +97,15 @@ class ExceptionsHandler {
             'remoteAddr' => @$_SERVER['REMOTE_ADDR']
           , 'forwarder' => @$_SERVER['HTTP_X_FORWARDED_FOR']
           , 'referrer' => @$_SERVER['HTTP_REFERER']
-          , 'userAgent' => \utils::cascade(@$_SERVER['HTTP_USER_AGENT'], 'Unknown')
+          , 'userAgent' => Utility::cascade(@$_SERVER['HTTP_USER_AGENT'], 'Unknown')
           , 'errorContext' => $eC
           ));
       }
 
+      $logString = sprintf('[Gateway] Uncaught %s with message: "%s" #%d, on %s:%d.', $exceptionType, $eS, $eN, $eF, $eL);
+
       // Log the error
-      \log::write("[Gateway] Uncaught $exceptionType with message: \"$eS\" #$eN, on $eF:$eL.", $logType, $logContext);
+      Log::write($logString, $logType, $logContext);
 
       unset($logContext);
     }
@@ -106,7 +123,7 @@ class ExceptionsHandler {
 
     $output = ob_get_clean() . @json_encode($output);
 
-    if ( !\utils::isCLI() ) {
+    if ( !Utility::isCLI() ) {
       if ( !headers_sent() ) {
         header('Content-Type: application/json; charset=utf-8');
         header('Content-Length: ' . strlen($output));
@@ -118,12 +135,20 @@ class ExceptionsHandler {
       }
     }
 
+    http_response_code(500);
+
     // Display error message
     echo $output;
 
     // Terminates on Exceptions and Errors.
     if ( $logType == 'Exception' || $logType == 'Error' ) {
-      die;
+      $exitCode = $e->getCode();
+
+      if ( $exitCode <= 0 ) {
+        $exitCode = 1;
+      }
+
+      die($exitCode);
     }
   }
 }

@@ -3,6 +3,8 @@
 
 namespace core;
 
+use core\Utility;
+
 class ImageConverter {
 
   //--------------------------------------------------
@@ -41,7 +43,7 @@ class ImageConverter {
    * Open an image file.
    */
   function open($file) {
-    $stat = \utils::getInfo($file, FILEINFO_MIME_TYPE);
+    $stat = Utility::getInfo($file, FILEINFO_MIME_TYPE);
 
     switch ($stat) {
       case 'image/jpeg':

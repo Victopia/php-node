@@ -1,10 +1,10 @@
 <?php
-/*! Log.php | https://github.com/victopia/PHPNode
- *
- * CAUTION: This class is not production ready, use at own risk.
- */
+/* Log.php | Shorthand class for writing system logs. */
 
 namespace core;
+
+use framework\Process;
+use framework\Session;
 
 class Log {
   static function write($message, $type = 'Notice', $context = null) {
@@ -13,7 +13,7 @@ class Log {
       return;
     }
 
-    switch ($type) {
+    switch ( $type ) {
       case 'Access':
       case 'Information':
       case 'Notice':
@@ -25,7 +25,7 @@ class Log {
     }
 
     // Try to backtrace the callee, performance impact at this point.
-    $backtrace = \utils::getCallee();
+    $backtrace = Utility::getCallee(3);
 
     if ( !@$backtrace['file'] ) {
       $backtrace = array( 'file' => __FILE__, 'line' => 0 );
@@ -33,7 +33,17 @@ class Log {
 
     $backtrace['file'] = str_replace(getcwd(), '', basename($backtrace['file'], '.php'));
 
-    $message['subject'] = '['.getmypid()."@$backtrace[file]:$backtrace[line]]";
+    if ( Session::current() ) {
+      $message['subject'] = 'User#' . (int) Session::currentUser('ID');
+    }
+    else if ( is_numeric(Process::get('type')) ) {
+      $message['subject'] = 'User@#' . (int) Process::get('type');
+    }
+    else {
+      $message['subject'] = 'Process#' . getmypid();
+    }
+
+    $message['subject'] = "[$message[subject]@$backtrace[file]:$backtrace[line]]";
     $message['action'] = @"$backtrace[class]$backtrace[type]$backtrace[function]";
 
     if ( $context !== null ) {
@@ -44,17 +54,24 @@ class Log {
 
     $message[NODE_FIELD_COLLECTION] = FRAMEWORK_COLLECTION_LOG;
 
-    return Node::set($message);
+    return @Node::set($message);
   }
 
-  static function sessionWrite($sid, $action, $remarks = null ) {
+  /**
+   * @deprecated
+   *
+   * This function will fade out in the next version.
+   *
+   * Normal logs will now replace pid with User context once a valid session is found.
+   */
+  static function sessionWrite($sid, $action, $remarks = null) {
     $userId = '0';
 
     if ( $sid !== null ) {
-      \framework\Session::ensure($sid);
+      Session::ensure($sid);
     }
 
-    $userId = (int) \framework\Session::currentUser('ID');
+    $userId = (int) Session::currentUser('ID');
 
     return Node::set(array(
         NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_LOG

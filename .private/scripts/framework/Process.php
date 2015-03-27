@@ -3,176 +3,336 @@
 
 namespace framework;
 
+use core\Database;
+use core\Log;
+use core\Node;
+use core\Utility as util;
+
+use framework\exceptions\ProcessException;
+
 class Process {
 
-  const ERR_EXIST = 1;
+  //----------------------------------------------------------------------------
+  //
+  //  Constants
+  //
+  //----------------------------------------------------------------------------
+
+  const ERR_SUPRT = 1;
   const ERR_EPERM = 2;
   const ERR_ENQUE = 3;
+  const ERR_SPAWN = 4;
 
-  const MAX_PROCESS = 100;
+  // Assume gateway redirection, pwd should always at DOCUMENT_ROOT
+  const EXEC_PATH = 'php .private/Process.php';
 
-  // Assume gateway redirection, pwd should always at DOCUMENT_ROOT.
-  const EXEC_PATH = '/usr/bin/php .private/Process.php';
+  //----------------------------------------------------------------------------
+  //
+  //  Properties
+  //
+  //----------------------------------------------------------------------------
 
-  public static /* Boolean */
-  function enqueue($command, $spawnProcess = true) {
-    $args = explode(' ', $command);
+  private static $defaultOptions = array(
+      '$spawn' => true
+    , '$singleton' => false
+    , '$requeue' => false
+    , '$type' => 'system'
+    , '$weight' => 100
+    , '$capacity' => 5
+    );
 
-    if ( !$args ) {
-      throw new \Exception('[Process] Specified file is invalid or not an executable.', self::ERR_EPERM);
+  //----------------------------------------------------------------------------
+  //
+  //  Methods
+  //
+  //----------------------------------------------------------------------------
+
+  /**
+   * Put the specified command into process queue, optionally spawn a daemon to run it.
+   *
+   * @param {string} $command Command line to be run by the daemon.
+   *
+   * @param {array} $options Array with the following properties:
+   *                $options[$spawn] {bool} Whether to spawn a worker daemon immediately, default true.
+   *                $options[$singleton] {bool} Whether to skip the queuing when there is already an exact same command
+   *                                           in the process list, default false.
+   *                $options[$requeue] {bool} True to remove any previous inactive identical commands before pushing into
+   *                                         queue, default false.
+   *                $options[$kill] {int} When provided, a signal to be sent to all active identical commands.
+   *                $options[$type] {string} Identifier of command queue groups, commands will be drawn and run randomly
+   *                                        among groups, one at a time, by the daemon.
+   *                $options[$weight] {int} The likeliness of a command to be drawn within the same group, default 1.
+   *                $options[$capacity] {float} Percentage of occupation within the same group. To limit maximum active
+   *                                           processes within the same group to be 10, set this to 0.1. Default 0.2.
+   *                $options[$env] {array} Associative array of properties that will be available when target command starts.
+   *                $options[...] Any other values will be set into the process object, which will be accessible by spawn
+   *                              processes with Process::get() method.
+   */
+  public static /* array */
+  function enqueue($command, $options = array()) {
+
+    // For backward-compatibility, this parameter is originally $spawnProcess.
+    if ( is_bool($options) ) {
+      $options = array(
+          '$spawn' => $options
+        );
+    }
+    else {
+      $options = (array) $options;
     }
 
-    $res = \Node::set(array(
+    $options = array_filter($options, compose('not', 'is_null'));
+
+    $options+= self::$defaultOptions;
+
+    $process = array(
         NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
-      , 'status' => null
-      , 'path' => $command
-      ));
+      , 'command' => $command
+      ) + array_select($options, array_filter(array_keys($options), compose('not', startsWith('$'))));
+
+    // Remove identical inactive commands
+    if ( $options['$requeue'] ) {
+      Node::delete(array(
+          NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
+        , 'command' => $command
+        , 'pid' => null
+        ));
+    }
+
+    // Sends the specified signal to all active identical commands
+    if ( is_int(@$options['$kill']) ) {
+      if ( !function_exists('posix_kill') ) {
+        throw new ProcessException('Platform does not support posix_kill command.', ERR_SUPRT);
+      }
+
+      $activeProcesses = Node::get(array(
+          NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
+        , 'command' => $command
+        , 'pid' => '!=null'
+        ));
+
+      foreach ( $activeProcesses as $process ) {
+        posix_kill($process['pid'], $options['$kill']);
+      }
+
+      unset($activeProcesses);
+    }
+
+    // Only pushes the command into queue when there are no identical process.
+    if ( $options['$singleton'] ) {
+      $identicalProcesses = Node::get(array(
+          NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
+        , 'command' => $command
+        ));
+
+      // Process object will be updated
+      if ( $identicalProcesses ) {
+        $process['ID'] = $identicalProcesses[0]['ID'];
+      }
+
+      unset($identicalProcesses);
+    }
+
+    // Copy process related fields.
+    foreach ( ['type', 'weight', 'capacity'] as $field ) {
+      if ( isset($options["$$field"]) ) {
+        $process[$field] = $options["$$field"];
+      }
+    }
+
+    // Default start time to now
+    if ( empty($process['start_time']) || !strtotime($process['start_time']) ) {
+      $process['start_time'] = date('c');
+    }
+
+    // Push or updates target process.
+    $res = Node::set($process);
+
+    /*! @Ivan
+     *  ProcessPool history.
+     */
+    Node::set(
+      [ NODE_FIELD_COLLECTION => 'ProcessPool'
+      , 'command' => $command
+      , 'type' => $options['$type']
+      , 'weight' => $options['$weight']
+      , 'capacity' => $options['$capacity']
+      , 'ID' => $res
+      , 'start_timestamp' => date('Y-m-d H:i:s')
+      ] + array_filter(array_keys($options), compose('not', startsWith('$'))));
 
     if ( $res === false ) {
-      throw new \Exception('[Process] Unable to enqueue process.', self::ERR_ENQUE);
+      throw new ProcessException('Unable to enqueue process.', self::ERR_ENQUE);
     }
 
-    /* Added by Vicary @ 20 Nov, 2012
-        Wait until the process is written into database.
-    */
     if ( is_numeric($res) ) {
-      $res = array(
-          NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
-        , 'ID' => $res
-        );
-
-      $retryCount = 0;
-
-      while ( !\node::get($res) && $retryCount++ < FRAMEWORK_PROCESS_INSERT_RETRY_COUNT ) {
-        usleep(FRAMEWORK_DATABASE_ENSURE_WRITE_INTERVAL * 1000000);
-      }
+      $process['ID'] = $res;
     }
 
-    if ( !$spawnProcess ) {
-      return true;
+    unset($res);
+
+    $env = (array) @$options['$env'];
+
+    if ( $env ) {
+      $env = array('env' => json_encode($env));
     }
 
-    $ret = self::spawn();
+    unset($options['$env']);
 
-    if ( $ret ) {
-      $res['pid'] = $ret;
+    // Only spawn a worker if target process is not already working.
+    if ( @$options['$spawn'] && !@$process['pid'] && !self::spawnWorker($env) ) {
+      throw new ProcessException('Unable to spawn daemon worker.', self::ERR_SPAWN);
     }
 
-    return $res;
+    return $process;
   }
 
   /**
-   * Call enqueue when there is no identical process already in queue,
-   * otherwise return the process descriptor instead.
-   *
-   * @param {String} Command to be executed.
-   * @param {Boolean} $spawnProcess false to not spawn the queued
-   *                                process right away, default true.
-   * @param {Boolean} $requeue If true, the existing path will be put
-   *                           at the back of the queue.
-   * @param {Boolean} $includeActive Specify true to include active
-   *                                 processes when considering whether
-   *                                 the same process is already in queue.
+   * This function is for backward-compatibility.
    */
-  public static /* Boolean */
+  public static /* array */
   function enqueueOnce($command, $spawnProcess = true, $requeue = false, $includeActive = false) {
-    \core\Database::lockTables(array(
-        FRAMEWORK_COLLECTION_LOG
-      , FRAMEWORK_COLLECTION_PROCESS
-      ));
-
-    $res = array(
-        NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
-      , 'path' => $command
+    $options = array(
+        '$singleton' => true
+      , '$spawn' => $spawnProcess
+      , '$requeue' => $requeue
       );
 
-    if ( !$includeActive ) {
-      $res['locked'] = false;
+    if ( $includeActive ) {
+      $options['$kill'] = 9; // SIGKILL
     }
 
-    $res = \node::get($res);
+    return self::enqueue($command, $options);
+  }
 
-    /* Quoted by Eric @ 12 Jul, 2013
-       Multiple processes could be queued at this moment,
-       kill all of them by not unwrapping here.
-    */
-    // \utils::unwrapAssoc($res);
+  /**
+   * Sends a signal to target process with kill.
+   */
+  public static /* boolean */
+  function kill($procId, $signal) {
+    $proc = Node::get(array(
+        NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
+      , 'ID' => (int) $procId
+      ));
 
-    if ( $res ) {
-      if ( $requeue ) {
-        // kill only those has a pid.
-        $res = array_filter($res, prop('pid'));
+    $proc = util::unwrapAssoc($proc);
 
-        array_walk($res, compose('Process::kill', prop('ID')));
+    if ( !@$proc['pid'] ) {
+      return false;
+    }
 
-        \node::delete(array(
-            NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
-          , 'path' => $command
-          , 'locked' => $includeActive
-          ));
+    return posix_kill($proc['pid'], $signal);
+  }
 
-        return self::enqueue($command, $spawnProcess);
-      }
+  /**
+   * Spawns a daemon worker, this is called automatically when the spawn options is true upon calling enqueue.
+   */
+  public static /* void */
+  function spawnWorker($env = null) {
+    $proc = array(
+        ['pipe', 'r']
+      , ['pipe', 'w']
+      , ['pipe', 'w']
+      );
 
-      \core\Database::unlockTables();
+    if ( !util::isAssoc($env) ) {
+      $env = null;
+    }
 
-      // throw new \Exception('[Process] Command exists.', self::ERR_EXIST);
-      return $res;
+    $proc = proc_open(self::EXEC_PATH, $proc, $pipes, getcwd(), $env, array(
+        'suppress_errors' => true
+      , 'bypass_shell' => true
+      ));
+
+    if ( $proc === false ) {
+      return false;
+    }
+
+    $stat = proc_get_status($proc);
+
+    return $stat['pid'];
+  }
+
+  /**
+   * @private
+   *
+   * Data cache for current process.
+   *
+   * Note: Cache can be save to use because only the process itself can update its own data.
+   */
+  protected static $_processData;
+
+  /**
+   * Retrieve process related info by specified property $name.
+   *
+   * @param {string} $name Target property in process object, omit this to get the whole object.
+   */
+  public static /* mixed */
+  function get($name = null) {
+    if ( !util::isCLI() || !function_exists('posix_getppid') ) {
+      return null;
+    }
+
+    $processData = &self::$_processData;
+    if ( !$processData ) {
+      $processData = Node::get(array(
+          NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
+        , 'pid' => [getmypid(), posix_getppid()] // Both processes should be alive and no collision should ever exists.
+        ));
+
+      $processData = util::unwrapAssoc($processData);
+    }
+
+    if ( is_null($name) ) {
+      return $processData;
     }
     else {
-      \core\Database::unlockTables();
-
-      return self::enqueue($command, $spawnProcess);
+      return @$processData[$name];
     }
   }
 
   /**
-   * Remove target process from queue.
+   * Updates process related info of specified property $name.
    *
-   * Killing signal defaults to SIGKILL.
+   * Note: Updates to real table properties are ignored, as they are requried
+   * by the process framework.
    */
-  public static /* void */
-  function kill($process, $signal = 9) {
-    $res = array(
-        NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
-      );
+  public static /* boolean */
+  function set($name, $value) {
+    Database::lockTables(FRAMEWORK_COLLECTION_PROCESS, FRAMEWORK_COLLECTION_LOG);
 
-    if ( is_numeric($process) ) {
-      $res['ID'] = intval($process);
+    $res = self::get();
+
+    if ( !$res ) {
+      Database::unlockTables();
+      return false;
+    }
+
+    $readOnlyFields = ['ID', 'command', 'type', 'weight', 'pid', 'timestamp'];
+
+    if ( in_array($name, $readOnlyFields) ) {
+      Database::unlockTables();
+      return false;
+    }
+
+    if ( is_null($value) ) {
+      unset($res[$name]);
     }
     else {
-      $res['path'] = $process;
+      $res[$name] = $value;
     }
 
-    $res = \node::get($res);
+    unset($res['timestamp']);
 
-    if ( $res ) {
-      array_walk($res, 'Node::delete');
+    $ret = Node::set($res);
 
-      \log::write('Killing processes.', 'Debug', $res);
+    Database::unlockTables();
 
-      array_walk($res, function($process) use($signal) {
-        if ( @$process['pid'] && function_exists('posix_kill') ) {
-          \log::write("Sending SIGKILL to pid $process[pid].", 'Debug');
+    // Clear data cache
+    self::$_processData = null;
 
-          posix_kill(-$process['pid'], $signal);
-        }
-      });
-    }
+    ProcessPool::SplitProcessCommmand($res);
+
+    return $ret;
   }
-
-  public static /* void */
-  function spawn() {
-    $res = \node::get(array(
-        NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
-      , 'locked' => true
-      ));
-
-    if ( count($res) < self::MAX_PROCESS ) {
-      return (int) shell_exec(self::EXEC_PATH . ' >/dev/null & echo $?');
-    }
-
-    return false;
-  }
-
 }

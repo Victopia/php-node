@@ -1,12 +1,11 @@
 SET NAMES utf8;
 
 --
--- Table structure for table `Configuration`
+-- Table structure for table `Configurations`
 --
 
-DROP TABLE IF EXISTS `Configuration`;
-
-CREATE TABLE `Configuration` (
+DROP TABLE IF EXISTS `Configurations`;
+CREATE TABLE `Configurations` (
   `@key` varchar(255) NOT NULL DEFAULT '',
   `@contents` longtext NOT NULL,
   PRIMARY KEY (`@key`),
@@ -14,12 +13,11 @@ CREATE TABLE `Configuration` (
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
--- Table structure for table `File`
+-- Table structure for table `Files`
 --
 
-DROP TABLE IF EXISTS `File`;
-
-CREATE TABLE `File` (
+DROP TABLE IF EXISTS `Files`;
+CREATE TABLE `Files` (
   `id` bigint(20) unsigned zerofill NOT NULL AUTO_INCREMENT,
   `UserID` bigint(20) unsigned zerofill NOT NULL,
   `name` varchar(255) NOT NULL,
@@ -31,12 +29,11 @@ CREATE TABLE `File` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
--- Table structure for table `Log`
+-- Table structure for table `Logs`
 --
 
-DROP TABLE IF EXISTS `Log`;
-
-CREATE TABLE `Log` (
+DROP TABLE IF EXISTS `Logs`;
+CREATE TABLE `Logs` (
   `ID` bigint(20) unsigned zerofill NOT NULL AUTO_INCREMENT,
   `type` enum('Access','Information','Notice','Warning','Exception','Error','Debug') NOT NULL DEFAULT 'Information',
   `subject` char(255) NOT NULL DEFAULT '',
@@ -44,8 +41,7 @@ CREATE TABLE `Log` (
   `@contents` longtext NOT NULL,
   `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`ID`),
-  KEY `Log_INDEX` (`subject`,`action`),
-  FULLTEXT KEY `Log_FULLTEXT` (`@contents`)
+  KEY `type` (`type`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='This table should not have update actions performed upon.';
 
 --
@@ -53,7 +49,6 @@ CREATE TABLE `Log` (
 --
 
 DROP TABLE IF EXISTS `Nodes`;
-
 CREATE TABLE `Nodes` (
   `ID` bigint(20) unsigned zerofill NOT NULL AUTO_INCREMENT,
   `@collection` varchar(255) NOT NULL,
@@ -64,26 +59,30 @@ CREATE TABLE `Nodes` (
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='Data nodes';
 
 --
--- Table structure for table `ProcessQueue`
+-- Table structure for table `Processes`
 --
 
-DROP TABLE IF EXISTS `ProcessQueue`;
-
-CREATE TABLE `ProcessQueue` (
-  `ID` bigint(20) NOT NULL AUTO_INCREMENT,
-  `path` text NOT NULL,
-  `locked` tinyint(1) NOT NULL DEFAULT 0,
-  `pid` int
-  PRIMARY KEY (`ID`)
+DROP TABLE IF EXISTS `Processes`;
+CREATE TABLE `Processes` (
+  `ID` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `command` longtext NOT NULL,
+  `type` varchar(255) NOT NULL DEFAULT 'system',
+  `weight` tinyint(1) unsigned NOT NULL DEFAULT '100' COMMENT 'Process Prority',
+  `capacity` tinyint(1) unsigned NOT NULL DEFAULT '5' COMMENT 'Process Reserved Capacity',
+  `pid` int(11) DEFAULT NULL,
+  `start_time` datetime NOT NULL COMMENT 'Scheduled Start Time',
+  `@contents` longtext NOT NULL,
+  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`ID`),
+  UNIQUE KEY `pid` (`pid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
--- Table structure for table `Relation`
+-- Table structure for table `NodeRelations`
 --
 
-DROP TABLE IF EXISTS `Relation`;
-
-CREATE TABLE `Relation` (
+DROP TABLE IF EXISTS `NodeRelations`;
+CREATE TABLE `NodeRelations` (
   `@collection` varchar(255) NOT NULL,
   `Subject` varchar(40) NOT NULL,
   `Object` varchar(40) NOT NULL,
@@ -92,12 +91,11 @@ CREATE TABLE `Relation` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
--- Table structure for table `Session`
+-- Table structure for table `Sessions`
 --
 
-DROP TABLE IF EXISTS `Session`;
-
-CREATE TABLE `Session` (
+DROP TABLE IF EXISTS `Sessions`;
+CREATE TABLE `Sessions` (
   `UserID` bigint(20) unsigned zerofill NOT NULL,
   `sid` varchar(40) NOT NULL,
   `token` varchar(40),
@@ -107,12 +105,11 @@ CREATE TABLE `Session` (
 ) ENGINE=MEMORY DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
--- Table structure for table `User
+-- Table structure for table `Users`
 --
 
-DROP TABLE IF EXISTS `User`;
-
-CREATE TABLE `User` (
+DROP TABLE IF EXISTS `Users`;
+CREATE TABLE `Users` (
   `ID` bigint(20) unsigned zerofill NOT NULL AUTO_INCREMENT,
   `username` char(255) NOT NULL,
   `password` char(119) NOT NULL,
@@ -122,18 +119,3 @@ CREATE TABLE `User` (
   PRIMARY KEY (`ID`),
   KEY `idx_credentials` (`username`,`password`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
---
--- Table structure for table `UserData`
---
-
-DROP TABLE IF EXISTS `UserData`;
-
-CREATE TABLE `UserData` (
-  `UserID` bigint(20) unsigned zerofill NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `value` varchar(16383) NOT NULL DEFAULT '',
-  PRIMARY KEY (`UserID`,`name`)
-) ENGINE=MEMORY DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
--- Dump completed on 2012-11-23 13:59:28

@@ -1,12 +1,12 @@
 <?php
-/*! IPathResolver | Path resolver interface
- *
- *  Resolvers must implements this interface before it can be
- *  added to the resolvers chain in the request gateway.
- */
+/*! IRequestResolver | Path resolver interface */
 
 namespace framework\interfaces;
 
+/**
+ *  Resolvers must implements this interface before it can be
+ *  added to the resolvers chain in the request gateway.
+ */
 interface IRequestResolver {
 
 	//--------------------------------------------------
@@ -18,11 +18,10 @@ interface IRequestResolver {
 	/**
 	 * Process and prints the layout.
 	 *
-	 * return FALSE will break the resolver chain.
+	 * return false will break the resolver chain.
 	 *
-	 * return values other than FALSE will chain the value to latter processors.
+	 * return values other than false will chain the value to latter processors.
 	 */
-	public
-	/* Boolean */ function resolve($path);
+	public /* mixed */ function resolve($path);
 
 }

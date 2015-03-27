@@ -3,6 +3,9 @@
 
 namespace framework;
 
+use core\Net;
+use core\Utility;
+
 class Service {
 
   //--------------------------------------------------
@@ -22,33 +25,45 @@ class Service {
   //--------------------------------------------------
 
   /**
-   * @deprecated
-   *
-   * The original localRequest has been renamed into redirect()
-   * as it also supports external requests, acting more like
-   * a shorthand of core/Net module now.
-   *
-   * This function exists for backward compatibility.
-   */
-  static function localRequest($service, $httpOptions = array()) {
-    triggerDeprecate('redirect');
-
-    return self::redirect($service, $httpOptions);
-  }
-
-  /**
-   * @beta
-   *
    * This will issue a local request to the server itself.
    *
    * @param $service (String) Typical service request path on this. e.g. "/class/method/param1/param2"
    * @param $options (Array) Optional, will do a GET request without any parameters by default.
    */
   static function redirect($service, $options = array()) {
+    $options = self::createRedirectRequest($service, $options);
+
     $result = null;
 
+    $options['success'] = function($response, $curlOptions) use($service, &$result) {
+      // Not 2xx, should be an error.
+      if ( $curlOptions['status'] >= 300 ) {
+        throw new exceptions\ServiceException("Error making local request to $service, HTTP status: $curlOptions[status].");
+      }
+
+      $result = @json_decode($response, true);
+
+      if ( $response && $response !== 'null' && $result === null ) {
+        throw new exceptions\ServiceException('Response is not a well-formed JSON string: ' . $response);
+      }
+    };
+
+    $options['failure'] = function($num, $str, $curlOptions) {
+      // This should not occurs, errors are supposed to be thrown as an exception object.
+      throw new exceptions\ServiceException("An error occurred when making local service redirection. #$num $str");
+    };
+
+    Net::httpRequest($options);
+
+    return $result;
+  }
+
+  /**
+   * Separated process to create a request object for convenience use in batch for core\Net::httpRequest();
+   */
+  static function createRedirectRequest($service, $options = array()) {
     if ( is_string($options) ) {
-      switch (strtoupper($options)) {
+      switch ( strtoupper($options) ) {
         // Request methods, according to RFC2616 section 9.
         case 'GET':
         case 'POST':
@@ -77,7 +92,7 @@ class Service {
         $service = "/$service";
       }
 
-      $service = (@$_SERVER['HTTPS'] ? 'https' : 'http') . '://' . FRAMEWORK_SERVICE_HOSTNAME . $service;
+      $service = (@$_SERVER['HTTPS'] ? 'https' : 'http') . '://' . FRAMEWORK_SERVICE_HOSTNAME_LOCAL . $service;
     }
 
     $options['url'] = $service;
@@ -86,31 +101,11 @@ class Service {
     @$options['headers'][] = 'Host: ' . FRAMEWORK_SERVICE_HOSTNAME;
     @$options['headers'][] = 'User-Agent: X-PHP';
 
-    @$options['__curlOpts'][CURLOPT_REFERER] = FRAMEWORK_SERVICE_HOSTNAME;
-
-    $options['success'] = function($response, $curlOptions) use($service, &$result) {
-      // Not 2xx, should be an error.
-      if ( $curlOptions['status'] >= 300 ) {
-        throw new exceptions\ServiceException("Error making local request to $service, HTTP status: $curlOptions[status].");
-      }
-
-      $result = @json_decode($response, true);
-
-      if ( $response && $response !== 'null' && $result === null ) {
-        throw new exceptions\ServiceException('Response is not a well-formed JSON string: ' . $response);
-      }
-    };
-
-    $options['failure'] = function($num, $str, $curlOptions) {
-      // This should not occurs, errors are supposed to be thrown as an exception object.
-      throw new exceptions\ServiceException("An error occurred when making local service redirection. #$num $str");
-    };
+    @$options['__curlOpts'][CURLOPT_REFERER] = FRAMEWORK_SERVICE_HOSTNAME_LOCAL;
 
     $options += self::$defaultHttpOptions;
 
-    \core\Net::httpRequest($options);
-
-    return $result;
+    return $options;
   }
 
   /**
@@ -120,27 +115,70 @@ class Service {
    * or when the current session and cookies are meant to persist, which is
    * not able by local redirection without the PHPSESSID hack.
    */
-  static function call($service, $method, $parameters = array()) {
+  static function call($service, $method, $parameters = array(), $options = array()) {
     self::requireService($service);
+
+    /* Modified by Eric @ 21 Dec, 2012
+       Uses core\Utility::forceInvoke(), to forcibly invoke regardless of method
+       exists. This is to cope with implementations that tries to mimic a real
+       RESTful with overloading. i.e. __call().
+
+    $method = new \ReflectionMethod($service, $method);
+    return $method->invokeArgs($service, $parameters);
+
+       Modified by Eric @ 9 Jul, 2014
+       Mask global request method when making plain calls.
+    */
+    if ( is_string($options) ) {
+      $options = array( 'type' => $options );
+    }
+
+    if ( @$options['overrideMethod'] ) {
+      $options['type'] = $options['overrideMethod'];
+    }
+
+    if ( isset($options['type']) ) {
+      $reqMethod = Utility::cascade(@$_SERVER['REQUEST_METHOD'], 'GET');
+
+      $_SERVER['REQUEST_METHOD'] = $options['type'];
+    }
+
+    if ( is_array(@$options['data']) ) {
+      switch ( strtolower(@$options['type']) ) {
+        case 'post':
+          $dataRef = array(&$_POST, $_POST);
+          break;
+
+        case 'get':
+        default:
+          $dataRef = array(&$_GET, $_GET);
+          break;
+      }
+
+      $dataRef[0] = $options['data'];
+    }
+
+    $parameters = Utility::wrapAssoc($parameters);
 
     $service = new $service();
 
-    if (!\utils::isCLI() &&
+    if (!Utility::isCLI() &&
       $service instanceof \framework\interfaces\IAuthorizableWebService &&
       $service->authorizeMethod($method, $parameters) === false) {
       throw new \framework\exceptions\ResolverException( 401 );
     }
 
-    /* Modified by Eric @ 21 Dec, 2012
-        Uses core\Utility::forceInvoke(), to forcibly invoke
-        regardless of method exists. This is to cope with
-        implementations that tries to mimic a real RESTful
-        with overloading. i.e. __call()
+    $ret = Utility::forceInvoke(array($service, $method), $parameters);
 
-    $method = new \ReflectionMethod($service, $method);
-    return $method->invokeArgs($service, $parameters);
-    */
-    return \utils::forceInvoke(array($service, $method), $parameters);
+    if ( isset($reqMethod) ) {
+      $_SERVER['REQUEST_METHOD'] = $reqMethod;
+    }
+
+    if ( isset($dataRef) ) {
+      $dataRef[0] = $dataRef[1];
+    }
+
+    return $ret;
   }
 
   /**

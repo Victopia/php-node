@@ -1,15 +1,10 @@
 <?php
 /*! framework\Configuration.php | Configuration accessor utility. */
 
-/* Database schema:
+namespace framework;
 
-CREATE TABLE IF NOT EXISTS Configurations (
-	`key` VARCHAR(255) NOT NULL PRIMARY KEY
-, `@contents` LONGTEXT NOT NULL
-, FULLTEXT KEY (`@contents`)
-) ENGINE=MyISAM;
+use core\Node;
 
- */
 /* Usage:
 
 	Similar as SimpleXMLElement.
@@ -39,9 +34,7 @@ CREATE TABLE IF NOT EXISTS Configurations (
 	// Resulting a JSON object like this:
 	{ "foo": { "bar": { "baz": $value } } }
 
- */
-
-namespace framework;
+*/
 
 class Configuration implements \Iterator, \ArrayAccess {
 
@@ -83,30 +76,11 @@ class Configuration implements \Iterator, \ArrayAccess {
 	//
 	//--------------------------------------------------
 
-	function __construct($key, Configuration $parentObject = null) {
-		// Root objects will get value from database upon creation
-		if ( $parentObject === NULL ) {
-			$confObj = array(
-					NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_CONFIGURATION
-				, '@key' => $key
-				);
+	function __construct($key, Configuration $parentObject = NULL) {
+	  $this->key = &$key;
+		$this->parentObject = $parentObject;
 
-			if ( $res = \node::get($confObj) ) {
-				$confObj = $res[0];
-			} unset($res);
-
-			unset($confObj['@key'], $confObj[NODE_FIELD_COLLECTION]);
-		}
-		else {
-			$confObj = &$parentObject->__valueOf();
-			$confObj = &$confObj[$key];
-
-			$this->parentObject = $parentObject;
-		}
-
-		$this->key = &$key;
-
-		$this->contents = &$confObj;
+		$this->update();
 	}
 
 	//--------------------------------------------------
@@ -128,6 +102,34 @@ class Configuration implements \Iterator, \ArrayAccess {
 			return new Configuration($key);
 		}
 	}
+
+  /**
+   * Query contents with current configuration key from the database,
+   * and update the local stored value.
+   */
+  function update() {
+    // Root objects will get value from database upon creation
+		if ( $this->parentObject === null ) {
+			$confObj = array(
+				NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_CONFIGURATION
+			, '@key' => $this->key
+			);
+
+			$res = (array) @Node::get($confObj);
+
+			if ( isset($res) ) {
+				$confObj = @$res[0];
+			}
+
+			unset($res, $confObj['@key'], $confObj[NODE_FIELD_COLLECTION]);
+		}
+		else {
+			$confObj = &$this->parentObject->__valueOf();
+			$confObj = &$confObj[$this->key];
+		}
+
+		$this->contents = &$confObj;
+  }
 
 	function &__get($name) {
 		// We don't need to create the data row yet.
@@ -187,10 +189,10 @@ class Configuration implements \Iterator, \ArrayAccess {
   		);
 
     if ( !$confObj ) {
-      \node::delete($filter);
+      Node::delete($filter);
     }
     else {
-		  \node::set($filter + $confObj);
+		  Node::set($filter + $confObj);
 		}
 	}
 

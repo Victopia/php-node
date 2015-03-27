@@ -2,7 +2,7 @@
 
 namespace framework\exceptions;
 
-class ResolverException extends \Exception {
+class ResolverException extends FrameworkException {
 
   //--------------------------------------------------
   //

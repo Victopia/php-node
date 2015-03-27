@@ -18,14 +18,14 @@ class Net {
   //  maximumReqeusts
   //------------------------------
 
-  private static $maximumRequests = 100;
+  private static $maximumRequests = 5;
 
   public static /* =int */
-  function maximumRequests($value = NULL) {
-    if (is_null($value)) {
+  function maximumRequests($value = null) {
+    if ( is_null($value) ) {
       return self::$maximumRequests;
     }
-    elseif (self::$maximumRequests !== $value) {
+    elseif ( self::$maximumRequests !== $value ) {
       self::$maximumRequests = $value;
     }
   }
@@ -37,11 +37,11 @@ class Net {
   private static $timeout = 10;
 
   public static /* =int */
-  function timeout($value = NULL) {
-    if (is_null($value)) {
+  function timeout($value = null) {
+    if ( is_null($value) ) {
       return self::$timeout;
     }
-    elseif (self::$timeout !== $value) {
+    elseif ( self::$timeout !== $value ) {
       self::$value = $value;
     }
   }
@@ -76,14 +76,14 @@ class Net {
    * @return void
    */
   public static function httpRequest($options) {
-    $options = \utils::wrapAssoc((array) $options);
+    $options = Utility::wrapAssoc((array) $options);
 
     $options = array_map(function(&$option) {
       if ( is_string($option) ) {
         $option = array( 'url' => $option );
       }
-      elseif (!@$option['url']) {
-        throw new \core\exceptions\CoreException('No URL set!');
+      else if ( !@$option['url'] ) {
+        throw new exceptions\CoreException('No URL set!');
       }
 
       // Auto prepend http, default protocol.
@@ -93,17 +93,17 @@ class Net {
 
       $curlOption = array(
           CURLOPT_URL => $option['url']
-        , CURLOPT_RETURNTRANSFER => TRUE
-        , CURLOPT_SSL_VERIFYHOST => FALSE
-        , CURLOPT_SSL_VERIFYPEER => FALSE
-        , CURLOPT_CAINFO => NULL
-        , CURLOPT_CAPATH => NULL
-        , CURLOPT_FOLLOWLOCATION => TRUE
+        , CURLOPT_RETURNTRANSFER => true
+        , CURLOPT_SSL_VERIFYHOST => false
+        , CURLOPT_SSL_VERIFYPEER => false
+        , CURLOPT_CAINFO => null
+        , CURLOPT_CAPATH => null
+        , CURLOPT_FOLLOWLOCATION => true
         );
 
       // Request method: 'GET', 'POST', 'PUT', 'HEAD', 'DELETE'
       if ( !isset($option['type']) && is_array(@$option['data']) || preg_match('/^post$/i', @$option['type']) ) {
-        $curlOption[CURLOPT_POST] = TRUE;
+        $curlOption[CURLOPT_POST] = true;
         $curlOption[CURLOPT_CUSTOMREQUEST] = 'POST';
       }
       elseif ( preg_match('/^put$/i', @$option['type']) ) {
@@ -111,15 +111,15 @@ class Net {
           throw new exceptions\CoreException('Please specify the \'file\' option when using PUT method.');
         }
 
-        $curlOption[CURLOPT_PUT] = TRUE;
+        $curlOption[CURLOPT_PUT] = true;
         $curlOption[CURLOPT_CUSTOMREQUEST] = 'PUT';
 
-        $curlOption[CURLOPT_UPLOAD] = TRUE;
+        $curlOption[CURLOPT_UPLOAD] = true;
         $curlOption[CURLOPT_INFILE] = fopen($option['file'], 'r');
         $curlOption[CURLOPT_INFILESIZE] = filesize($option['file']);
       }
       elseif (preg_match('/^head$/i', @$option['type'])) {
-        $curlOption[CURLOPT_NOBODY] = TRUE;
+        $curlOption[CURLOPT_NOBODY] = true;
         $curlOption[CURLOPT_CUSTOMREQUEST] = 'HEAD';
       }
       elseif (preg_match('/^delete$/i', @$option['type'])) {
@@ -139,7 +139,7 @@ class Net {
               return $ret || is_a($val, 'CurlFile') ||
                 is_string($val) && strpos($val, '@') === 0 &&
                 file_exists(Utility::unwrapAssoc(explode(';', substr($val, 1))));
-            }, FALSE);
+            }, false);
 
         // Build query regardless if file exists on PHP < 5.2.0, otherwise
         // only build when there is NOT files to be POSTed.
@@ -164,13 +164,13 @@ class Net {
           });
         }
 
-        if (@$curlOption[CURLOPT_POST] === TRUE) {
+        if ( @$curlOption[CURLOPT_POST] === true ) {
           $curlOption[CURLOPT_POSTFIELDS] = $data;
         }
         else {
           $url = &$curlOption[CURLOPT_URL];
 
-          $url.= ( strpos($url, '?') === FALSE ? '?' : '&' ) . $data;
+          $url.= ( strpos($url, '?') === false ? '?' : '&' ) . $data;
         }
       }
 
@@ -241,8 +241,8 @@ class Net {
 
       $curlOption = (array) @$option['__curlOpts'] + $curlOption;
 
-      if (FRAMEWORK_ENVIRONMENT == 'debug') {
-        log::write('Net ' . $curlOption[CURLOPT_CUSTOMREQUEST] . ' to ' . $curlOption[CURLOPT_URL], 'Debug', $curlOption);
+      if ( FRAMEWORK_ENVIRONMENT == 'debug' ) {
+        Log::write('Net ' . $curlOption[CURLOPT_CUSTOMREQUEST] . ' to ' . $curlOption[CURLOPT_URL], 'Debug', $curlOption);
       }
 
       return $curlOption;
@@ -272,7 +272,7 @@ class Net {
    * @return void
    */
   public static function curlRequest($options) {
-    $options = \utils::wrapAssoc(array_values((array) $options));
+    $options = Utility::wrapAssoc(array_values((array) $options));
 
     $multiHandle = curl_multi_init();
 
@@ -413,9 +413,9 @@ class Net {
         $callbacks = &$curlOption['callbacks'];
 
         // Success handler
-        if ($info['result'] === CURLE_OK) {
+        if ( $info['result'] === CURLE_OK ) {
           // Fire a 100% downloaded event.
-          if (@$callbacks['progress']) {
+          if ( @$callbacks['progress'] ) {
             Utility::forceInvoke($callbacks['progress'], array(1, 1, 1));
 
             usleep(FRAMEWORK_NET_PROGRESS_INTERVAL * 1000000);
@@ -459,7 +459,7 @@ class Net {
         // Always handler
         Utility::forceInvoke(@$callbacks['always'], array($curlOption));
 
-        if (isset($options[$requestIndex])) {
+        if ( isset($options[$requestIndex]) ) {
           curl_multi_add_handle( $multiHandle
                                , $options[$requestIndex++]['handle']
                                );
@@ -477,7 +477,7 @@ class Net {
         unset($info, $callbacks, $curlOption, $options[$optionIndex], $optionIndex);
       } while( $queueLength > 0 );
 
-    } while($status === CURLM_CALL_MULTI_PERFORM || $active);
+    } while( $status === CURLM_CALL_MULTI_PERFORM || $active );
 
     curl_multi_close($multiHandle);
   }

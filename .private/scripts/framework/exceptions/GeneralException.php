@@ -1,10 +1,7 @@
 <?php
-/*! GeneralException.php
- *
- *  Base exception classes catchable by the framework.
- */
+/*! GeneralException.php | Base exception classes of the framework. */
 
 namespace framework\exceptions;
 
-class GeneralException extends \Exception {
+class GeneralException extends FrameworkException {
 }

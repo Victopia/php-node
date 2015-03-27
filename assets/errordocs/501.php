@@ -3,7 +3,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8"/>
-		<title>501 Not Implemented | <?php echo $_SERVER['HTTP_HOST']; ?></title>
+		<title>501 Not Implemented | <?php echo @$_SERVER['HTTP_HOST']; ?></title>
 	</head>
 
 	<body>

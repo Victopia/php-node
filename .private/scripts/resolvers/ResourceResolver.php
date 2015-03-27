@@ -30,7 +30,7 @@ class ResourceResolver implements \framework\interfaces\IRequestResolver {
   //
   //--------------------------------------------------
 
-  private $pathPrefix = NULL;
+  private $pathPrefix = null;
 
   //--------------------------------------------------
   //
@@ -41,13 +41,13 @@ class ResourceResolver implements \framework\interfaces\IRequestResolver {
   public
   /* String */ function resolve($path) {
     // Request URI must start with the specified path prefix. e.g. /:resource/.
-    if (!$this->pathPrefix || 0 !== strpos($path, $this->pathPrefix)) {
-      return FALSE;
+    if ( !$this->pathPrefix || 0 !== strpos($path, $this->pathPrefix) ) {
+      return $path;
     }
 
-    $path = substr($path, strlen($this->pathPrefix));
+    $res = substr($path, strlen($this->pathPrefix));
 
-    echo $path;
+    return $path;
   }
 
 }

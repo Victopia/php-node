@@ -2,6 +2,6 @@
 
 namespace framework\exceptions;
 
-class ProcessException extends \Exception {
-	
+class ProcessException extends FrameworkException {
+
 }

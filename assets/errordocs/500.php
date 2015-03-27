@@ -3,7 +3,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8"/>
-		<title>500 Internal Server Error | <?php echo $_SERVER['HTTP_HOST']; ?></title>
+		<title>500 Internal Server Error | <?php echo @$_SERVER['HTTP_HOST']; ?></title>
 	</head>
 
 	<body>

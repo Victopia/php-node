@@ -5,6 +5,8 @@ namespace core;
 
 /**
  * Node entity access class.
+ *
+ * @errors Code range 300-399
  */
 class Node {
 
@@ -26,12 +28,16 @@ class Node {
    *                        2. Name of target collection, all contents will be
    *                           fetched.
    *                        3. ID from the default collection, usually be 'Nodes'.
+   *                        4. Special filters
+   *                          4.1 @fieldsRequired Excludes the row if is does not contains a filtering property.
+   *                          4.2 @limits Either $length, or [$offset, $length].
+   *                          4.3 @sorter Either [ $field1 => $isAscending, $field2 => $isAscending ], or a compare function.
    * @param $fieldsRequired (bool) If true, rows must contain all fields
    *                               specified in argument filter to survive.
-   * @param $limit (mixed) Can be integer specifying the row count from
+   * @param $limits (mixed) Can be integer specifying the row count from
    *                       first row, or an array specifying the starting
    *                       row and row count.
-   * @parma $sorter (array) Optional. 1. fields to be ordered ascending, or
+   * @param $sorter (array) Optional. 1. fields to be ordered ascending, or
    *                                  2. Hashmap with fields as keys and boolean values
    *                                  with true interprets as ascending and false otherwise.
    *
@@ -51,16 +57,52 @@ class Node {
     }
 
     $filter['@fieldsRequired'] = $fieldsRequired;
-    $filter['@limits'] = $limits;
-    $filter['@sorter'] = $sorter;
+
+    if ( $limits !== null ) {
+      $filter['@limits'] = $limits;
+    }
+
+    if ( $sorter !== null ) {
+      $filter['@sorter'] = $sorter;
+    }
 
     $result = array();
-
-    $emitter = self::getAsync($filter, function($data) use(&$result) {
+    self::getAsync($filter, function($data) use(&$result) {
       $result[] = $data;
     });
 
     return $result;
+  }
+
+  /**
+   * Get the first matching item.
+   *
+   * @see Node#getAync()
+   */
+  static function getOne($filter) {
+    // Defaults string to collections.
+    if ( is_string($filter) ) {
+      $filter = array(
+        NODE_FIELD_COLLECTION => $filter
+      );
+    }
+
+    // Force length to be 1
+    if ( is_array(@$filter['@limits']) ) {
+      $filter['@limits'][1] = 1;
+    }
+    else {
+      $filter['@limits'] = 1;
+    }
+
+    $data = array();
+    self::getAsync($filter, function($item) use(&$data) {
+      $data = $item;
+
+      return false;
+    });
+
+    return $data;
   }
 
   /**
@@ -69,7 +111,7 @@ class Node {
   static /* void */
   function getAsync($filter, $dataCallback) {
     if ( !self::ensureConnection() ) {
-      return null;
+      return false;
     }
 
     // Defaults string to collections.
@@ -137,7 +179,7 @@ class Node {
           }
           else
           if ( is_string($key) ) {
-            $values = \utils::wrapAssoc($value);
+            $values = Utility::wrapAssoc($value);
 
             if ( $values ) {
               $subQuery = array_fill(0, count($values), "$key");
@@ -157,36 +199,45 @@ class Node {
 
     /* Merge $filter into SQL statement. */
       array_walk($columnsFilter, function(&$contents, $field) use(&$query, &$params, $tableName) {
-        $contents = \utils::wrapAssoc($contents);
+        $contents = Utility::wrapAssoc($contents);
 
         $subQuery = array();
 
-        // Explicitly groups equality into expression: IN (...)
+        // Explicitly groups equality into expression: IN (...[, ...])
         $inValues = array();
 
-        array_walk($contents, function($content) use(&$subQuery, &$params, &$inValues) {
+        // Explicitly groups equality into expression: NOT IN (...[, ...])
+        $notInValues = array();
+
+        array_walk($contents, function($content) use(&$subQuery, &$params, &$inValues, &$notInValues) {
           // Error checking
           if ( is_array($content) ) {
-            throw new NodeException('Node does not support composite array types.');
+            throw new NodeException('Node does not support composite array types.', 301);
           }
 
           // 1. Boolean comparison: true, false
           if ( is_bool($content) ) {
-            /*
-            $subQuery[] = "IS ?";
-            $params[] = $content;
-            */
             $inValues[] = $content;
+          }
+          else if ( preg_match('/^(==|!=)(true|false$)/', trim($content), $matches) ) {
+            if ( $matches[1] == '==' ) {
+              $inValues[] = $matches[2] == 'true';
+            }
+            else {
+              $notInValues = $matches[2] == 'true';
+            }
           }
           else
 
           // 2. Numeric comparison: 3, <10, >=20, ==3.5 ... etc.
-          if (preg_match('/^(<|<=|==|>=|>)?(\d+)$/', trim($content), $matches) &&
-            count($matches) > 2)
+          if ( preg_match('/^(<|<=|==|!=|>=|>)?(\d+)$/', trim($content), $matches) && count($matches) > 2 )
           {
             if ( !$matches[1] || $matches[1] == '==' ) {
               // $matches[1] = '=';
               $inValues[] = $matches[2];
+            }
+            else if ( $matches[1] == '!=' ) {
+              $notInValues[] = $matches[2];
             }
             else {
               $subQuery[] = "$matches[1] ?";
@@ -196,11 +247,14 @@ class Node {
           else
 
           // 3. Datetime comparison: <'2010-07-31', >='1989-06-21' ... etc.
-          if (preg_match('/^(<|<=|==|>=|>)?\'([0-9- :]+)\'$/', trim($content), $matches) &&
-            count($matches) > 2 && strtotime($matches[2]) !== false)
+          if ( preg_match('/^(<|<=|==|!=|>=|>)?\'([0-9- :TZ\+]+)\'$/', trim($content), $matches) &&
+            count($matches) > 2 && strtotime($matches[2]) !== false )
           {
             if ( !$matches[1] || $matches[1] == '==' ) {
               $inValues[] = $matches[2];
+            }
+            else if ( $matches[1] == '!=' ) {
+              $notInValues[] = $matches[2];
             }
             else {
               $subQuery[] = "$matches[1] ?";
@@ -210,8 +264,7 @@ class Node {
           else
 
           // 4. Regexp matching: "/^AB\d+/"
-          if (preg_match('/^\/([^\/]+)\/[\-gismx]*$/i', trim($content), $matches) &&
-            count($matches) > 1)
+          if ( preg_match('/^\/([^\/]+)\/[\-gismx]*$/i', trim($content), $matches) && count($matches) > 1 )
           {
             $subQuery[] = "REGEXP ?";
             $params[] = $matches[1];
@@ -219,7 +272,7 @@ class Node {
           else
 
           // 5. null types
-          if ( is_null($content) || preg_match('/^((?:==|\!=)=?)\s*null$/i', trim($content), $matches) ) {
+          if ( is_null($content) || preg_match('/^((?:==|!=)=?)\s*null$/i', trim($content), $matches) ) {
             $content = 'IS ' . (@$matches[1][0] == '!' ? 'NOT ' : '') . 'null';
             $subQuery[] = "$content";
           }
@@ -250,13 +303,21 @@ class Node {
           }
         });
 
+        $_inValues = array_diff($inValues, $notInValues);
+        $_notInValues = array_diff($notInValues, $inValues);
+
         // Group equality comparators (=) into IN (...) statement.
-        if ( $inValues ) {
-          $params = array_merge($params, $inValues);
-          $subQuery[] = 'IN (' . Utility::fillArray($inValues) . ')';
+        if ( $_inValues ) {
+          $params = array_merge($params, $_inValues);
+          $subQuery[] = 'IN (' . Utility::fillArray($_inValues) . ')';
         }
 
-        unset($inValues);
+        if ( $_notInValues ) {
+          $params = array_merge($params, $_notInValues);
+          $subQuery[] = 'NOT IN (' . Utility::fillArray($_notInValues) . ')';
+        }
+
+        unset($inValues, $notInValues, $_inValues, $_notInValues);
 
         $subQuery = array_map(prepends(Database::escape($field, $tableName) . ' '), $subQuery);
 
@@ -278,7 +339,7 @@ class Node {
 
     /* Merge $sorter into SQL statement. */
       if ( is_array($sorter) ) {
-        $columnsSorter = \utils::isAssoc($sorter) ?
+        $columnsSorter = Utility::isAssoc($sorter) ?
           array_select($sorter, $columns) :
           array_intersect($sorter, $columns);
 
@@ -355,7 +416,9 @@ class Node {
       };
 
       foreach ( $res as $row ) {
-        $dataCallback($decodesContent($row));
+        if ( $dataCallback($decodesContent($row)) === false ) {
+          break;
+        }
       }
 
       unset($res, $row, $decodesContent);
@@ -573,7 +636,7 @@ class Node {
       }
 
       if ( !trim(@$row[NODE_FIELD_COLLECTION]) ) {
-        throw new NodeException('Data object must specify a collection with property "'.NODE_FIELD_COLLECTION.'".');
+        throw new NodeException('Data object must specify a collection with property "'.NODE_FIELD_COLLECTION.'".', 302);
 
         continue;
       }
@@ -611,7 +674,7 @@ class Node {
 
         if ( count($res) > 1 ) {
           throw new NodeException('More than one row is selected when extending '.
-            'current object, please provide ALL keys when calling with $extendExists = true.');
+            'current object, please provide ALL keys when calling with $extendExists = true.', 303);
         }
 
         if ( $res ) {
@@ -641,12 +704,18 @@ class Node {
       // Encode the rest columns and put inside virtual field.
       // Skip the whole action when `@contents` columns doesn't exists.
       if ( in_array(NODE_FIELD_VIRTUAL, $cols) ) {
+        array_walk_recursive($row, function(&$value) {
+          if ( is_resource($value) ) {
+            $value = get_resource_type($value);
+          }
+        });
+
         // Silently swallow json_encode() errors.
         $data[NODE_FIELD_VIRTUAL] = @json_encode($row);
 
-        // Store nothing on encode error, or there is nothing to be stored.
-        if ( !$data[NODE_FIELD_VIRTUAL] ) {
-          unset($data[NODE_FIELD_VIRTUAL]);
+        // Defaults to be an empty object.
+        if ( !$data[NODE_FIELD_VIRTUAL] || $data[NODE_FIELD_VIRTUAL] == '[]' ) {
+          $data[NODE_FIELD_VIRTUAL] = '{}';
         }
       }
 
@@ -671,6 +740,23 @@ class Node {
    */
   static /* int */
   function delete($filter = null, $fieldsRequired = false, $limit = null) {
+    // Shortcut for TRUNCATE TABLE
+    if ( is_string($filter) ) {
+      $tableName = self::resolveCollection($filter);
+
+      // Delete all fields of specified collection name.
+      if ( $tableName == NODE_COLLECTION ) {
+        $res = Database::query('DELETE FROM `'.NODE_COLLECTION.'` WHERE `@collection` = ?', [$filter]);
+
+        return $res->rowCount();
+      }
+      else if ( Database::hasTable($tableName) ) {
+        return Database::truncateTable($tableName);
+      }
+
+      unset($tableName);
+    }
+
     $res = self::get($filter, $fieldsRequired, $limit);
 
     $affectedRows = 0;
@@ -722,7 +808,7 @@ class Node {
   function ensureConnection() {
     if ( !Database::isConnected() ) {
       if ( error_reporting() ) {
-        throw new NodeException('Database is not connected.');
+        throw new NodeException('Database is not connected.', 300);
       }
       else {
         return false;
@@ -769,12 +855,13 @@ class Node {
     if ( !in_array(NODE_FIELD_VIRTUAL, $fields) ) {
       throw new NodeException( 'Specified table `'
                              . $collection
-                             . '` does not support virtual fields, no action is taken.'
+                             . '` does not support virtual fields, no action is taken.',
+                             305
                              );
     }
 
     if ( $fieldName !== null && !$fieldDesc ) {
-      throw new NodeException('You must specify $fieldDesc when adding physical column.');
+      throw new NodeException('You must specify $fieldDesc when adding physical column.', 306);
     }
 
     $field = Database::escape($fieldName);

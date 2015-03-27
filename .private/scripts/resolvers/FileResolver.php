@@ -3,6 +3,15 @@
 
 namespace resolvers;
 
+use lessc;
+
+use core\Log;
+use core\Net;
+use core\Utility;
+
+use framework\Cache;
+use framework\Configuration as conf;
+
 class FileResolver implements \framework\interfaces\IRequestResolver {
   //--------------------------------------------------
   //
@@ -32,7 +41,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
     if ( $value ) {
       $value = str_replace('/', DIRECTORY_SEPARATOR, $value);
-      $value = preg_replace('/\'' . DIRECTORY_SEPARATOR . '$/', '', $value);
+      $value = preg_replace('/\\' . DIRECTORY_SEPARATOR . '$/', '', $value);
     }
 
     $this->defaultPath = $value;
@@ -118,35 +127,43 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
   public /* Boolean */
   function resolve($path) {
-    $path = str_replace('/', DIRECTORY_SEPARATOR, $path);
+    $res = str_replace('/', DIRECTORY_SEPARATOR, $path);
 
-    if ( strpos($path, $this->currentPath) === 0 ) {
-      $path = substr($path, strlen($this->currentPath));
+    if ( strpos($res, $this->currentPath) === 0 ) {
+      $res = substr($res, strlen($this->currentPath));
     }
 
-    $prefix = $this->defaultPath . DIRECTORY_SEPARATOR;
-
-    if ( !preg_match('/^' . preg_quote($this->defaultPath) . '/', $path) ) {
-      if ( $path[0] == DIRECTORY_SEPARATOR ) {
-        $path = substr($path, 1);
+    if ( stripos($res, $this->defaultPath) !== 0 ) {
+      if ( $res[0] != DIRECTORY_SEPARATOR ) {
+        $res = DIRECTORY_SEPARATOR . $res;
       }
 
-      $path = $prefix . $path;
+      $res = $this->defaultPath . $res;
     }
 
-    $res = explode('?', $path, 2);
+    $res = explode('?', $res, 2);
 
-    $queryString = isset($res[1]) ? $res[1] : '';
+    // Note: Query string is not used in this resolver.
+    // $queryString = isset($res[1]) ? $res[1] : '';
 
-    $res = urldecode($res[0]);
+    if ( @$res[0][0] == DIRECTORY_SEPARATOR ) {
+      $res = ".$res[0]";
+    }
+    else {
+      $res = $res[0];
+    }
+
+    $res = urldecode($res);
 
     //------------------------------
     //  Emulate DirectoryIndex
     //------------------------------
-
     if ( is_dir($res) ) {
+      /*! Note
+       *  Try not to use server dependent features.
+       *
       // apache_lookup_uri($path)
-      if ( false && function_exists('apache_lookup_uri') ) {
+      if ( function_exists('apache_lookup_uri') ) {
         $res = apache_lookup_uri($path);
         $res = $_SERVER['DOCUMENT_ROOT'] . $res->uri;
 
@@ -155,6 +172,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
           $res = "./$path" . basename($_SERVER['REDIRECT_URL']);
         }
       }
+      */
 
       if ( !is_file($res) ) {
         $files = $this->directoryIndex();
@@ -162,10 +180,10 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
         foreach ( $files as $file ) {
           $file = $this->resolve("$res$file");
 
-          // Not a fully resolved path at the moment,
-          // starts resolve sub-chain.
-          if ( $file !== false ) {
-            return $file;
+          // Directory indexes will no longer passed down to remaining resolvers in chain,
+          // returning null to exit resolve chain.
+          if ( !$file ) {
+            return;
           }
         }
       }
@@ -177,7 +195,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     $this->chainResolve($res);
 
     if ( !is_file($res) ) {
-      return false;
+      return $path;
     }
 
     $this->handle($res);
@@ -210,6 +228,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     $mtime = filemtime($path);
 
     $mime = $this->mimetype($path);
+
     $this->sendCacheHeaders($path, $mime !== null);
 
     // Request header: If-Modified-Since
@@ -455,7 +474,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
             }
 
             if ( $output ) {
-              \log::write($output, 'Warning');
+              Log::write($output, 'Warning');
 
               // Error caught when minifying javascript, rollback to original.
               $path = $opath;
@@ -466,7 +485,6 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
           }
         }
         break;
-
       case 'png':
         // When requesting *.png, we search for svg for conversion.
         $opath = preg_replace('/\.png$/', '.svg', $path, -1, $count);
@@ -483,65 +501,71 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
           }
         }
         break;
-
       case 'css':
         // Auto compile CSS from LESS
         $lessPath = preg_replace('/(?:\.min)?\.css$/', '.less', $path);
+        $cssPath = preg_replace('/(?:\.min)?\.css$/', '.css', $path);
 
         if ( file_exists($lessPath) ) {
-          try {
-            (new \lessc)->checkedCompile($lessPath, $path);
-          }
-          catch (\Exception $e) {
-            \log::write('Unable to compile CSS from less.', 'Exception', $e);
+          if ( !file_exists($cssPath) || filemtime($lessPath) > filemtime($cssPath) ) {
+            @unlink($cssPath);
 
-            die;
+            try {
+              (new lessc)->checkedCompile($lessPath, $cssPath);
+            }
+            catch (\Exception $e) {
+              Log::write('Unable to compile CSS from less.', 'Exception', $e);
+
+              die;
+            }
           }
         }
 
-        unset($lessPath);
+        unset($lessPath, $cssPath);
 
         // Auto minify *.min.css it from the original *.css.
-        $opath = preg_replace('/\.min(\.css)$/', '\\1', $path, -1, $count);
+        $cssPath = preg_replace('/\.min(\.css)$/', '\\1', $path, -1, $count);
 
-        if ( $count > 0 && is_file($opath) ) {
-          $mtime = filemtime($opath);
-
-          $ctime = \cache::get($path);
+        if ( $count > 0 && is_file($cssPath) ) {
+          $mtime = filemtime($cssPath);
 
           /* Whenever orginal source exists and is newer, update minified version. */
-          if ( !is_file($path) || $mtime > filemtime($path) ) {
-            // Store the offset in cache, enabling a waiting time before HTTP retry.
-            \cache::delete($path);
-            \cache::set($path, time());
+          if ( !file_exists($path) || $mtime > filemtime($path) ) {
+            @unlink($path);
 
-            $opath = realpath($opath);
-            $contents = $this->resolve($opath);
-            $contents = $this->minifyCSS($contents);
+            // Store the offset in cache, enabling a waiting time before HTTP retry.
+            Cache::delete($path);
+            Cache::set($path, time());
+
+            $contents = file_get_contents($cssPath);
 
             if ( $contents ) {
-              file_put_contents($path, $contents);
+              $contents = $this->minifyCSS($contents);
+
+              if ( $contents ) {
+                file_put_contents($path, $contents);
+              }
             }
 
             unset($contents);
           }
 
           if ( !is_file($path) ) {
-            $path = $opath;
+            $path = $cssPath;
           }
         }
-        break;
 
+        unset($count, $cssPath);
+        break;
       case 'csv':
         header('Content-Disposition: attachment;', true);
         break;
-
       default:
         // Extension-less
-        if (!is_file($path) && preg_match('/^[^\.]+$/', basename($path))) {
-          $files = glob("./$path.*");
+        if ( !is_file($path) && preg_match('/^[^\.]+$/', basename($path)) ) {
+          $files = glob("$path.*");
 
-          foreach ( $files as $file ) {
+          foreach ( $files as &$file ) {
             if ( is_file($file) && $this->handles($file) ) {
               $path = $file;
               return;
@@ -589,12 +613,12 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
   private function minifyCSS($contents) {
     $result = '';
 
-    \core\Net::httpRequest(array(
+    Net::httpRequest(array(
         'url' => 'http://cssminifier.com/raw'
       , 'type' => 'post'
       , 'data' => array( 'input' => $contents )
       , '__curlOpts' => array(
-          CURLOPT_TIMEOUT => 2
+          CURLOPT_TIMEOUT => 5
         )
       , 'success' => function($response, $request) use(&$result) {
           if ( @$request['status'] == 200 && $response ) {

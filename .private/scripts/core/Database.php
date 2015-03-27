@@ -18,11 +18,18 @@ class Database {
 
   private static /*DatabaseOptions*/ $options;
 
-  //----------------------------------------------------------------------------------------
+  /**
+   * @private
+   *
+   * Store values specific to transactions.
+   */
+  private static $transactionStore = array();
+
+  //----------------------------------------------------------------------------
   //
   //  Properties
   //
-  //----------------------------------------------------------------------------------------
+  //----------------------------------------------------------------------------
 
   public static /* null */
   function setOptions($options) {
@@ -41,11 +48,11 @@ class Database {
     return self::$options;
   }
 
-  //----------------------------------------------------------------------------------------
+  //----------------------------------------------------------------------------
   //
   //  Methods
   //
-  //----------------------------------------------------------------------------------------
+  //----------------------------------------------------------------------------
 
   /**
    * @private
@@ -54,7 +61,7 @@ class Database {
   function getConnection() {
     if ( self::$con === null ) {
       if ( self::$options === null ) {
-        if (error_reporting()) {
+        if ( error_reporting() ) {
           throw new \PDOException('Please specify connection options before connecting database.');
         }
         else {
@@ -69,7 +76,7 @@ class Database {
       $connectionString = self::$options->driver
         . ':host=' . self::$options->host
         . ';port=' . self::$options->port
-        . ';dbname=' . self::$options->database;
+        . ';dbname=' . self::$options->schema;
 
       try {
         self::$con = new \PDO($connectionString
@@ -77,8 +84,11 @@ class Database {
           , self::$options->password
           , self::$options->driverOptions
           );
-      } catch(\PDOException $e) {
-        throw new exceptions\CoreException("Unable to connect to database, error: " . $e->getMessage(), 0);
+      }
+      catch(\PDOException $e) {
+        if ( error_reporting() ) {
+          throw new exceptions\CoreException("Unable to connect to database, error: " . $e->getMessage(), 0);
+        }
 
         self::$con = null;
       }
@@ -225,7 +235,7 @@ class Database {
    */
   public static /* Array */
   function getFields($tables, $key = null, $nameOnly = true) {
-    $tables = \utils::wrapAssoc($tables);
+    $tables = Utility::wrapAssoc($tables);
 
     $cache = &self::$schemaCache;
 
@@ -277,7 +287,7 @@ class Database {
       $cache = $cache['collections'][$tableName];
 
       if ( $key !== null ) {
-        $key = \utils::wrapAssoc($key);
+        $key = Utility::wrapAssoc($key);
 
         $cache = array_filter($cache, propHas('Key', $key));
       }
@@ -298,7 +308,7 @@ class Database {
 
   public static /* PDOStatement */
   function prepare($query, $options = array()) {
-    $stmt = &$preparedStatments[$query][json_encode($options)];
+    $stmt = &$preparedStatments[$query][serialize($options)];
 
     if (!$stmt instanceof PDOStatement) {
       $con = self::getConnection();
@@ -314,27 +324,38 @@ class Database {
    */
   public static /* PDOStatement */
   function query($query, $param = null, $options = array()) {
-    $query = self::prepare($query);
+    $stmt = self::prepare($query, $options);
 
     $param = (array) $param;
 
-    array_walk($param, function($param, $index) use(&$query) {
+    array_walk($param, function($param, $index) use(&$stmt) {
       $parmType = \PDO::PARAM_STR;
 
       if ( is_int($param) ) {
         $parmType = \PDO::PARAM_INT;
       }
 
-      $query->bindValue($index + 1, $param, $parmType);
+      $stmt->bindValue($index + 1, $param, $parmType);
     });
 
-    $res = $query->execute();
+    try {
+      $res = $stmt->execute();
+    }
+    catch (\PDOException $e) {
+      switch ( $e->getCode() ) {
+        case 2013: // Lost connection to MySQL server during query
+          // Auto retry after 2 seconds
+          sleep(2);
 
-    if ( $res ) {
-      return $query;
+          return self::query($query, $param, $options);
+      }
     }
 
-    $errorInfo = $query->errorInfo();
+    if ( $res ) {
+      return $stmt;
+    }
+
+    $errorInfo = $stmt->errorInfo();
 
     $ex = new \PDOException($errorInfo[2], $errorInfo[1]);
 
@@ -431,9 +452,14 @@ class Database {
    */
   public static /* Boolean */
   function beginTransaction() {
-    $con = self::getConnection();
+    $res = self::fetchRow('SHOW VARIABLES LIKE ?', ['autocommit']);
 
-    return $con->beginTransaction();
+    self::$transactionStore['autocommit'] = $res['Value'];
+
+    // Must switch autocommit to off in transactions.
+    self::query('SET autocommit = ?', 0);
+
+    return self::getConnection()->beginTransaction();
   }
 
   /**
@@ -441,9 +467,14 @@ class Database {
    */
   public static /* Boolean */
   function commit() {
-    $con = self::getConnection();
+    // Restore whatever value it was when transaction ends.
+    if ( isset(self::$transactionStore['autocommit']) ) {
+      self::query('SET autocommit = ?', self::$transactionStore['autocommit']);
+    }
 
-    return $con->commit();
+    self::$transactionStore = [];
+
+    return self::getConnection()->commit();
   }
 
   /**
@@ -451,9 +482,14 @@ class Database {
    */
   public static /* Boolean */
   function rollback() {
-    $con = self::getConnection();
+    // Restore whatever value it was when transaction ends.
+    if ( isset(self::$transactionStore['autocommit']) ) {
+      self::query('SET autocommit = ?', self::$transactionStore['autocommit']);
+    }
 
-    return $con->rollBack();
+    self::$transactionStore = [];
+
+    return self::getConnection()->rollBack();
   }
 
   /**
@@ -652,11 +688,24 @@ class Database {
       }
     }
 
-    self::query('LOCK TABLES ' . implode(', ', $tables));
+    return (bool) self::query('LOCK TABLES ' . implode(', ', $tables));
   }
 
   public static /* null */
-  function unlockTables() {
-    self::query('UNLOCK TABLES');
+  function unlockTables($autoRetry = false) {
+    if ( $autoRetry ) {
+      $ret = false;
+
+      $i = 0;
+
+      while ( false === ( $ret = self::query('UNLOCK TABLES') && $i++ < FRAMEWORK_DATABASE_UNLOCK_RETRY_LIMIT ) ) {
+        usleep(FRAMEWORK_DATABASE_ENSURE_WRITE_INTERVAL * 1000000);
+      }
+
+      return $ret;
+    }
+    else {
+      return (bool) self::query('UNLOCK TABLES');
+    }
   }
 }

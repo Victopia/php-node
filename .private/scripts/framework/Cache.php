@@ -1,15 +1,15 @@
 <?php
-/*! Cache.php | https://github.com/victopia/PHPNode
- *
- * This class aims to provide a thinkless way to store and retrieve binary-safe resources.
+/*! Cache.php | https://github.com/victopia/php-node */
+
+namespace framework;
+
+/**
+ * This class aims to provide a brainless way to store and retrieve binary-safe resources.
  *
  * Users don't have to care the deletion and storage usage, cache is deleted in a timely basis.
  *
  * @author Vicary Archangel
  */
-
-namespace framework;
-
 class Cache {
 
 	/**

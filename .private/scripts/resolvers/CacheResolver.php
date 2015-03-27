@@ -2,6 +2,10 @@
 
 namespace resolvers;
 
+use framework\Cache;
+
+use framework\exceptions\ResolverException;
+
 class CacheResolver implements \framework\interfaces\IRequestResolver {
 
   //--------------------------------------------------
@@ -11,8 +15,8 @@ class CacheResolver implements \framework\interfaces\IRequestResolver {
   //--------------------------------------------------
 
   public function __construct($pathPrefix) {
-    if (!$pathPrefix) {
-      throw new \framework\exceptions\ResolverException('Please provide a proper path prefix for CacheResolver.');
+    if ( !$pathPrefix ) {
+      throw new ResolverException('Please provide a proper path prefix for CacheResolver.');
     }
 
     $this->pathPrefix = $pathPrefix;
@@ -38,21 +42,21 @@ class CacheResolver implements \framework\interfaces\IRequestResolver {
   public
   /* Boolean */ function resolve($path) {
     // Request URI must start with the specified path prefix. e.g. /:resource/.
-    if (!$this->pathPrefix || 0 !== strpos($path, $this->pathPrefix)) {
-      return FALSE;
+    if ( !$this->pathPrefix || 0 !== strpos($path, $this->pathPrefix) ) {
+      return $path;
     }
 
     $path = substr($path, strlen($this->pathPrefix));
 
-    $res = \framework\Cache::get($path);
+    $res = Cache::get($path);
 
-    if ($res === NULL || $res === FALSE) {
-      return FALSE;
+    if ( $res === null || $res === false ) {
+      return $path;
     }
 
     // To be extended ... now defaults to JSON things.
 
-    header('Content-Type: application/json; charset=utf-8', TRUE);
+    header('Content-Type: application/json; charset=utf-8', true);
 
     echo $res;
   }

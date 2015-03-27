@@ -95,6 +95,20 @@ class Relation {
     return $descendants;
   }
 
+  /**
+   * Check whether a pair of subject and object is related.
+   */
+  static function isRelated($collection, $subject, $object, $direct = false) {
+    if ( $direct ) {
+      $children = self::getObjects($collection, $subject);
+    }
+    else {
+      $children = self::getDescendants($collection, $subject);
+    }
+
+    return in_array($object, $children);
+  }
+
   //--------------------------------------------------
   //
   //  Setter

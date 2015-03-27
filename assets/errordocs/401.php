@@ -3,7 +3,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8"/>
-		<title>401 Unauthorized | <?php echo $_SERVER['HTTP_HOST']; ?></title>
+		<title>401 Unauthorized | <?php echo @$_SERVER['HTTP_HOST']; ?></title>
 	</head>
 
 	<body>

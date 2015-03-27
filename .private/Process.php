@@ -3,7 +3,18 @@
 
 require_once('scripts/Initialize.php');
 
-$opts = (new optimist())
+use core\Database;
+use core\Log;
+use core\Node;
+use core\Utility;
+
+use framework\ProcessPool;
+use framework\Configuration;
+use framework\Process;
+
+use framework\exceptions\ProcessException;
+
+$opts = (new framework\Optimist)
   ->options('nohup', array(
       'alias' => 'n'
     , 'describe' => 'Force nohup process spawn.'
@@ -14,169 +25,234 @@ $opts = (new optimist())
     ))
   ->argv;
 
-// Do periodic cleanup
-// Check orphaned process in process table and delete it.
-if ( @$opts['cleanup'] ) {
-  $res = array_filter(array_map(function($line) {
-    if ( preg_match('/^\w+\s+(\d+)/', $line, $matches) ) {
-      return (int) $matches[1];
+// Process cleanup
+  if ( @$opts['cleanup'] ) {
+    $affectedRows = 0;
+
+    // Check orphaned process in process table and delete it.
+    $pids = array_filter(array_map(function($line) {
+      if ( preg_match('/^\w+\s+(\d+)/', $line, $matches) ) {
+        return (int) $matches[1];
+      }
+
+      return null;
+    }, explode("\n", `ps aux | grep 'php\\|node'`)));
+
+    if ( $pids ) {
+      $res = Database::query('DELETE FROM `'.FRAMEWORK_COLLECTION_PROCESS.'`
+        WHERE `type` != \'permanent\' AND `pid` IS NOT NULL AND `pid` NOT IN ('.Utility::fillArray($pids).')', $pids);
+
+      if ( $res ) {
+        $affectedRows+= $res->rowCount();
+      }
+
+      $res = Database::query('UPDATE `'.FRAMEWORK_COLLECTION_PROCESS.'` SET `pid` = NULL
+        WHERE `type` = \'permanent\' AND `pid` IS NOT NULL AND `pid` NOT IN ('.Utility::fillArray($pids).')', $pids);
+
+      if ( $res ) {
+        $affectedRows+= $res->rowCount();
+      }
     }
 
-    return null;
-  }, explode("\n", `ps aux | grep php`)));
+    unset($res, $pids);
 
-  if ( $res ) {
-    $res = core\Database::query('DELETE FROM `'.FRAMEWORK_COLLECTION_PROCESS.'`
-      WHERE `pid` IS NOT NULL AND `pid` NOT IN ('.utils::fillArray($res).')', $res);
+    // $res = Database::query('DELETE FROM `'.FRAMEWORK_COLLECTION_PROCESS.'`
+    //   WhERE `timestamp` < CURRENT_TIMESTAMP - INTERVAL 30 MIN');
 
-    $res = $res->rowCount();
+    // $affectedRows+= $res->rowCount();
+
+    if ( $affectedRows ) {
+      Log::write(sprintf('Process cleanup, %d processes removed.', $affectedRows));
+    }
+
+    die;
+  }
+
+// Forks then exits the parent.
+  // Use nohup if internal forking is not supported.
+  if ( !function_exists('pcntl_fork') ) {
+    $ret = shell_exec('nohup ' . Process::EXEC_PATH . ' --nohup >/dev/null 2>&1 & echo $!');
+
+    if ( !$ret ) {
+      Log::write('Process cannot be spawn, please review your configuration.', 'Error');
+    }
+
+    die;
+  }
+  elseif ( @$opts['n'] ) {
+    $pid = 0; // fork mimic
   }
   else {
-    $res = 0;
+    $pid = pcntl_fork();
   }
 
-  log::write(sprintf('Process cleanup, %d processes removed.', $res));
+  // parent: $forked == false
+  // child:  $forked == true
+  $forked = $pid == 0;
 
-  die;
-}
+  unset($pid);
 
-// use nohup if internal forking is not supported.
-if ( !function_exists('pcntl_fork') ) {
-  $ret = shell_exec('nohup ' . process::EXEC_PATH . ' --nohup >/dev/null 2>&1 & echo $!');
-
-  if ( !$ret ) {
-    log::write('Process cannot be spawn, please review your configuration.', 'Error');
+  // parent will die here
+  if ( !$forked ) {
+    exit(1);
   }
 
-  die;
-}
-elseif ( @$opts['n'] ) {
-  $pid = 0; // fork mimic.
-}
-else {
-  $pid = pcntl_fork();
-}
+// Avoid forking connection crash, renew the connection.
+  Database::disconnect();
 
-// parent: $forked == false
-// child:  $forked == true
-$forked = $pid == 0;
-
-// parent will die here.
-if ( !$forked ) {
-  exit($pid);
-}
-
-if ( function_exists('posix_setsid') ) {
-  posix_setsid();
-}
-
-if ( @$opts['cron'] ) {
-  log::write('Cron started process.', 'Information');
-}
-
-// for forking safety reasons, reconnect at this point.
-core\Database::reconnect();
-
-core\Database::lockTables(array(
-    FRAMEWORK_COLLECTION_PROCESS
-  , FRAMEWORK_COLLECTION_LOG
-  ));
-
-// Get working processes.
-$res = Node::get(array(
-    NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
-  , 'locked' => true
-  ));
-
-if ( count($res) >= process::MAX_PROCESS ) {
-  log::write('Forking exceed MAX_PROCESS, suicide.', 'Notice');
-  die;
-}
-
-$res = node::get(array(
-    NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
-  , 'locked' => false
-  ));
-
-// No waiting jobs in queue.
-if ( !$res ) {
-  $res = node::get(FRAMEWORK_COLLECTION_PROCESS);
-
-  // Not even locked jobs, let's reset the Process ID with truncate.
-  if ( !$res ) {
-    core\Database::unlockTables();
-    core\Database::query('TRUNCATE `' . FRAMEWORK_COLLECTION_PROCESS . '`');
+// Logs for cron processes
+  if ( @$opts['cron'] ) {
+    Log::write('Cron started process.', 'Debug');
   }
 
-  log::write('No more jobs to do, suicide.', 'Debug');
-  die;
-}
+// Get maximum allowed connections before table lock.
+  $capLimit = (int) Configuration::get('core.Net::maxConnections');
 
-$process = $res[0];
-
-$process['locked'] = true;
-$process['pid'] = getmypid();
-
-Node::set($process);
-
-core\Database::unlockTables();
-
-$path = $process['path'];
-
-log::write("Running process: $path", 'Debug', $pid);
-
-// Kick off the process
-
-$output = null;
-$retryCount = 0;
-$processSpawn = false;
-
-/* Added @ 3 Sep, 2013
-   Explicity release the database connection before spawning concurrent processes.
-
-   A new connection will be created on-demand afterwards.
-*/
-core\Database::disconnect();
-
-while (!$processSpawn && $retryCount++ < FRAMEWORK_PROCESS_SPAWN_RETRY_COUNT) {
-  try {
-    $output = `$path 2>&1`;
-
-    $processSpawn = true;
+  if ( !$capLimit ) {
+    $capLimit = FRAMEWORK_PROCESS_MAXIMUM_CAPACITY;
   }
-  catch (ErrorException $e) {
-    log::write("Error spawning child process, retry count $retryCount.", 'Warning', array(
-        'path' => $path
-      , 'error' => $e));
 
-    // Wait awhile before retrying.
-    usleep(FRAMEWORK_PROCESS_SPAWN_RETRY_INTERVAL * 1000000);
+// Start transaction before lock tables.
+  Database::beginTransaction();
+
+// Pick next awaiting process
+  Database::locKTables([
+    FRAMEWORK_COLLECTION_PROCESS . ' READ'
+  ]);
+
+  $res = (int) Database::fetchField('SELECT IFNULL(SUM(`capacity`), 0) as capacity
+    FROM `' . FRAMEWORK_COLLECTION_PROCESS . '`
+    WHERE `pid` IS NOT NULL');
+
+  Database::unlockTables(true);
+
+  if ( $res >= $capLimit ) {
+    Log::write('Active processes has occupied maximum server capacity, daemon exits.', 'Debug');
+
+    Database::rollback();
+
+    die;
   }
-}
 
-if ( !$processSpawn ) {
-  log::write('Unable to spawn process, process terminating.', 'Error');
-}
+  unset($res, $capLimit);
 
-unset($process['locked'], $process['path']);
+  Database::lockTables(array(
+      FRAMEWORK_COLLECTION_PROCESS . ' LOW_PRIORITY WRITE'
+    , FRAMEWORK_COLLECTION_PROCESS . ' as `active` LOW_PRIORITY WRITE'
+    , FRAMEWORK_COLLECTION_PROCESS . ' as `inactive` LOW_PRIORITY WRITE'
+    ));
 
-if ( $output !== null ) {
-  log::write("Output captured from command line $path:\n" . print_r($output, 1), 'Warning');
-}
+  $process = Database::fetchRow('SELECT `inactive`.* FROM `'. FRAMEWORK_COLLECTION_PROCESS .'` as `inactive`
+    LEFT JOIN ( SELECT `type`, SUM(`capacity`) as `occupation` FROM `' . FRAMEWORK_COLLECTION_PROCESS . '`
+        WHERE `pid` IS NOT NULL GROUP BY `type` ) as `active`
+      ON `active`.`type` = `inactive`.`type`
+    WHERE `inactive`.`timestamp` <= CURRENT_TIMESTAMP
+      AND `start_time` <= CURRENT_TIMESTAMP
+      AND `inactive`.`pid` IS NULL
+    ORDER BY `occupation`, `weight` DESC, `ID`
+    LIMIT 1;');
 
-// Finally, delete the process
-core\Database::lockTables(array(
-    FRAMEWORK_COLLECTION_PROCESS
-  , FRAMEWORK_COLLECTION_LOG
-  ));
+  // No waiting jobs in queue.
+  if ( !$process ) {
+    Database::unlockTables(true);
 
-$res = node::delete($process);
+    Database::rollback();
 
-log::write("Deleting finished process, affected rows: $res.", 'Debug', $process);
+    Log::write('No more jobs to do, suicide.', 'Debug');
 
-core\Database::unlockTables();
+    die;
+  }
 
-// Recursive process, fork another child and spawn itself.
-if ( !function_exists('pcntl_fork') || pcntl_fork() === 0 ) {
-  shell_exec(process::EXEC_PATH . ' >/dev/null &');
-}
+  $processContents = (array) json_decode($process[NODE_FIELD_VIRTUAL], 1);
+
+  unset($process[NODE_FIELD_VIRTUAL]);
+
+  $process+= $processContents;
+
+  unset($processContents);
+
+  $res = Database::query('UPDATE `' . FRAMEWORK_COLLECTION_PROCESS . '` SET `pid` = ?
+    WHERE `ID` = ? AND `pid` IS NULL LIMIT 1',
+    [ getmypid(), $process['ID'] ]);
+
+// Commit transaction
+  Database::unlockTables(true);
+
+  Database::commit();
+
+  if ( $res->rowCount() < 1 ) {
+    Log::write('Unable to update process pid, worker exits.');
+
+    die;
+  }
+  else {
+    $process['pid'] = getmypid();
+    $process[NODE_FIELD_COLLECTION] = FRAMEWORK_COLLECTION_PROCESS;
+  }
+
+// Check if $env specified in option
+  if ( @$_SERVER['env'] ) {
+    $_SERVER['env'] = json_decode($_SERVER['env'], 1);
+  }
+
+// More debug logs
+  Log::write("Executed process: $process[command]", 'Debug');
+
+// Spawn process and retrieve the pid
+  $proc = false;
+
+  do {
+    $proc = proc_open($process['command'], array(
+        array('pipe', 'r')
+      , array('pipe', 'w')
+      , array('pipe', 'e')
+      ), $pipes, null, @$_SERVER['env']);
+
+    if ( $proc ) {
+      break;
+    }
+    else {
+      usleep(FRAMEWORK_PROCESS_SPAWN_RETRY_INTERVAL);
+    }
+  }
+  while ( ++$retryCount < FRAMEWORK_PROCESS_SPAWN_RETRY_COUNT );
+
+  if ( !$proc ) {
+    throw new ProcessException('Unable to spawn process, please check error logs.');
+  }
+
+// Log the process output if available
+  $stdout = stream_get_contents($pipes[1]);
+  $stderr = stream_get_contents($pipes[2]);
+
+  if ( "$stdout$stderr" ) {
+    Log::write(sprintf('Output captured from command line: %s', $process['command']),
+      $stderr ? 'Error' : 'Information', array_filter(array('stdout' => $stdout, 'stderr' => $stderr)));
+  }
+
+  unset($stdout, $stderr);
+
+// Handles cleanup after process exit
+  switch ( strtolower($process['type']) ) {
+    // Permanent processes will be restarted upon death
+    case 'permanent':
+      core\Database::query('UPDATE `'.FRAMEWORK_COLLECTION_PROCESS.'` SET `pid` = NULL WHERE `ID` = ?', $process['ID']);
+
+      Log::write('Permanent process died, clearing pid.', 'Debug', [$res, $process]);
+      break;
+
+    // Deletes the process object upon exit
+    default:
+      $process = array_select($process, array(NODE_FIELD_COLLECTION, 'ID', /*'type', 'weight', 'capacity', */'pid'));
+
+      $res = Node::delete($process);
+
+      Log::write("Deleting finished process, affected rows: $res.", 'Debug', [$res, $process]);
+
+      ProcessPool::SplitProcessCommmand2($process['ID'], $process['pid']);
+
+      break;
+  }
+
+// Recursive process, spawn another worker.
+  Process::spawnWorker(@$_SERVER['env']);

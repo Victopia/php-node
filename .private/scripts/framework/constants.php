@@ -1,7 +1,11 @@
 <?php
 /* constants.php | Define framework wide constants. */
 
-// Global system constants
+//--------------------------------------------------
+//
+//  Global system constants
+//
+//--------------------------------------------------
 
 // Epoach in seconds before 1970-01-01
 define('EPOACH', -62167246596);
@@ -20,42 +24,38 @@ define('NODE_FIELD_INDEX_HINT', md5('@@useIndex'));
 define('NODE_FIELD_RAWQUERY', md5('@@rawQuery'));
 // Row limit for each data fetch, be careful on setting this.
 // Required system resources will change exponentially.
-define('NODE_FETCHSIZE', 100);
+define('NODE_FETCHSIZE', 200);
 
 // Current environment, 'debug' or 'production'
 define('FRAMEWORK_ENVIRONMENT', 'debug');
 
-// Hostname for services and local redirections
-define('FRAMEWORK_SERVICE_HOSTNAME', gethostname());
 // Document root to this framework
-define('FRAMEWORK_PATH_ROOT', realpath(__DIR__ . '/../../..'));
+define('FRAMEWORK_PATH_ROOT', realpath(__DIR__ . '/../..'));
 // Define web directories
 define('FRAMEWORK_PATH_VIRTUAL', '/');
 // Path to internal scripts
-define('FRAMEWORK_PATH_SCRIPTS', '/.private/scripts');
+define('FRAMEWORK_PATH_SCRIPTS', '/scripts');
 // Path to services
-define('FRAMEWORK_PATH_SERVICES', '/.private/services');
+define('FRAMEWORK_PATH_SERVICES', '/services');
+// Path to maintenance template
+define('FRAMEWORK_PATH_MAINTENANCE_TEMPLATE', '/assets/templates/maintenance.html');
 
 // Collection of system configurations
-define('FRAMEWORK_COLLECTION_CONFIGURATION', 'Configuration');
+define('FRAMEWORK_COLLECTION_CONFIGURATION', 'Configurations');
 // Collection of Node hirarchy relations
-define('FRAMEWORK_COLLECTION_RELATION', 'Relation');
+define('FRAMEWORK_COLLECTION_RELATION', 'NodeRelations');
 // Collection of system logs
-define('FRAMEWORK_COLLECTION_LOG', 'Log');
+define('FRAMEWORK_COLLECTION_LOG', 'Logs');
 // Collection of processes
-define('FRAMEWORK_COLLECTION_PROCESS', 'ProcessQueue');
+define('FRAMEWORK_COLLECTION_PROCESS', 'Processes');
 // Collection of users
-define('FRAMEWORK_COLLECTION_USER', 'User');
-// Collection of user data
-define('FRAMEWORK_COLLECTION_USER_DATA', 'UserData');
+define('FRAMEWORK_COLLECTION_USER', 'Users');
 // Collection of http user sessions
-define('FRAMEWORK_COLLECTION_SESSION', 'Session');
-// Collection of external tokens
-define('FRAMEWORK_COLLECTION_EXTERNAL_TOKEN', 'ExternalToken');
-// Collection of system messages
-define('FRAMEWORK_COLLECTION_MESSAGE', 'Message');
+define('FRAMEWORK_COLLECTION_SESSION', 'Sessions');
 // Collection of user files, basic file system implementation.
-define('FRAMEWORK_COLLECTION_FILE', 'File');
+define('FRAMEWORK_COLLECTION_FILE', 'Files');
+// Collection of locale resources.
+define('FRAMEWORK_COLLECTION_RESOURCES', 'Resources');
 
 // Times to retry for failed process spawning.
 define('FRAMEWORK_PROCESS_SPAWN_RETRY_COUNT', 5);
@@ -63,15 +63,21 @@ define('FRAMEWORK_PROCESS_SPAWN_RETRY_INTERVAL', 0.4);
 
 // Times to retry to ensure a process is written to disc,
 // before spawning background process
-define('FRAMEWORK_PROCESS_INSERT_RETRY_COUNT', 10);
+define('FRAMEWORK_PROCESS_INSERT_RETRY_COUNT', 50);
 // Times to retry when deletion on process table fails.
 define('FRAMEWORK_PROCESS_DELETE_RETRY_COUNT', 50);
 
+// Maximum process capacity of this server can affort.
+define('FRAMEWORK_PROCESS_MAXIMUM_CAPACITY', 100);
+
+// Maximum times to auto retry when 'UNLOCK TABLES;' returns false.
+define('FRAMEWORK_DATABASE_UNLOCK_RETRY_LIMIT', 20);
 // Interval to wait before checks that ensure data is written to disk.
 define('FRAMEWORK_DATABASE_ENSURE_WRITE_INTERVAL', 0.4);
 
 // Seconds to wait before sending next core\Net progress event.
 define('FRAMEWORK_NET_PROGRESS_INTERVAL', 0.3);
+
 // Predefined error messages in libcurl.
 define('FRAMEWORK_NET_CURL_ERRORS', serialize(array(
     CURLE_OK => 'All fine. Proceed as usual.'
@@ -159,46 +165,19 @@ define('FRAMEWORK_NET_CURL_ERRORS', serialize(array(
 define('FRAMEWORK_RESPONSE_CACHE_PERMANANT', 31120135);
 define('FRAMEWORK_RESPONSE_CACHE_TEMPORARY', 108000);
 
-// Seconds to delay before checks for updates on external resources
-define('FRAMEWORK_EXTERNAL_UPDATE_DELAY', 18000);
+// For how long a cookie should be stored.
+define('FRAMEWORK_COOKIE_EXPIRE_TIME', strtotime('+ 1 week'));
 
 // Regex pattern to match custom request headers
 define('FRAMEWORK_CUSTOM_HEADER_PATTERN', '/^X\-/');
 
 // Date format for framework outputs
-define('FRAMEWORK_DATE_FOTMAT', 'd M, H:i');
+define('FRAMEWORK_DATE_FORMAT', 'd M, H:i');
 
-// Quick search items limit per type
-define('FRAMEWORK_SEARCH_QUICK_LIMIT', 10);
-
-// Date format for search
-define('FRAMEWORK_SEARCH_DATE_FORMAT', 'M, Y');
-
-/* Quoted by Vicary @ 26 Nov, 2012
+/* Quoted by Eric @ 26 Nov, 2012
     Unused
 // Intermadiate mime type for File collection, indicates file write in progress.
 define('FRAMEWORK_MIME_INTERMEDIATE', 'application/x-intermediate');
 // Locked mime type for File collection, indicates a locked file.
 define('FRAMEWORK_MIME_LOCKED', 'application/x-locked');
 */
-
-//--------------------------------------------------
-//
-//  Short hand of frequently used classes
-//
-//--------------------------------------------------
-class_alias('\core\Node',     'node');
-class_alias('\core\Net',      'net');
-class_alias('\core\Relation', 'relation');
-class_alias('\core\Utility',  'utils');
-class_alias('\core\Log',      'log');
-
-class_alias('\framework\Optimist', 'optimist');
-class_alias('\framework\Configuration', 'conf');
-class_alias('\framework\Cache',   'cache');
-class_alias('\framework\Session', 'session');
-class_alias('\framework\Process', 'process');
-class_alias('\framework\Service', 'service');
-
-// Template path
-define('FRAMEWORK_TEMPLATE_PATH', 'assets/templates/%s.tpl');

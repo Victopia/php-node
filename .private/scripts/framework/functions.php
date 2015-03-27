@@ -1,7 +1,7 @@
 <?php
 /*! framework\functions.php | Implements functional programming. */
 
-/* Note by Vicary @ 10 Dec, 2012
+/* Note by Eric @ 10 Dec, 2012
 
     Follow a simple rule: Use verbs as names for function factories
     (functions that return functions).
@@ -25,98 +25,7 @@
 
 */
 
-//--------------------------------------------------
-//
-//  Reads
-//
-//--------------------------------------------------
-
-/*
-function reads($name, $options = array()) {
-  $names = \utils::wrapAssoc($name);
-
-  unset($name);
-
-  return function($object) use($names, $options) {
-    $node = &$object;
-
-    foreach ( $names as $name ) {
-      if ( @$options['invokes'] === true && is_callable(array($node, $name)) ) {
-        $node = &$node[$name]();
-      }
-
-      if ( @$options['pointer'] ) {
-        $node = &$node[$name];
-      }
-      else {
-        $node = @$node[$name];
-      }
-
-      if ( @$options['invokes'] === true && is_callable($node) ) {
-        $node = &$node[$name]();
-      }
-      else {
-        $node = &$node[$name];
-      }
-    }
-
-    return $node;
-  };
-
-  }
-  else {
-    return function($object) use($names) {
-      $node = &$object;
-
-      foreach ($names as $name) {
-        $node = &$node[$name];
-      }
-
-      return $node;
-    };
-  }
-}
-
-//--------------------------------------------------
-//
-//  Writes
-//
-//--------------------------------------------------
-
-function writesRef($value, $name = null, $invokesCallables = false) {
-  if ( $name === null ) {
-    return function(&$object) use($name, $value, $invokesCallables) {
-      if ( $invokesCallables && is_callable($value) ) {
-        $value = &$value($object);
-      }
-
-      if ( $name === null ) {
-        $object = &$value;
-      }
-      else {
-        $object[$name] = &$value;
-      }
-    }
-  }
-}
-
-function writes($value, $name = null, $invokesCallables = false) {
-  if ( $name === null ) {
-    return function(&$object) use($name, $value, $invokesCallables) {
-      if ( $invokesCallables && is_callable($value) ) {
-        $value = $value($object);
-      }
-
-      if ( $name === null ) {
-        $object = $value;
-      }
-      else {
-        $object[$name] = $value;
-      }
-    }
-  }
-}
-*/
+use core\Utility;
 
 //--------------------------------------------------
 //
@@ -130,7 +39,7 @@ function compose() {
   return function() use($funcs) {
     $args = func_get_args();
 
-    for ($i = count($funcs); isset($funcs[--$i]);) {
+    for ( $i = count($funcs); isset($funcs[--$i]); ) {
       $args = array(call_user_func_array($funcs[$i], $args));
     }
 
@@ -139,6 +48,21 @@ function compose() {
 }
 
 function partial() {
+  return call_user_func_array('unshiftsArg', func_get_args());
+}
+
+function pushesArg() {
+  $part = func_get_args();
+  $func = array_shift($part);
+
+  return function() use($func, $part) {
+    $args = array_merge(func_get_args(), $part);
+
+    return call_user_func_array($func, $args);
+  };
+}
+
+function unshiftsArg() {
   $part = func_get_args();
   $func = array_shift($part);
 
@@ -206,6 +130,10 @@ function in($values, $strict = false) {
   };
 }
 
+function notIn($values, $strict = false) {
+  return compose('not', in($values, $strict));
+}
+
 function has($needle, $strict = false) {
   return function($input) use($needle, $strict) {
     return in_array($needle, (array) $input, $strict);
@@ -259,7 +187,7 @@ function propInNot($prop, array $values, $strict = false) {
  */
 function propHas($prop, array $values, $strict = false) {
   return function($object) use($prop, $values, $strict) {
-    $prop = \utils::wrapAssoc(@$object[$prop]);
+    $prop = Utility::wrapAssoc(@$object[$prop]);
 
     $prop = array_map(function($prop) use($values, $strict) {
       return in_array($prop, $values, $strict);
@@ -389,13 +317,41 @@ function sortsDescend($subject, $object, $strict = false) {
 
 function sortsPropAscend($name, $strict = false) {
   return function($subject, $object) use($name, $strict) {
-    return sortsAscend(@$subject[$name], @$object[$name], $strict);
+    if ( is_object($subject) ) {
+      $subject = @$subject->$name;
+    }
+    else {
+      $subject = @$subject[$name];
+    }
+
+    if ( is_object($object) ) {
+      $object = @$object->$name;
+    }
+    else {
+      $object = @$object[$name];
+    }
+
+    return sortsAscend($subject, $object, $strict);
   };
 }
 
 function sortsPropDescend($name, $strict = false) {
   return function($subject, $object) use($name, $strict) {
-    return sortsDescend(@$subject[$name], @$object[$name], $strict);
+    if ( is_object($subject) ) {
+      $subject = @$subject->$name;
+    }
+    else {
+      $subject = @$subject[$name];
+    }
+
+    if ( is_object($object) ) {
+      $object = @$object->$name;
+    }
+    else {
+      $object = @$object[$name];
+    }
+
+    return sortsDescend($subject, $object, $strict);
   };
 }
 
@@ -479,6 +435,12 @@ function assigns($value, $prop = null) {
 function replaces($pattern, $replacement) {
   return function($string) use($pattern, $replacement) {
     return preg_replace($pattern, $replacement, $string);
+  };
+}
+
+function matches($pattern) {
+  return function($string) use($pattern) {
+    return preg_match($pattern, $string);
   };
 }
 
@@ -622,6 +584,32 @@ function object($list) {
 //
 //--------------------------------------------------
 
+// PHP equalivent of Javascript Array.prototype.every()
+if ( !function_exists('array_every') ) {
+  function array_every(array $array, callable $callback) {
+    foreach ( $array as $item ) {
+      if ( !$callback($item) ) {
+        return false;
+      }
+    }
+
+    return true;
+  }
+}
+
+// PHP equalivent of Javascript Array.prototype.some()
+if ( !function_exists('array_some') ) {
+  function array_some(array $array, callable $callback) {
+    foreach ( $array as $item ) {
+      if ( $callback($item) ) {
+        return true;
+      }
+    }
+
+    return false;
+  }
+}
+
 if ( !function_exists('array_select') ) {
   function array_select($list, array $keys) {
     $result = array();
@@ -654,6 +642,16 @@ if ( !function_exists('array_remove') ) {
   }
 }
 
+if ( !function_exists('array_remove_keys') ) {
+  function array_remove_keys(&$list, $keys) {
+    $keys = (array) $keys;
+
+    foreach ( $keys as $key ) {
+      unset($list[$key]);
+    }
+  }
+}
+
 if ( !function_exists('array_mapdef') ) {
   function array_mapdef() {
     return call_user_func_array('mapdef', func_get_args());
@@ -678,7 +676,7 @@ if ( !function_exists('array_filter_keys') ) {
 //
 //--------------------------------------------------
 
-function mapdef(/* callable */ $callback, $list, /* callable */ $filter = null) {
+function mapdef($list, /* callable */ $callback, /* callable */ $filter = null) {
   $function = compose(
       filters($filter)
     , maps($callback)

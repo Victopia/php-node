@@ -1,25 +1,22 @@
 <?php
-/*! Resource.php
- *
- *  Universal access to locale based resources.
- */
+/* MustacheResource.php | Mustache compatible Resource accessor. */
 
 namespace framework;
 
 /**
- * This class implements the "dot notation" way to
- * get our locale resources from database.
+ * This class implements the "dot notation" way to get our locale resources from database.
  */
 class MustacheResource {
+
   private $resourceInstance;
 
   private $path;
 
-  //--------------------------------------------------
+  //----------------------------------------------------------------------------
   //
   //  Constructor
   //
-  //--------------------------------------------------
+  //----------------------------------------------------------------------------
 
   /**
    * @param $locale_resource Either a string of locale chain,
@@ -38,9 +35,15 @@ class MustacheResource {
     $this->path = $path;
   }
 
+  //----------------------------------------------------------------------------
+  //
+  //  Magic methods
+  //
+  //----------------------------------------------------------------------------
+
   /**
-   * The context resolve mechanism of mustache require __isset()
-   * to be like this.
+   * The context resolve mechanism of PHP Mustache requires
+   * __isset() to always return true.
    */
   public function __isset($name) {
     return true;
@@ -78,4 +81,5 @@ class MustacheResource {
 
     return (string) $value;
   }
+
 }

@@ -3,6 +3,9 @@
 
 namespace core;
 
+use framework\Configuration;
+use framework\MustacheResource;
+
 /**
  * Utility class.
  *
@@ -17,6 +20,92 @@ namespace core;
  */
 class Utility {
   /**
+   * Shorthand access to common filter types.
+   */
+  static function &commonFilters() {
+    static $filters;
+
+    if ( !$filters ) {
+      $filters = array(
+        'raw' => array(
+            'filter' => FILTER_UNSAFE_RAW
+          , 'flags' => FILTER_NULL_ON_FAILURE
+          )
+      , 'rawS' => array(
+            'filter' => FILTER_UNSAFE_RAW
+          , 'flags' => FILTER_REQUIRE_SCALAR | FILTER_NULL_ON_FAILURE
+          )
+      , 'rawA' => array(
+            'filter' => FILTER_UNSAFE_RAW
+          , 'flags' => FILTER_FORCE_ARRAY | FILTER_NULL_ON_FAILURE
+          )
+      , 'boolS' => array(
+          'filter' => FILTER_VALIDATE_BOOLEAN
+        , 'flags' => FILTER_REQUIRE_SCALAR | FILTER_NULL_ON_FAILURE
+        )
+      , 'intS' => array(
+          'filter' => FILTER_VALIDATE_INT
+        , 'flags' => FILTER_REQUIRE_SCALAR | FILTER_NULL_ON_FAILURE
+        )
+      , 'intA' => array(
+          'filter' => FILTER_VALIDATE_INT
+        , 'flags' => FILTER_FORCE_ARRAY | FILTER_NULL_ON_FAILURE
+        )
+      , 'floatS' => array(
+          'filter' => FILTER_VALIDATE_FLOAT
+        , 'flags' => FILTER_REQUIRE_SCALAR | FILTER_NULL_ON_FAILURE
+        )
+      , 'floatA' => array(
+          'filter' => FILTER_VALIDATE_FLOAT
+        , 'flags' => FILTER_FORCE_ARRAY | FILTER_NULL_ON_FAILURE
+        )
+      , 'strS' => array(
+          'filter' => FILTER_SANITIZE_STRING
+        , 'flags' => FILTER_REQUIRE_SCALAR | FILTER_NULL_ON_FAILURE | FILTER_FLAG_NO_ENCODE_QUOTES
+        )
+      , 'strA' => array(
+          'filter' => FILTER_SANITIZE_STRING
+        , 'flags' => FILTER_FORCE_ARRAY | FILTER_NULL_ON_FAILURE | FILTER_FLAG_NO_ENCODE_QUOTES
+        )
+      , 'urlS' => array(
+          'filter' => FILTER_VALIDATE_URL
+        , 'flags' => FILTER_REQUIRE_SCALAR | FILTER_NULL_ON_FAILURE
+        )
+      , 'urlA' => array(
+          'filter' => FILTER_VALIDATE_URL
+        , 'flags' => FILTER_FORCE_ARRAY | FILTER_NULL_ON_FAILURE
+        )
+      , 'date' => array(
+          'filter' => FILTER_CALLBACK
+        , 'flags' => FILTER_NULL_ON_FAILURE
+        , 'options' => '\core\Utility::validateDateTime'
+        )
+      , 'dateS' => array(
+          'filter' => FILTER_CALLBACK
+        , 'flags' => FILTER_REQUIRE_SCALAR | FILTER_NULL_ON_FAILURE
+        , 'options' => '\core\Utility::validateDateTime'
+        )
+      , 'priceS' => array(
+          'filter' => FILTER_CALLBACK
+        , 'options' => function($input) {
+            return preg_match('/[+-]?\d+(?:\.\d+)?(?:\:\w+)?/', trim(Utility::unwrapAssoc($input))) ? $input : null;
+          }
+        )
+      , 'regex' => function($pattern) {
+          return array(
+              'filter' => FILTER_CALLBACK
+            , 'options' => function($input) use($pattern) {
+                return preg_match($pattern, $input) ? $input : null;
+              }
+            );
+        }
+      );
+    }
+
+    return $filters;
+  }
+
+  /**
    * Returns whether the current process is in CLI environment.
    */
   static function isCLI() {
@@ -25,18 +114,71 @@ class Utility {
 
   /**
    * Gets all network interfaces with an appropriate IPv4 address.
+   *
+   * Mimic the output of os.networkInterfaces() in node.js.
    */
-  static function letIfaces() {
-    switch (strtoupper(PHP_OS)) {
+  static function networkInterfaces() {
+    switch ( strtoupper(PHP_OS) ) {
       case 'DARWIN': // MAC OS X
-        $ifaces = @`ifconfig | expand | cut -c1-8 | sort | uniq -u | awk -F: '{print $1;}'`;
-        $ifaces = preg_split('/\s+/', $ifaces);
-        return $ifaces;
+        $res = preg_split('/\n/', @`ifconfig`);
+        $res = array_filter(array_map('trim', $res));
+
+        $result = array();
+
+        foreach ( $res as $row ) {
+          if ( preg_match('/^(\w+\d+)\:\s+(.+)/', $row, $matches) ) {
+            $result['__currentInterface'] = $matches[1];
+
+            $result[$result['__currentInterface']]['__internal'] = false !== strpos($matches[2], 'LOOPBACK');
+          }
+          else if ( preg_match('/^inet(6)?\s+([^\/\s]+)(?:%.+)?/', $row, $matches) ) {
+            $iface = &$result[$result['__currentInterface']];
+
+            @$iface[] = array(
+                'address' => $matches[2]
+              , 'family' => $matches[1] ? 'IPv6' : 'IPv4'
+              , 'internal' => $iface['__internal']
+              );
+
+            unset($iface);
+          }
+
+          unset($matches);
+        } unset($row, $res);
+
+        unset($result['__currentInterface']);
+
+        return array_filter(array_map(compose('array_filter', removes('__internal')), $result));
 
       case 'LINUX':
-        $ifaces = `ifconfig -a | sed 's/[ \t].*//;/^\(lo\|\)$/d'`;
-        $ifaces = preg_split('/\s+/', $ifaces);
-        return $ifaces;
+        // $ifaces = `ifconfig -a | sed 's/[ \t].*//;/^\(lo\|\)$/d'`;
+        // $ifaces = preg_split('/\s+/', $ifaces);
+        $res = preg_split('/\n/', @`ip addr`);
+        $res = array_filter(array_map('trim', $res));
+
+        $result = array();
+
+        foreach ( $res as $row ) {
+          if ( preg_match('/^\d+\:\s+(\w+)/', $row, $matches) ) {
+            $result['__currentInterface'] = $matches[1];
+          }
+          else if ( preg_match('/^link\/(\w+)/', $row, $matches) ) {
+            $result[$result['__currentInterface']]['__internal'] = strtolower($matches[1]) == 'loopback';
+          }
+          else if ( preg_match('/^inet(6)?\s+([^\/]+)(?:\/\d+)?.+\s([\w\d]+)(?:\:\d+)?$/', $row, $matches) ) {
+            @$result[$matches[3]][] = array(
+                'address' => $matches[2]
+              , 'family' => $matches[1] ? 'IPv6' : 'IPv4'
+              , 'internal' => Utility::cascade(@$result[$matches[3]]['__internal'], false)
+              );
+          }
+
+          unset($matches);
+        } unset($row, $res);
+
+        unset($result['__currentInterface']);
+
+        return array_filter(array_map(compose('array_filter', removes('__internal')), $result));
 
       case 'WINNT': // Currently not supported.
       default:
@@ -48,7 +190,9 @@ class Utility {
    * Returns whether current request is made by local redirect.
    */
   static function isLocalRedirect() {
-    return @$_SERVER['HTTP_HOST'] == FRAMEWORK_SERVICE_HOSTNAME && @$_SERVER['HTTP_USER_AGENT'] == 'X-PHP';
+    return @$_SERVER['HTTP_REFERER'] == FRAMEWORK_SERVICE_HOSTNAME_LOCAL &&
+      @$_SERVER['HTTP_HOST'] == FRAMEWORK_SERVICE_HOSTNAME &&
+      @$_SERVER['HTTP_USER_AGENT'] == 'X-PHP';
   }
 
   /**
@@ -104,18 +248,18 @@ class Utility {
     $file = fopen($file, 'r');
 
     if ( !$file ) {
-      return FALSE;
+      return false;
     }
 
     for ( $i=0; $i<5; $i-- ) {
       if ( fgetcsv($file) ) {
         fclose($file);
-        return TRUE;
+        return true;
       }
     }
 
     fclose($file);
-    return FALSE;
+    return false;
   }
 
   /**
@@ -137,7 +281,7 @@ class Utility {
     // PORT (optional)
     $urlregex .= '(\:[0-9]{2,5})?';
     // PATH (optional)
-    $urlregex .= '(\/([a-z0-9%+$_\-\=~\!\(\),]\.?)+)*\/?';
+    $urlregex .= '(\/([a-z0-9%+$ _\-\=~\!\(\),]\.?)+)*\/?';
     // GET Query (optional)
     $urlregex .= '(\?[a-z+&$_.-][a-z0-9;:@\/&%=+$_.-]*)?';
     // ANCHOR (optional)
@@ -199,21 +343,22 @@ class Utility {
     $args = func_get_args();
 
     if ( !$args ) {
-      return NULL;
+      return null;
     }
 
     $n = count($args);
+
     for ( $i=1; $i<$n; $i++ ) {
       foreach ( $args[$i] as $objKey => &$objValue ) {
         foreach ($subject as $subKey => &$subValue) {
           if ( strcasecmp($subKey, $objKey) === 0 ) {
             $subject[$subKey] = $objValue;
-            $objValue = NULL;
+            $objValue = null;
             break;
           }
         }
 
-        if ( $objValue !== NULL ) {
+        if ( $objValue !== null ) {
           $subject[$objKey] = $objValue;
         }
       }
@@ -237,7 +382,7 @@ class Utility {
    * Case-insensitve version of in_array.
    */
   static function inArrayIgnoreCase($needle, $haystack) {
-    return self::arraySearchIgnoreCase($needle, $haystack) !== FALSE;
+    return self::arraySearchIgnoreCase($needle, $haystack) !== false;
   }
 
   /**
@@ -258,7 +403,7 @@ class Utility {
 
     $index = array_search(strtolower($key), array_map('strtolower', $keys));
 
-    if ( $index !== FALSE ) {
+    if ( $index !== false ) {
       $index = $keys[$index];
     }
 
@@ -269,7 +414,7 @@ class Utility {
    * Case-insensitive version of array_key_exists.
    */
   static function arrayKeyExistsIgnoreCase($key, $search) {
-    return self::arrayKeySearchIgnoreCase($key, $search) !== FALSE;
+    return self::arrayKeySearchIgnoreCase($key, $search) !== false;
   }
 
   /**
@@ -290,18 +435,18 @@ class Utility {
   /**
    * Flatten an array, concatenating keys with specified delimiter.
    */
-  static function flattenArray(&$input, $delimiter = '.', $flattenNumeric = TRUE) {
-    if (!is_array($input)) {
+  static function flattenArray(&$input, $delimiter = '.', $flattenNumeric = true) {
+    if ( !is_array($input) ) {
       return $input;
     }
 
     // Could have a single layer solution,
     // can't think of it at the moment so leave it be.
-    if ( \utils::isAssoc($input) || $flattenNumeric ) {
+    if ( Utility::isAssoc($input) || $flattenNumeric ) {
       foreach ($input as $key1 => $value) {
         $value = self::flattenArray($value, $delimiter, $flattenNumeric);
 
-        if ( is_array($value) && ($flattenNumeric || \utils::isAssoc($value)) ) {
+        if ( is_array($value) && ($flattenNumeric || Utility::isAssoc($value)) ) {
           foreach ($value as $key2 => $val) {
             $input["$key1$delimiter$key2"] = $val;
           }
@@ -335,7 +480,7 @@ class Utility {
 
         $valueNode = &$result;
 
-        while ($keyPath) {
+        while ( $keyPath ) {
           $valueNode = &$valueNode[array_shift($keyPath)];
         }
 
@@ -350,7 +495,7 @@ class Utility {
   }
 
   /**
-   * Return the first value that is not interpreted as FALSE.
+   * Return the first value that is not interpreted as false.
    *
    * This is made for those lazy shits like me, who does
    * (foo || bar || baz) a lot in Javascript.
@@ -362,9 +507,9 @@ class Utility {
       $list = func_get_args();
     }
 
-    while ($list && !($arg = array_shift($list)));
+    while ( $list && !($arg = array_shift($list)) );
 
-    return @$arg; // return NULL when empty array is given.
+    return @$arg; // return null when empty array is given.
   }
 
   /**
@@ -377,7 +522,7 @@ class Utility {
 
     $ref = &$input;
 
-    while ($path) {
+    while ( $path ) {
       $ref = &$ref[array_shift($path)];
     }
 
@@ -397,7 +542,7 @@ class Utility {
    *
    * This is achieved by the Reflection model of PHP.
    */
-  static function forceInvoke($callable, $parameters = NULL) {
+  static function forceInvoke($callable, $parameters = null) {
     $parameters = (array) $parameters;
 
     // Normal callable
@@ -411,7 +556,7 @@ class Utility {
     }
 
     // "class::method" static thing
-    if ( is_string($callable) && strpos($callable, '::') !== FALSE ) {
+    if ( is_string($callable) && strpos($callable, '::') !== false ) {
       $callable = explode('::', $callable);
     }
 
@@ -435,18 +580,48 @@ class Utility {
   }
 
   /**
+   * Returns all readable data from a unix socket.
+   */
+  static function readUnixSocket($address) {
+    $socket = socket_create(AF_UNIX, SOCK_STREAM, 0);
+
+    if ( !socket_connect($socket, $address) ) {
+      return false;
+    }
+
+    $result = '';
+
+    while ( true ) {
+      $data = @socket_read($socket, 4096);
+
+      if ( false === $data ) {
+        return false;
+      }
+      else if ( !$data ) {
+        break;
+      }
+
+      $result.= $data;
+    }
+
+    socket_close($socket);
+
+    return $result;
+  }
+
+  /**
    * This function is very much like the date() function,
    * except it also takes a string which originally needs
    * an extra call to strtotime().
    */
-  public static function
-  /* string */ formatDate($pattern, $date) {
+  public static /* string */
+  function formatDate($pattern, $date) {
     if ( !is_numeric($date) && $date ) {
       return call_user_func(array(__CLASS__, __FUNCTION__), $pattern, strtotime($date));
     }
 
     if ( !$date || $date == -1 ) {
-      return FALSE;
+      return false;
     }
 
     return date($pattern, $date);
@@ -461,8 +636,8 @@ class Utility {
    *
    * @param (uint) $target The target time to be compared against.
    * @param (uint) $since Optional, the relative start time to compare. Defaults to current time.
-  public static function composeDateString($target, $since = NULL) {
-    if ( $since === NULL ) {
+  public static function composeDateString($target, $since = null) {
+    if ( $since === null ) {
       $since = time();
     }
 
@@ -532,7 +707,7 @@ class Utility {
   /**
    * Try parsing the value as XML string.
    *
-   * @returns TRUE on success, FALSE otherwise.
+   * @returns true on success, false otherwise.
    */
   static function sanitizeXML($value) {
     libxml_use_internal_errors(true);
@@ -556,7 +731,7 @@ class Utility {
    * A date of zero timestamp will be returned on invalid.
    */
   static function sanitizeDate($value, $format = '%Y-%m-%d') {
-    if ( strptime($value, $format) === FALSE ) {
+    if ( strptime($value, $format) === false ) {
       return strftime($format, 0);
     }
     else {
@@ -574,11 +749,11 @@ class Utility {
   /**
    * Expanding 2 digit year to 4 digits.
    *
-   * FALSE will be returned when parse failure.
+   * false will be returned when parse failure.
    */
   static function sanitizeYear($input) {
     if ( !is_int($input-0) ) {
-      return FALSE;
+      return false;
     }
 
     $strlen = strlen("$input");
@@ -595,7 +770,7 @@ class Utility {
       return $time['tm_year'] + 1900;
     }
 
-    return FALSE;
+    return false;
   }
 
   /**
@@ -605,7 +780,7 @@ class Utility {
    *
    * @param $input Source array to be counted.
    * @param $value Any PHP value to be filled to the new array.
-   * @param $glue (Optional) Cusotmize implode() behavior of the result array, specify FALSE to skip this action and return an array instead.
+   * @param $glue (Optional) Cusotmize implode() behavior of the result array, specify false to skip this action and return an array instead.
    *
    * @returns Array of the same length of $input filled with $value,
    *          or an imploded string of the resulting array.
@@ -613,7 +788,7 @@ class Utility {
   static function fillArray($input, $value = '?', $glue = ',') {
     $result = array_fill(0, count($input), $value);
 
-    if ( $glue !== FALSE ) {
+    if ( $glue !== false ) {
       $result = implode($glue, $result);
     }
 
@@ -629,7 +804,7 @@ class Utility {
    * @param {string} $method Name of the service method.
    * @param {array} $parameters Optional, array of parameters passed to the methdod.
    *
-   * @return Whatever the method returns, or FALSE in case of method not exists.
+   * @return Whatever the method returns, or false in case of method not exists.
    */
   static function callService($service, $method, $parameters = array()) {
     triggerDeprecate('framework\Service::call');
@@ -642,10 +817,10 @@ class Utility {
    */
   static function filesFix() {
     if ( @$_FILES ) {
-      foreach ($_FILES as &$file){
+      foreach ( $_FILES as &$file ) {
         $output = array();
 
-        foreach ($file as $fileKey => &$input) {
+        foreach ( $file as $fileKey => &$input ) {
           $recursor = function($input, &$output) use(&$fileKey, &$recursor) {
             if ( is_array($input) ) {
               foreach ( $input as $key => $value ) {
@@ -679,7 +854,7 @@ class Utility {
   /**
    * Get file info with the finfo class.
    */
-  static function getInfo($file, $options = NULL) {
+  static function getInfo($file, $options = null) {
     $finfo = new \finfo($options);
 
     return $finfo->file($file);
@@ -689,26 +864,57 @@ class Utility {
    * Get offset data from request headers.
    *
    * This HTTP header is a simplified version of the HTTP Range header.
-   * List-Range: (\d+)?-(\d+)?
+   * List-Range: (\d+)?(-\d+)?
    *
    * Unlike the Range header, only one range is allowed in this header.
    */
   static function getListRange($defaultLength = 20) {
     $range = Request::headers('List-Range');
 
-    if ( !preg_match('/^(\d*)-(\d*|\*)$/', trim($range), $matches) ) {
-      return NULL;
+    if ( !preg_match('/^(\d*)?(?:-(\d*|\*))?$/', trim($range), $matches) ) {
+      return null;
     }
 
-    if ( !$matches[2] ) {
+    if ( empty($matches[2]) ) {
+      list($matches[1], $matches[2]) = array(0, $matches[1]);
+    }
+
+    if ( @$matches[2] == '*' ) {
       $matches[2] = $defaultLength;
     }
 
-    if ( $matches[2] == '*' ) {
-      $matches[2] = PHP_INT_MAX;
+    if ( $matches[2] == 0 ) {
+      return null;
     }
 
     return array((int) $matches[1], (int) $matches[2]);
+  }
+
+  /**
+   * Get a MustacheResource object in the context with current server configurations.
+   */
+  static function getResourceContext($locale = null) {
+    static $resource;
+
+    if ( $resource ) {
+      return $resource;
+    }
+
+    $localeChain = Configuration::get('core.i18n::localeChain');
+
+    if ( !$localeChain ) {
+      $localeChain = ['en_US'];
+    }
+
+    if ( $locale ) {
+      array_unshift($localeChain, $locale);
+
+      $localeChain = array_unique($localeChain);
+    }
+
+    $resource = new MustacheResource($localeChain);
+
+    return $resource;
   }
 
   /**
@@ -717,8 +923,39 @@ class Utility {
   static function generateHtmlId($prefix = ':') {
     static $idSeq = 0;
 
+/*
+  0-25 = 97-122 (a-z)
+  26-51 = 65-90 (A-Z)
+  52 = aa
+  53 = ab
+  54 = ac
+*/
+
     $id = $idSeq++;
 
-    return $prefix . \sprintf('%c%c', floor($id / 25) + 97, $id % 25 + 97);
+    $res = '';
+
+    while ( $id >= 0 ) {
+      $chr = $id % 52;
+
+      if ( $chr < 26 ) {
+        $chr += 97;
+      }
+      else {
+        $chr += 65 - 25;
+      }
+
+      $res = chr($chr) . $res;
+
+      $id = floor($id / 51);
+
+      if ( $id <= 0 ) {
+        break;
+      }
+
+      unset($chr);
+    }
+
+    return $prefix . $res;
   }
 }

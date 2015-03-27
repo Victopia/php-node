@@ -1,11 +1,16 @@
 <?php
-/* files.php | A service to give HTTP interface to files in database. */
+/*! files.php | A service to give HTTP interface to files in database. */
 
-/* Note by Vicary @ 24 Mar, 2013
-   This class also act as a sample service, further demonstrates how to
-   write RESTful functions.
-*/
+use core\Database;
+use core\Node;
+use core\Utility;
 
+use framework\Session;
+use framework\Service;
+
+/**
+ * This class act as a sample service, further demonstrates how to write RESTful functions.
+ */
 class files implements framework\interfaces\IAuthorizableWebService {
 
   //--------------------------------------------------
@@ -26,16 +31,16 @@ class files implements framework\interfaces\IAuthorizableWebService {
       }
 
       // If local redirect, username must exists.
-      if ( utils::isLocal() ) {
+      if ( Utility::isLocal() ) {
         return isset($args[0]);
       }
 
       // Otherwise, only allow logged in session to access themselves.
       else {
         // Session will be enforced in this service, don't need to do again.
-        $user = service::call('users', 'get', array($args[0]));
+        $user = Service::call('users', 'get', array($args[0]));
 
-        return @$user['ID'] == session::currentUser('ID');
+        return @$user['ID'] == Session::currentUser('ID');
       }
     }
   }
@@ -141,7 +146,7 @@ class files implements framework\interfaces\IAuthorizableWebService {
 
     // File deletion
     if ( strcasecmp(@$_SERVER['REQUEST_METHOD'], 'DELETE') === 0 ) {
-      return node::delete(array(
+      return Node::delete(array(
           NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_FILE
         , 'id' => $fileObj['id']
         ));
@@ -200,8 +205,10 @@ class files implements framework\interfaces\IAuthorizableWebService {
       throw new framework\exceptions\ServiceException('Please upload a file via POST.');
     }
     else {
-      \utils::filesFix();
+      Utility::filesFix();
     }
+
+    $user = Service::call('users', 'get', $username);
 
     $result = array();
 
@@ -213,7 +220,12 @@ class files implements framework\interfaces\IAuthorizableWebService {
         , '@contents' => fopen($file['tmp_name'], 'rb')
         );
 
-      $result[$key] = $this->setQuery($fileObj, $username);
+      if ( $this->setQuery($fileObj, $user['ID']) ) {
+        $result[$key] = sprintf('http://%s/services/files/%s/%s', FRAMEWORK_STATIC_HOSTNAME, $user['username'], $fileObj['name']);
+      }
+      else {
+        $result[$key] = false;
+      }
     }
 
     return $result;
@@ -232,7 +244,7 @@ class files implements framework\interfaces\IAuthorizableWebService {
   function __call($name, $params) {
     // Dirty check, assume file/get if parameter count is two ($username, $fileId).
     if ( count($params) <= 2 ) {
-      return $this->get($name, $params[0]);
+      return $this->get($name, @$params[0]);
     }
     else {
       throw new framework\exceptions\ResolverException(404);
@@ -264,9 +276,9 @@ class files implements framework\interfaces\IAuthorizableWebService {
   private static function
   /* PDOStatement */ getQuery($filter, &$bindArray, $username = '~') {
     // Use ~ to specify current user
-    $user = service::call('users', 'get', array($username));
+    $user = Service::call('users', 'get', array($username));
 
-    $fields = core\Database::getFields(FRAMEWORK_COLLECTION_FILE);
+    $fields = Database::getFields(FRAMEWORK_COLLECTION_FILE);
 
     $query = 'SELECT * FROM `'.FRAMEWORK_COLLECTION_FILE.'` WHERE ';
 
@@ -279,7 +291,7 @@ class files implements framework\interfaces\IAuthorizableWebService {
 
     $query.= implode(' AND ', array_map(appends(' = ?'), array_keys($param)));
 
-    $query = core\Database::query($query, array_values($param));
+    $query = Database::query($query, array_values($param));
 
     foreach ($bindArray as $key => $value) {
       $query->bindColumn($key, $bindArray[$key], $value);
@@ -289,7 +301,7 @@ class files implements framework\interfaces\IAuthorizableWebService {
   }
 
   private static function
-  /* void */ setQuery($bindArray, $username = '~') {
+  /* void */ setQuery($bindArray, $userId) {
     /* Note by Eric @ 8.Nov.2012
         As of PHP 5.4.8, PDO still has no solution on streaming PARMA_LOB
         when database driver has no native support for it.
@@ -300,21 +312,19 @@ class files implements framework\interfaces\IAuthorizableWebService {
       $bindArray['@contents'] = stream_get_contents($bindArray['@contents']);
     }
 
-    $user = service::call('users', 'get', array($username));
-
     // Try to search for the exact same file.
     if ( !@$bindArray['id'] && @$bindArray['name'] ) {
-      $bindArray['id'] = core\Database::fetchField('SELECT id FROM `'.FRAMEWORK_COLLECTION_FILE.'`
-        WHERE UserID = ? AND name = ?', array($user['ID'], $bindArray['name']));
+      $bindArray['id'] = Database::fetchField('SELECT id FROM `'.FRAMEWORK_COLLECTION_FILE.'`
+        WHERE UserID = ? AND name = ?', array($userId, $bindArray['name']));
     }
 
     $query = 'INSERT INTO `'.FRAMEWORK_COLLECTION_FILE.'` VALUES (:id, :UserID, :name, :mime, :contents, CURRENT_TIMESTAMP)
       ON DUPLICATE KEY UPDATE name = :name, mime = :mime, `@contents` = :contents, `timestamp` = CURRENT_TIMESTAMP';
 
-    $query = core\Database::prepare($query);
+    $query = Database::prepare($query);
 
     $query->bindParam(':id', $bindArray['id'], PDO::PARAM_INT, 20);
-    $query->bindParam(':UserID', $user['ID'], PDO::PARAM_INT, 20);
+    $query->bindParam(':UserID', $userId, PDO::PARAM_INT, 20);
     $query->bindParam(':name', $bindArray['name'], PDO::PARAM_STR, 255);
     $query->bindParam(':mime', $bindArray['mime'], PDO::PARAM_STR, 255);
     $query->bindParam(':contents', $bindArray['@contents'], PDO::PARAM_LOB);
@@ -325,7 +335,7 @@ class files implements framework\interfaces\IAuthorizableWebService {
       $query->closeCursor();
 
       if ( $query->rowCount() == 1 ) {
-        return core\Database::lastInsertId();
+        return Database::lastInsertId();
       }
       else {
         return $ret;

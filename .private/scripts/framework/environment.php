@@ -1,6 +1,8 @@
 <?php
 /* environment.php | Perform base functionality check, terminate the script if any of these doesn't presence. */
 
+use core\Utility;
+
 //--------------------------------------------------
 //
 //  Environment definitions
@@ -24,7 +26,7 @@ if (CRYPT_SHA512 !== 1) {
   throw new Exception('CRYPT_SHA512 method is not supported, please enable it on your system.');
 }
 
-if (utils::isCLI()) {
+if ( Utility::isCLI() ) {
   // Allow more nesting for functional programming.
   ini_set('xdebug.max_nesting_level', 50000);
 
@@ -77,7 +79,7 @@ if ( !function_exists('curl_file_create') ) {
 //--------------------------------------------------
 
 function triggerDeprecate($successor = '') {
-  $message = utils::getCallee();
+  $message = Utility::getCallee();
 
   $message = "Function $message[class]::$message[function]() has been deprecated";
 

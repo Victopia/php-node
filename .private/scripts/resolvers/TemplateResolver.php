@@ -1,18 +1,12 @@
 <?php
-/*! TempalteResovler.php \ IRequestResolver
- *
- * Request resolver for Templates.
- *
- * @deprecated
- * This class is going to be revamp with a new logic.
- */
+/* TempalteResovler.php | Renders template files with specified renderer and options. */
 
 namespace resolvers;
 
-class TemplateResolver implements \framework\interfaces\IRequestResolver {
-  private static $mustache;
+use core\Utility;
 
-  private $resouces;
+class TemplateResolver implements \framework\interfaces\IRequestResolver {
+  private $handlers = array();
 
   //----------------------------------------------------------------------
   //
@@ -20,12 +14,32 @@ class TemplateResolver implements \framework\interfaces\IRequestResolver {
   //
   //----------------------------------------------------------------------
 
-  public function __construct($localeChain = 'en_US') {
-    if ( !self::$mustache ) {
-      self::$mustache = new \Mustache_Engine();
+  /**
+   * @param $handlers An array of template handler options, with the following format:
+   *                 [{ render: // Template rendering function: function($template, $resource);
+   *                  , extensions: // File extensions to match against handling templates.
+   *                  }]
+   */
+  public function __construct($handlers = array()) {
+    $handlers = Utility::wrapAssoc($handlers);
+
+    foreach ( $handlers as &$handler ) {
+      if ( !is_callable($handler['render']) ) {
+        throw new FrameworkException('Please specify a valid render function.');
+      }
+
+      if ( !@$handler['extensions'] ) {
+        throw new FrameworkException('Please specify file extensions this handler handles.');
+      }
+
+      if ( is_string($handler['extensions']) ) {
+        $handler['extensions'] = preg_split('/\s+/', $handler['extensions']);
+      }
+
+      $handler['extensions'] = Utility::wrapAssoc($handler['extensions']);
     }
 
-    $this->resources = new \framework\MustacheResource($localeChain);
+    $this->handlers = $handlers;
   }
 
   //----------------------------------------------------------------------
@@ -46,27 +60,31 @@ class TemplateResolver implements \framework\interfaces\IRequestResolver {
   }
 
   //----------------------------------------------------------------------
-	//
-	//  Methods: IPathResolver
-	//
-	//----------------------------------------------------------------------
+  //
+  //  Methods: IPathResolver
+  //
+  //----------------------------------------------------------------------
 
-  public /* Boolean */
-  function resolve($path) {
+  public /* Boolean */ function resolve($path) {
+    // Not a regular request uri.
+    if ( strpos($path, '/') !== 0 ) {
+      return $path;
+    }
+
     // Normalize request URL to a relative path
     if ( strpos($path, '.') !== 0 ) {
-      $path = ".$path";
+      $res = ".$path";
     }
 
     // Mimic directory index
-    if ( is_dir($path) ) {
+    if ( is_dir($res) ) {
       foreach ( $this->directoryIndex as $dirIndex ) {
-        $files = glob($path . DIRECTORY_SEPARATOR . "$dirIndex.*");
+        $files = glob($res . DIRECTORY_SEPARATOR . "$dirIndex.*");
 
         $files = reset($files);
 
         if ( $files ) {
-          $path = realpath($files);
+          $res = realpath($files);
 
           break;
         }
@@ -75,26 +93,41 @@ class TemplateResolver implements \framework\interfaces\IRequestResolver {
       unset($dirIndex, $files);
     }
 
-    // Check whether target is a template file
+    // extensionless
+    $ext = pathinfo($res, PATHINFO_EXTENSION);
+    $ext = strtolower($ext);
 
-    /* Note @ 11 Feb, 2014
-       We support mustache only.
-    */
-    if ( file_exists($path) ) {
-      $ext = pathinfo($path, PATHINFO_EXTENSION);
+    if ( !$ext ) {
+      foreach ( $this->handlers as $handler ) {
+        // var_dump($handler); die;
+        foreach ( (array) $handler['extensions'] as $extension ) {
+          if ( file_exists("$res.$extension") ) {
+            $res = "$res.$extension";
 
-      switch ( $ext ) {
-        case 'mustache':
-        case 'html':
-          return $this->handle($path);
+            break 2;
+          }
+        }
+
+        unset($extension);
+      }
+
+      unset($handler);
+    }
+
+    // Check whether we handles target template file.
+    if ( file_exists($res) ) {
+      $ext = pathinfo($res, PATHINFO_EXTENSION);
+      $ext = strtolower($ext);
+
+      foreach ( $this->handlers as $handler ) {
+        if ( in_array($ext, $handler['extensions']) ) {
+          echo $handler['render']($res);
+
+          return;
+        }
       }
     }
 
-    return false;
+    return $path;
   }
-
-	public /* String */
-  function handle($path) {
-    echo self::$mustache->render(file_get_contents($path), $this->resources);
-	}
 }

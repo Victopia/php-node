@@ -41,4 +41,16 @@ class Request {
     }
   }
 
+  public static /* string */
+  function locale($locale = null) {
+    static $_locale = 'en_US';
+
+    if ( empty($locale) ) {
+      return $_locale;
+    }
+    else {
+      $_locale = $locale;
+    }
+  }
+
 }

@@ -1,11 +1,15 @@
 <?php
-/*! ExternalResolver.php \ IRequestResovler
+/*  ExternalResolver.php \ IRequestResolver
  *
  *  Resolve *.url files, it can be a plain URL string or
  *  the standard format of *.url files in Microsoft Windows.
  */
 
 namespace resolvers;
+
+use core\Utility;
+
+use framework\Cache;
 
 class ExternalResolver implements \framework\interfaces\IRequestResolver {
 	//--------------------------------------------------
@@ -18,27 +22,27 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
 	/* Boolean */ function resolve($path) {
 		$url = $this->getURL("$_SERVER[DOCUMENT_ROOT]$path");
 
-		if ($url === FALSE) {
+		if ( $url === false ) {
 			// Use case of 500 Internal Server Error
-			return FALSE;
+			return $path;
 		}
 
 		// Check cached resource
-		if ($this->cacheExpired($url)) {
+		if ( $this->cacheExpired($url) ) {
 			$this->updateCache($url);
 		}
 
-		$cache = \framework\Cache::get($url);
+		$cache = Cache::get($url);
 
 		$cHead = &$cache['headers'];
 
 		// 1. If-Modified-Since from client
-		if (isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) &&
-			isset($cHead['last-modified'])) {
+		if ( isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) &&
+			isset($cHead['last-modified']) ) {
 			$mtime = strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']);
 			$cmtime = strtotime($cHead['last-modified']);
 
-			if ($mtime <= $cmtime) {
+			if ( $mtime <= $cmtime ) {
 				header('HTTP/1.1 304 Not Modified', true, 304);
 
 				$this->outputHeaders($cache['headers']);
@@ -48,22 +52,21 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
 		}
 
 		// 2. If-None-Match from client
-		if (isset($_SERVER['HTTP_IF_NONE_MATCH']) && isset($cHead['etag']) &&
+		if ( isset($_SERVER['HTTP_IF_NONE_MATCH']) && isset($cHead['etag']) &&
 			preg_match('/^"?(.+)(:?+gzip)?"?/i', $_SERVER['HTTP_IF_NONE_MATCH'], $matches) &&
-			$matches[1] === $cHead['etag']) {
+			$matches[1] === $cHead['etag'] ) {
 			header('HTTP/1.1 304 Not Modified', true, 304);
 
 			$this->outputHeaders($cache['headers']);
 
 			return;
 		}
+
 		unset($matches);
 
 		$this->outputHeaders($cache['headers']);
 
 		echo $cache['body'];
-
-		return;
 	}
 
 	//--------------------------------------------------
@@ -73,27 +76,27 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
 	//--------------------------------------------------
 
 	private function getURL($path) {
-		if (!is_file($path)) {
-			return FALSE;
+		if ( !is_file($path) ) {
+			return false;
 		}
 
 		$content = file_get_contents($path);
 
 		$res = @parse_ini_string($content);
 
-		if ($res && count($res) && isset($res['URL'])) {
+		if ( $res && count($res) && isset($res['URL']) ) {
 			$content = $res['URL'];
 		}
 		else {
 			$pos = strpos($content, "\n");
 
-			if ($pos) {
+			if ( $pos ) {
 				$content = substr($content, 0, $pos);
 			}
 		}
 
-		if (!\utils::isURL($content)) {
-			return FALSE;
+		if ( !Utility::isURL($content) ) {
+			return false;
 		}
 
 		return $content;
@@ -103,9 +106,9 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
 	 * @private
 	 */
 	private function cacheExpired($url) {
-		$cacheInfo = \framework\Cache::getInfo($url);
+		$cacheInfo = Cache::getInfo($url);
 
-		return $cacheInfo === NULL ||
+		return $cacheInfo === null ||
 			($cacheInfo->getMTime() + FRAMEWORK_EXTERNAL_UPDATE_DELAY > time());
 	}
 
@@ -113,18 +116,18 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
 	 * @private
 	 */
 	private function updateCache($url) {
-		$cacheData = \framework\Cache::get($url);
+		$cacheData = Cache::get($url);
 
 		$cHead = &$cacheData['headers'];
 
 		// Request headers
 		$reqHeaders = array();
 
-		if (isset($cHead['last-modified'])) {
+		if ( isset($cHead['last-modified']) ) {
 			$reqHeaders[] = 'If-Modified-Since: ' . $cHead['last-modified'];
 		}
 
-		if (isset($cHead['etag'])) {
+		if ( isset($cHead['etag']) ) {
 			$reqHeaders[] = 'If-None-Match: ' . $cHead['etag'];
 		}
 
@@ -133,9 +136,9 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
 
 		curl_setopt_array($ch, Array(
 			CURLOPT_HTTPHEADER => $reqHeaders,
-			CURLOPT_HEADER => TRUE,
-			CURLOPT_NOBODY => TRUE,
-			CURLOPT_RETURNTRANSFER => TRUE
+			CURLOPT_HEADER => true,
+			CURLOPT_NOBODY => true,
+			CURLOPT_RETURNTRANSFER => true
 		));
 
 		$resHeaders = curl_exec($ch);
@@ -146,23 +149,24 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
 
 		// Last Modified time check against http headers,
 		// only when we already have a body cached.
-		if (@$cacheData['body']) {
-			$cmtime = $rmtime = NULL;
+		if ( @$cacheData['body'] ) {
+			$cmtime = $rmtime = null;
 
-			if (isset($cHead['last-modified']))
+			if ( isset($cHead['last-modified']) )
 				$cmtime = strtotime($cHead['last-modified']);
 
-			if (isset($resHeaders['last-modified']))
+			if ( isset($resHeaders['last-modified']) )
 				$rmtime = strtotime($resHeaders['last-modified']);
 
 			// Output the cache if not modified.
-			if ($cmtime && $rmtime && $cmtime >= $rmtime) {
-				$cacheInfo = \framework\Cache::getInfo($url);
+			if ( $cmtime && $rmtime && $cmtime >= $rmtime ) {
+				$cacheInfo = Cache::getInfo($url);
 
 				touch($cacheInfo->getRealPath());
 
-				return FALSE;
+				return false;
 			}
+
 			unset($cmtime, $rmtime, $interval);
 		}
 
@@ -174,7 +178,7 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
 
 		curl_setopt_array($ch, array(
 			CURLOPT_HTTPHEADER => $reqHeaders,
-			CURLOPT_RETURNTRANSFER => TRUE
+			CURLOPT_RETURNTRANSFER => true
 		));
 
 		$res = curl_exec($ch);
@@ -183,10 +187,11 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
 
 		$cacheData['body'] = $res;
 
-		\framework\Cache::delete($url);
-		\framework\Cache::set($url, $cacheData);
+		Cache::delete($url);
 
-		return TRUE;
+		Cache::set($url, $cacheData);
+
+		return true;
 	}
 
 	/**
@@ -203,7 +208,8 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
 
 		$result = array();
 		$headers = explode("\n", $headers);
-		foreach ($headers as $header) {
+
+		foreach ( $headers as $header ) {
 			foreach ($patterns as $pattern) {
 				if (preg_match($pattern, $header, $matches)) {
 					$result[strtolower($matches[1])] = $matches[2];
@@ -216,8 +222,9 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
 	}
 
 	private function updateAndOutputCache($cache, $url) {
-		\framework\Cache::delete($url);
-		\framework\Cache::set($url, $cache);
+		Cache::delete($url);
+
+		Cache::set($url, $cache);
 
 		$this->outputHeaders($cache);
 
@@ -225,7 +232,7 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
 	}
 
 	private function outputHeaders($headers) {
-		foreach ($headers as $key => $header) {
+		foreach ( $headers as $key => $header ) {
 			// Ignoring the status code parameter, seems not necessary.
 			header("$key: $header", true);
 		}

@@ -11,7 +11,22 @@
 
 namespace resolvers;
 
+use core\Log;
+use core\Utility;
+
+use framework\Service;
+
+use framework\exceptions\ResolverException;
+
 class WebServiceResolver implements \framework\interfaces\IRequestResolver {
+
+  //--------------------------------------------------
+  //
+  //  Properties
+  //
+  //--------------------------------------------------
+
+  private $pathPrefix;
 
   //--------------------------------------------------
   //
@@ -21,7 +36,7 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
 
   public function __construct($pathPrefix) {
     if ( !$pathPrefix ) {
-      throw new \framework\exceptions\ResolverException('Please provide a proper path prefix for ResourceResolver.');
+      throw new ResolverException('Please provide a proper path prefix for ResourceResolver.');
     }
 
     $this->pathPrefix = $pathPrefix;
@@ -29,55 +44,47 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
 
   //--------------------------------------------------
   //
-  //  Properties
-  //
-  //--------------------------------------------------
-
-  private $pathPrefix = null;
-
-  //--------------------------------------------------
-  //
   //  Methods: IRequestResolver
   //
   //--------------------------------------------------
 
-  public
-  /* String */ function resolve($path) {
+  public /* String */
+  function resolve($path) {
     // Request URI must start with the specified path prefix. e.g. /:resource/.
     if ( !$this->pathPrefix || 0 !== strpos($path, $this->pathPrefix) ) {
-      return false;
+      return $path;
     }
 
-    $path = substr($path, strlen($this->pathPrefix));
+    $res = substr($path, strlen($this->pathPrefix));
 
-    $path = urldecode($path);
+    $res = urldecode($res);
 
     // Resolve target service and apply appropiate parameters
-    preg_match('/^([^\/]+)\/([^\/\?,]+)(\/[^\?]+)?\/?/', $path, $matches);
+    preg_match('/^([^\/]+)\/([^\/\?,]+)(\/[^\?]+)?\/?/', $res, $matches);
 
     // Chain off to 404 instead of the original "501 Method Not Allowed".
     if ( count($matches) < 3 ) {
-      return false;
+      return $path;
     }
 
     $classname = '\\' . $matches[1];
     $function = $matches[2];
 
-    \service::requireService($classname);
+    Service::requireService($classname);
 
     if ( !class_exists($classname) ) {
-      return false;
+      return $path;
     }
 
     $instance = new $classname();
 
     // Why instanceof fails on interfaces? God fucking knows!
     if ( !is_a($instance, 'framework\interfaces\IWebService') ) {
-      return false;
+      return $path;
     }
 
     if ( !method_exists($classname, $function) && !is_callable(array($instance, $function)) ) {
-      throw new \framework\exceptions\ResolverException( 501 );
+      throw new ResolverException( 501 );
     }
 
     if ( isset($matches[3]) ) {
@@ -92,18 +99,14 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
     // Allow intelligible primitive values on REST requests
     $parameters = array_map(function($value) {
       if ( preg_match('/^\:([\d\w]+)$/', $value, $matches) ) {
-        switch ( strtolower($matches[1]) ) {
-          case 'true':
-            $value = true;
-            break;
-
-          case 'false':
-            $value = false;
-            break;
-
-          case 'null':
-            $value = null;
-            break;
+        if ( strcasecmp(@$matches[1], 'true') == 0 ) {
+          $value = true;
+        }
+        else if ( strcasecmp(@$matches[1], 'false') == 0 ) {
+          $value = false;
+        }
+        else if ( strcasecmp(@$matches[1], 'null') == 0 ) {
+          $value = null;
         }
       }
 
@@ -124,26 +127,20 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
       }
 
       if ( preg_match('/^\:([\d\w+]+)$/', $value, $matches) ) {
-        switch ( strtolower($matches[1]) ) {
-          case 'true':
-            $value = true;
-            break;
-
-          case 'false':
-            $value = false;
-            break;
-
-          case 'null':
-            $value = null;
-            break;
-
-          default:
-            if (!defined(@$matches[1])) {
-              throw new \framework\exceptions\ResolverException('Error resolving web service parameters, undefined constant ' . $matches[1]);
-            }
-            else {
-              $value = constant(@$matches[1]);
-            }
+        if ( strcasecmp(@$matches[1], 'true') == 0 ) {
+          $value = true;
+        }
+        elseif ( strcasecmp(@$matches[1], 'false') == 0 ) {
+          $value = false;
+        }
+        elseif ( strcasecmp(@$matches[1], 'null') == 0 ) {
+          $value = null;
+        }
+        elseif ( !defined(@$matches[1]) ) {
+          throw new ResolverException('Error resolving web service parameters, undefined constant ' . $matches[1]);
+        }
+        else {
+          $value = constant(@$matches[1]);
         }
       }
 
@@ -151,7 +148,7 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
         unset($_GET[$key]);
 
         if ( !defined(@$matches[1]) ) {
-          throw new \framework\exceptions\ResolverException('Error resolving web service parameters, undefined constant ' . $matches[1]);
+          throw new ResolverException('Error resolving web service parameters, undefined constant ' . $matches[1]);
         }
         else {
           $_GET[constant(@$matches[1])] = $value;
@@ -159,18 +156,24 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
       }
     });
 
+    $serviceOptions = array(
+        'overrideMethod' => null
+      );
+
     // Shooto!
-    $response = \service::call($classname, $function, $parameters);
+    $response = Service::call($classname, $function, $parameters, $serviceOptions);
 
-    $logContext = array('parameters' => $parameters);
+    unset($serviceOptions);
 
-    if ( FRAMEWORK_ENVIRONMENT == 'debug' ) {
-      $logContext = array('response' => $response);
+    $logContext = array();
+
+    if ( $parameters ) {
+      $logContext['parameters'] = $parameters;
     }
 
     // Access log
-    if ( FRAMEWORK_ENVIRONMENT == 'debug' || !\utils::isLocal() ) {
-      \log::write(@"[WebService] $_SERVER[REQUEST_METHOD] $classname->$function", 'Access', array_filter($logContext));
+    if ( FRAMEWORK_ENVIRONMENT == 'debug' || !Utility::isLocal() ) {
+      Log::write(@"[WebService] $_SERVER[REQUEST_METHOD] $classname->$function", 'Access', array_filter($logContext));
     }
 
     unset($logContext);
@@ -196,6 +199,7 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
 
       echo $response;
     }
+
   }
 
 }

@@ -2,6 +2,6 @@
 
 namespace framework\exceptions;
 
-class ServiceException extends \Exception {
+class ServiceException extends FrameworkException {
 
 }

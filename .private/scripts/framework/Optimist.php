@@ -1,7 +1,9 @@
 <?php
-/* Optimist.php | Port from nodejs optimist https://github.com/substack/node-optimist. */
+/*! Optimist.php | Port from nodejs optimist https://github.com/substack/node-optimist. */
 
 namespace framework;
+
+use core\Utility;
 
 final class Optimist {
 
@@ -224,7 +226,7 @@ final class Optimist {
       //------------------------------
       //  Type-casting
       //------------------------------
-      $args = \utils::flattenArray($args);
+      $args = Utility::flattenArray($args);
 
       array_walk($args, function(&$value, $key) {
         if ( isset($this->types[$key]) ) {
@@ -241,7 +243,7 @@ final class Optimist {
 
       $args = $args + $this->defaults;
 
-      return \utils::unflattenArray($args);
+      return Utility::unflattenArray($args);
     }
   }
 
@@ -319,7 +321,7 @@ final class Optimist {
         $key = array($key => TRUE);
       }
 
-      // $key = \utils::wrapAssoc($key);
+      // $key = Utility::wrapAssoc($key);
 
       $this->demand = array_merge($this->demand, $key);
     }
@@ -334,7 +336,7 @@ final class Optimist {
    * keys to descriptions.
    */
   public function describe($key, $desc) {
-    $key = \utils::wrapAssoc($key);
+    $key = Utility::wrapAssoc($key);
 
     foreach ($key as $_key) {
       $this->descriptions["$_key"] = $desc;
@@ -351,7 +353,7 @@ final class Optimist {
    * keys to opt parameters.
    */
   public function options($key, $opt) {
-    $key = \utils::wrapAssoc($key);
+    $key = Utility::wrapAssoc($key);
 
     foreach ($key as $_key) {
       foreach ($opt as $option => $value) {
@@ -438,7 +440,7 @@ final class Optimist {
    * boolean() and string().
    */
   public function type($key, $type) {
-    $key = \utils::wrapAssoc($key);
+    $key = Utility::wrapAssoc($key);
 
     $type = $this->normalizeType($type);
 
