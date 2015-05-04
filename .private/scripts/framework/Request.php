@@ -175,7 +175,7 @@ class Request {
       }
 
       // Request method
-      $this->method = @$_SERVER['REQUEST_METHOD'];
+      $this->method = strtolower(@$_SERVER['REQUEST_METHOD']);
 
       // Request headers
       if ( function_exists('getallheaders') ) {

@@ -71,7 +71,13 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
       return;
     }
 
-    $instance = new $classname($request);
+    if ( is_a($classname, 'framework\WebService', true) ) {
+      $instance = new $classname($request, $response);
+    }
+    else {
+      $instance = new $classname();
+    }
+
     if ( !($instance instanceof \framework\interfaces\IWebService) ) {
       return;
     }
@@ -161,6 +167,7 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
 
     if ($request->client('type') != 'cli' &&
       $instance instanceof \framework\interfaces\IAuthorizableWebService &&
+      !$instance instanceof \framework\AuthorizableWebService &&
       $instance->authorizeMethod($function, $parameters) === false) {
       $response->status(401);
       return;
@@ -182,7 +189,7 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
       $response->header('Content-Type', 'application/json');
       $response->send($serviceResponse); // This sets repsonse code to 200
     }
-    else {
+    else if ( !$response->status() ) {
       $response->status(204);
     }
   }
