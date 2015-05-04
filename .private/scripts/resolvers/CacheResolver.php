@@ -3,32 +3,12 @@
 namespace resolvers;
 
 use framework\Cache;
+use framework\Request;
+use framework\Response;
 
 use framework\exceptions\ResolverException;
 
 class CacheResolver implements \framework\interfaces\IRequestResolver {
-
-  //--------------------------------------------------
-  //
-  //  Constructor
-  //
-  //--------------------------------------------------
-
-  public function __construct($pathPrefix) {
-    if ( !$pathPrefix ) {
-      throw new ResolverException('Please provide a proper path prefix for CacheResolver.');
-    }
-
-    $this->pathPrefix = $pathPrefix;
-  }
-
-  //--------------------------------------------------
-  //
-  //  Properties
-  //
-  //--------------------------------------------------
-
-  private $pathPrefix;
 
   //--------------------------------------------------
   //
@@ -39,26 +19,29 @@ class CacheResolver implements \framework\interfaces\IRequestResolver {
   /**
    * Checks whether an update is available.
    */
-  public
-  /* Boolean */ function resolve($path) {
-    // Request URI must start with the specified path prefix. e.g. /:resource/.
-    if ( !$this->pathPrefix || 0 !== strpos($path, $this->pathPrefix) ) {
-      return $path;
+  public function resolve(Request $request, Response $response) {
+    $path = $request->uri('path');
+    $hash = $request->param('v');
+
+    $info = Cache::getInfo($path, $hash);
+    if ( !$info ) {
+      return;
     }
 
-    $path = substr($path, strlen($this->pathPrefix));
+    // Send a bunch of headers
 
-    $res = Cache::get($path);
+    // 1. Conditional request
+    // If-Modified-Since: Match against $info->getMTime();
+    // If-None-Match: Match against the md5_file();
 
-    if ( $res === null || $res === false ) {
-      return $path;
-    }
+    // 2. Normal request
+    // Content-Type + charset
+    // Content-Length
+    // Cache-Control
+    // Date
+    // Pragma (remove)
 
-    // To be extended ... now defaults to JSON things.
-
-    header('Content-Type: application/json; charset=utf-8', true);
-
-    echo $res;
+    // header('Content-Type: application/json; charset=utf-8', true);
   }
 
 }

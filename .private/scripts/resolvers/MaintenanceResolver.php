@@ -6,6 +6,8 @@ namespace resolvers;
 use core\Utility as util;
 
 use framework\Configuration as conf;
+use framework\Request;
+use framework\Response;
 
 class MaintenanceResolver implements \framework\interfaces\IRequestResolver {
 
@@ -36,20 +38,19 @@ class MaintenanceResolver implements \framework\interfaces\IRequestResolver {
   //
   //--------------------------------------------------
 
-  public /* string */ function resolve($path) {
-    $maintenance = (array) conf::get($this->configPath);
-
+  public /* string */ function resolve(Request $request, Response $response) {
     // Check maintenance mode
+    $maintenance = (array) conf::get($this->configPath);
     if ( !@$maintenance['enabled'] ) {
-      return $path;
+      return;
     }
 
     // Check whitelisted IP
-    if ( @$maintenance['whitelist'] && in_array(@$_SERVER['REMOTE_ADDR'], (array) $maintenance['whitelist']) ) {
-      return $path;
+    if ( in_array($request->client('address'), (array) @$maintenance['whitelist']) ) {
+      return;
     }
 
-    return $this->template;
+    $request->setUri($this->template);
   }
 
 }

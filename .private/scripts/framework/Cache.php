@@ -3,6 +3,10 @@
 
 namespace framework;
 
+use core\Log;
+
+use framework\exceptions\FrameworkException;
+
 /**
  * This class aims to provide a brainless way to store and retrieve binary-safe resources.
  *
@@ -15,18 +19,18 @@ class Cache {
 	/**
 	 * Max revisions to keep in cache.
 	 */
-	public static $revisionLimit = 10;
+	public static $maxRevisions = 1;
 
 	/**
 	 * Retrieves a cached resource.
 	 *
-	 * $key     : String to identify target cache.
-	 * $hash    : Specific revision to retrieve, NULL is returned if not found.
+	 * @param $key {string} Identifier of target cache, can be of any format.
+	 * @param $hash {?string} Reversion hash returned from set().
 	 */
-	public static function get($key, $hash = NULL) {
+	public static function get($key, $hash = null) {
 		$res = self::resolve($key, $hash);
 
-		if ($res !== NULL) {
+		if ( $res !== null ) {
 			$res = file_get_contents($res->getRealPath());
 			$res = unserialize($res);
 		}
@@ -36,20 +40,23 @@ class Cache {
 
 	/**
 	 * Retrieves a cached resource file as a SplFileInfo object.
+	 *
+	 * @param $key {string} Identifier of target cache.
+	 * @param $hash {?string} Revision hash returned from set().
 	 */
-	public static function getInfo($key, $hash = NULL) {
+	public static function getInfo($key, $hash = null) {
 		return self::resolve($key, $hash);
 	}
 
 	/**
 	 * Cache a resource.
 	 *
-	 * $key     : String to identify target cache.
-	 * $content : Contents to be stored.
-	 * $hash    : Writes to
+	 * @param {string} $key Identifier of target cache, can be of any format.
+	 * @param {mixed} $content Serialized contents to be stored.
+	 * @param {?string} $hash Overwrites target revision.
 	 */
-	public static function set($key, $content, $hash = FALSE) {
-		if ($hash && $hash instanceof SplFileInfo) {
+	public static function set($key, $content, $hash = false) {
+		if ( $hash && $hash instanceof SplFileInfo ) {
 			$hash = $hash->getFilename();
 		}
 
@@ -58,14 +65,12 @@ class Cache {
 		$content = serialize($content);
 
 		// Return a revision file if a target is specified.
-		if ($res->isFile()) {
-			if ($res->isWritable()) {
-				$file = $res->openFile('w');
+		if ( $res->isFile() && $res->isWritable() ) {
+			$file = $res->openFile('w');
 
-				$file->fwrite($content);
+			$file->fwrite($content);
 
-				return $hash;
-			}
+			return $hash;
 		}
 
 		// RecuresiveDirectoryIterator points to the first file after rewind,
@@ -73,7 +78,7 @@ class Cache {
 		// after after iteration.
 		$cacheDirectory = $res->getRealPath() . DIRECTORY_SEPARATOR;
 
-		if ($res->isDir()) {
+		if ( $res->isDir() ) {
 			$hash = md5($content);
 
 			$fileCache = array();
@@ -85,15 +90,15 @@ class Cache {
 			$res->rewind();
 
 			// Iterate through existing caches
-			foreach ($res as $file) {
-				if ($file->isFile()) {
+			foreach ( $res as $file ) {
+				if ( $file->isFile() ) {
 					$res1 = $file->getRealPath();
 					$res1 = file_get_contents($res1);
 					$res1 = md5($res1);
 
 					// If a revision contains an exact content,
 					// return that revision hash.
-					if ($hash === $res1) {
+					if ( $hash === $res1 ) {
 						touch($file->getPathname());
 
 						return $hash;
@@ -108,12 +113,12 @@ class Cache {
 			// Remove revisions exceed the revision limit.
 			ksort($fileCache);
 
-			if (count($fileCache) > self::$revisionLimit) {
+			if ( count($fileCache) > self::$maxRevisions ) {
 				// Keys are not preserved with array_splice(),
 				// but we do not use it anymore.
-				$fileCache = array_splice($fileCache, self::$revisionLimit);
+				$fileCache = array_splice($fileCache, self::$maxRevisions);
 
-				foreach ($fileCache as $file) {
+				foreach ( $fileCache as $file ) {
 					unlink($fileCache);
 				}
 			}
@@ -125,8 +130,8 @@ class Cache {
 
 			$res = file_put_contents("$cacheDirectory$hash", $content);
 
-			if ($res <= 0) {
-				return FALSE;
+			if ( $res <= 0 ) {
+				return false;
 			}
 
 			return $hash;
@@ -136,35 +141,21 @@ class Cache {
 	/**
 	 * Force deletion on a cached resource.
 	 *
-	 * $key     : String to identify target cache.
-	 * $hash    : (Optional) Revision to delete, all revisions will be deleted if omitted.
+	 * @param {string} $key Identifier of target cache.
+	 * @param {?string} $hash Target revision to delete, all revisions will be deleted if omitted.
 	 */
-	public static function delete($key, $hash = NULL) {
+	public static function delete($key, $hash = null) {
 		$res = self::resolve($key, $hash);
 
-		/* Note by Eric @ 6 Jun 2012
-			Possibly don't need it again, this just removes the existing empty parent folder.
-
-		// Do nothing if a revision is specified but nothing found.
-		if ($hash !== NULL && $res === NULL) {
-			return;
-		}
-
-		// Delete everything in the directory.
-		if ($res === NULL) {
-			$res = self::resolve($key, $hash);
-		}
-		*/
-
 		// Skip the delete if nothing is found.
-		if ($res === NULL) {
+		if ( $res === null ) {
 			return;
 		}
 
-		if ($res->isFile()) {
+		if ( $res->isFile() ) {
 			// Remove target revision(s).
-			if (!$res->isWritable()) {
-				\log::write('Target file is not writable, deletion skipped.', 'Warning');
+			if ( !$res->isWritable() ) {
+				Log::write('Target file is not writable, deletion skipped.', 'Warning');
 			}
 			else {
 				$path = $res->getRealPath();
@@ -176,19 +167,19 @@ class Cache {
 				// Remove the directory if empty.
 				$res = new \RecursiveDirectoryIterator($path, \FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::CURRENT_AS_FILEINFO | \FilesystemIterator::SKIP_DOTS);
 
-				if ($res->isDir() && !$res->hasChildren()) {
+				if ( $res->isDir() && !$res->hasChildren() ) {
 					rmdir($path);
 				}
 			}
 		}
-		elseif ($res->isDir()) {
+		else if ( $res->isDir() ) {
 			$cacheDirectory = $res->getRealPath();
 
-			foreach ($res as $file) {
-				if ($file->isFile()) {
+			foreach ( $res as $file ) {
+				if ( $file->isFile() ) {
 					unlink($file->getRealPath());
 				}
-				elseif ($file->isDir()) {
+				else if ( $file->isDir() ) {
 					rmdir($file->getRealPath());
 				}
 			}
@@ -200,64 +191,65 @@ class Cache {
 	/**
 	 * @private
 	 *
-	 * 1. Prepend TMP directory
-	 * 2. Find latest cache if $hash is NULL
-	 * 3. Return directory if $hash is FALSE
+	 * 1. Mimics tmp directory
+	 * 2. Find latest cache if $hash is null
+	 * 3. Return directory if $hash is false
 	 */
-	private static function
-	/* SplFileInfo */ resolve($key, $hash = FALSE) {
+	private static /* SplFileInfo */ function resolve($key, $hash = false) {
 		$target = sys_get_temp_dir() . DIRECTORY_SEPARATOR . md5($key);
 
-		if (!file_exists($target)) {
-			if ($hash !== FALSE) {
-				return NULL;
+		if ( !file_exists($target) ) {
+			if ( $hash !== false ) {
+				return null;
 			}
 
-			// Only FALSE when you _want_ a folder, mkdir() it.
-			elseif (mkdir($target) === FALSE) {
-				throw new \CacheException('Error creating cache folder "'.$target.'", please check folder permissions.');
+			// Only false when you _want_ a folder, mkdir() it.
+			elseif ( mkdir($target) === false ) {
+				throw new FrameworkException('Error creating cache folder "'.$target.'", please check folder permissions.');
 			}
 		}
-		elseif (is_file($target)) {
-			throw new \CacheException($target . ' is already a file, please specify another path.');
+		else if ( is_file($target) ) {
+			throw new FrameworkException($target . ' is already a file, please specify another path.');
 		}
 
 		$target.= DIRECTORY_SEPARATOR;
 
-		if ($hash === FALSE) {
-			return new \RecursiveDirectoryIterator($target, \FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::CURRENT_AS_FILEINFO | \FilesystemIterator::SKIP_DOTS);
+		if ( $hash === false ) {
+			return new \RecursiveDirectoryIterator($target,
+				\FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::CURRENT_AS_FILEINFO | \FilesystemIterator::SKIP_DOTS);
 		}
 
-		if ($hash !== NULL) {
+		if ( $hash !== null ) {
 			$target = "$target$hash";
 
-			if (!is_file($target)) {
-				throw new \CacheException('Target revision is not a file.');
+			if ( !is_file($target) ) {
+				throw new FrameworkException('Target revision is not a file.');
 			}
 
 			return new \SplFileInfo($target);
 		}
 		else {
-			$res = new \RecursiveDirectoryIterator($target, \FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::CURRENT_AS_FILEINFO | \FilesystemIterator::SKIP_DOTS);
+			$res = new \RecursiveDirectoryIterator($target,
+				\FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::CURRENT_AS_FILEINFO | \FilesystemIterator::SKIP_DOTS);
 
 			$res->next();
 			$res->rewind();
 
-			$lfile = NULL;
+			$lfile = null;
 
-			foreach ($res as $file) {
+			foreach ( $res as $file ) {
 				if (($file->isFile() && strlen($file->getFilename()) == 32) &&
-					($lfile == NULL || $lfile->getMTime() < $file->getMTime())) {
+					($lfile == null || $lfile->getMTime() < $file->getMTime())) {
 					$lfile = $file;
 				}
 			}
 
-			if ($lfile === NULL) {
-				return NULL;
+			if ( $lfile === null ) {
+				return null;
 			}
 
-			if (!$lfile->isReadable() || !$lfile->isWritable()) {
-				throw new \CacheException('Cache cannot be read or written, please check file permission to PHP user.');
+			if ( !$lfile->isReadable() || !$lfile->isWritable() ) {
+				throw new FrameworkException('Cache cannot be read or written, please check file permission to PHP user.');
 			}
 
 			return $lfile;
@@ -265,5 +257,3 @@ class Cache {
 	}
 
 }
-
-class CacheException extends \Exception {}

@@ -1,5 +1,5 @@
 <?php
-/* environment.php | Perform base functionality check, terminate the script if any of these doesn't presence. */
+/*! environment.php | Perform base functionality check, terminate the script if any of these doesn't presence. */
 
 use core\Utility;
 
@@ -9,49 +9,23 @@ use core\Utility;
 //
 //--------------------------------------------------
 
-// Align current directory and REQUEST_URI,
-// this approach does not cater any virtual directories, kinda bad.
-if (isset($_SERVER['REQUEST_URI']) && realpath(FRAMEWORK_PATH_VIRTUAL)) {
-  $virtualPath = realpath('/' . FRAMEWORK_PATH_VIRTUAL);
-
-  if (strpos($_SERVER['REQUEST_URI'], $virtualPath) === 0) {
-    $_SERVER['REQUEST_URI'] = '/' . substr($_SERVER['REQUEST_URI'], count($virtualPath));
-  }
-
-  unset($virtualPath);
-}
-
 // CRYPT_SHA512
-if (CRYPT_SHA512 !== 1) {
+if ( !constant('CRYPT_SHA512') ) {
   throw new Exception('CRYPT_SHA512 method is not supported, please enable it on your system.');
 }
 
-if ( Utility::isCLI() ) {
-  // Allow more nesting for functional programming.
-  ini_set('xdebug.max_nesting_level', 50000);
+/*! Note @ 29 Apr, 2015
+ *  Allow more nesting for functional programming.
+ */
+ini_set('xdebug.max_nesting_level', 1000);
 
+if ( Utility::isCLI() ) {
   // Turn on garbage collection
   gc_enable();
 }
-
-// Starts HTTP session for browsers.
 else {
+  // Starts HTTP session for browsers.
   session_start();
-
-  if (function_exists('getallheaders')) {
-    // Parse custom headers
-    $_REQUEST['HEADERS'] = array();
-
-    foreach(getallheaders() as $key => $value) {
-      if (preg_match(FRAMEWORK_CUSTOM_HEADER_PATTERN, $key)) {
-        $_REQUEST['HEADERS'][$key] = $value;
-      }
-    } unset($key, $value);
-
-    if (!$_REQUEST['HEADERS']) {
-      unset($_REQUEST['HEADERS']);
-    }
-  }
 }
 
 //--------------------------------------------------
@@ -61,7 +35,7 @@ else {
 //--------------------------------------------------
 
 if ( !function_exists('curl_file_create') ) {
-  function curl_file_create($path, $type = NULL, $name = NULL) {
+  function curl_file_create($path, $type = null, $name = null) {
     $ret = "@$path";
 
     if ( $type ) {
@@ -69,6 +43,70 @@ if ( !function_exists('curl_file_create') ) {
     }
 
     return $ret;
+  }
+}
+
+if ( !function_exists('http_build_url') ) {
+  function http_build_url($url = null, $parts = array()) {
+    if ( is_array($url) ) {
+      $parts = $url;
+      $url = null;
+    }
+
+    if ( $url ) {
+      $url = parse_url($url);
+    }
+
+    $url = $parts + (array) $url;
+
+    if ( empty($url['scheme']) ) {
+      $url['scheme'] = 'http://';
+    }
+    else if ( substr($url['scheme'], -3) != '://' ) {
+      $url['scheme'].= '://';
+    }
+
+    // Build the url according to parts.
+    if ( !empty($url['user']) ) {
+      if ( !empty($url['pass']) ) {
+        $url['user'] = "$url[user]:";
+        $url['pass'] = "$url[pass]@";
+      }
+      else {
+        $url['user'] = "$url[user]@";
+      }
+    }
+
+    if ( empty($url['host']) ) {
+      $url['host'] = System::getHostname();
+    }
+
+    if ( !empty($url['port']) && $url['port'] != 80 ) {
+      $url['port'] = ":$url[port]";
+    }
+    else {
+      unset($url['port']);
+    }
+
+    if ( substr(@$url['path'], 0, 1) != '/' ) {
+      $url['path'] = @"/$url[path]";
+    }
+
+    if ( isset($url['query']) ) {
+      if ( is_array($url['query']) ) {
+        $url['query'] = http_build_query($url['query']);
+      }
+
+      if ( $url['query'] && $url['query'][0] != '?' ) {
+        $url['query'] = "?$url[query]";
+      }
+    }
+
+    if ( !empty($url['fragment']) && $url['fragment'][0] != '#' ) {
+      $url['fragment'] = "#$url[fragment]";
+    }
+
+    return @"$url[scheme]$url[user]$url[pass]$url[host]$url[port]$url[path]$url[query]$url[fragment]";
   }
 }
 
@@ -81,10 +119,12 @@ if ( !function_exists('curl_file_create') ) {
 function triggerDeprecate($successor = '') {
   $message = Utility::getCallee();
 
-  $message = "Function $message[class]::$message[function]() has been deprecated";
+  $message = implode('::', array_filter([@$message['class'], @$message['function']]));
+
+  $message = "Function $message() has been deprecated";
 
   if ($successor) {
-    $message.= ", use its successor $successor() instead";
+    $message.= ", use its successor $successor instead";
   }
 
   trigger_error("$message.", E_USER_DEPRECATED);

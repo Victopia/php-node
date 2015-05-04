@@ -3,51 +3,75 @@
 
 namespace framework;
 
-use framework\interfaces\IRequestResolver;
-
 class Resolver {
-  private static $resolvers = array();
+
+  //----------------------------------------------------------------------------
+  //
+  //  Properties
+  //
+  //----------------------------------------------------------------------------
 
   /**
-   * Use registered resolvers to process target path.
-   *
-   * A resolver a return a path to further chain the requested resource,
-   * optionally process the reuqested resource and may or may not change the
-   * requested path afterwards.
-   *
-   * The resolving chain will continue to work as long as the returned value is
-   * a string and not empty, until there are no more resolvers it will return 404.
+   * @private
    */
-  public static
-  /* String */ function resolve($path) {
-    $resolvers = self::retrieveResolvers();
+  protected static $activeInstance = array();
 
-    foreach ( $resolvers as $resolver ) {
-      try {
-        $res = $resolver->resolve($path);
-      }
-      catch (exceptions\ResolverException $e) {
-        $status = $e->statusCode();
+  /**
+   * Retrieve the resolver instance currently active from calling run().
+   */
+  public static function getActiveInstance() {
+    return end(self::$activeInstance);
+  }
 
-        if ( $status === null ) {
-          throw $e;
-        }
+  /**
+   * @private
+   */
+  protected $request;
 
-        return $e->statusCode();
-      }
+  public function request() {
+    return $this->request;
+  }
 
-      if ( is_string($res) && $res ) {
-        $path = $res;
-      }
-      // Processed, return true.
-      else {
-        return true;
-      }
+  /**
+   * @private
+   */
+  protected $response;
+
+  public function response() {
+    return $this->response;
+  }
+
+  //----------------------------------------------------------------------------
+  //
+  //  Methods
+  //
+  //----------------------------------------------------------------------------
+
+  /**
+   * Initiates the resolve-response mechanism with current context.
+   */
+  public /* void */ function run(Request $request = null, Response $response = null) {
+    $this->request = &$request;
+    if ( $request === null ) {
+      $request = new Request($this);
     }
 
-    // Unresolved, return 404 status code.
-    return 404;
+    $this->response = &$response;
+    if ( $response === null ) {
+      $response = new Response(true);
+    }
+
+    self::$activeInstance[] = $this;
+
+    $this->resolve();
+
+    array_pop(self::$activeInstance);
   }
+
+  /**
+   * @private
+   */
+  protected $resolvers = array();
 
   /**
    * Register a resolver.
@@ -57,9 +81,8 @@ class Resolver {
    * @param Integer $weight Weight to determine if a resolver chains before
    *                        other, the bigger the earlier.
    */
-  public static
-  /* Boolean */ function registerResolver(IRequestResolver $resolver, $weight = 10) {
-    $resolvers = & self::$resolvers;
+  public /* boolean */ function registerResolver(interfaces\IRequestResolver $resolver, $weight = 10) {
+    $resolvers = &$this->resolvers;
 
     $resolver->weight = $weight;
 
@@ -75,10 +98,34 @@ class Resolver {
   }
 
   /**
-   * @private
+   * Use registered resolvers to process request.
+   *
+   * A resolver a return a path to further chain the requested resource,
+   * optionally process the reuqested resource and may or may not change the
+   * requested path afterwards.
+   *
+   * The resolving chain will continue to work as long as the returned value is
+   * a string and not empty, until there are no more resolvers it will return 404.
    */
-  private static
-  /* Array */ function retrieveResolvers() {
-    return self::$resolvers;
+  private /* void */ function resolve() {
+    $request = $this->request;
+    $response = $this->response;
+    foreach ( $this->resolvers as $resolver ) {
+      try {
+        $resolver->resolve($request, $response);
+      }
+      catch (exceptions\ResolverException $e) {
+        $status = $e->statusCode();
+
+        if ( $status === null ) {
+          throw $e;
+        }
+
+        $response->status($e->statusCode());
+
+        return; // Only way to break the handler chain.
+      }
+    }
   }
+
 }

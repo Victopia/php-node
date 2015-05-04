@@ -78,6 +78,20 @@ CREATE TABLE `Processes` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
+-- Table structure for table `ProcessSchedules`
+--
+
+DROP TABLE IF EXISTS `ProcessSchedules`;
+CREATE TABLE `ProcessSchedules` (
+  `name` varchar(255) NOT NULL DEFAULT '',
+  `schedule` varchar(255) NOT NULL DEFAULT '* * * * *' COMMENT 'Cron expression',
+  `command` longtext NOT NULL,
+  `@contents` longtext NOT NULL,
+  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`name`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+--
 -- Table structure for table `NodeRelations`
 --
 

@@ -5,11 +5,12 @@ namespace core;
 
 use framework\Process;
 use framework\Session;
+use framework\System;
 
 class Log {
   static function write($message, $type = 'Notice', $context = null) {
     // Skip debug logs on production environment.
-    if ( FRAMEWORK_ENVIRONMENT != 'debug' && $type == 'Debug' ) {
+    if ( System::environment() != 'debug' && $type == 'Debug' ) {
       return;
     }
 
@@ -52,7 +53,7 @@ class Log {
 
     $message['type'] = $type;
 
-    $message[NODE_FIELD_COLLECTION] = FRAMEWORK_COLLECTION_LOG;
+    $message[Node::FIELD_COLLECTION] = FRAMEWORK_COLLECTION_LOG;
 
     return @Node::set($message);
   }
@@ -74,7 +75,7 @@ class Log {
     $userId = (int) Session::currentUser('ID');
 
     return Node::set(array(
-        NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_LOG
+        Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_LOG
       , 'type' => 'Information'
       , 'subject' => "User#$userId"
       , 'action' => Utility::sanitizeString($action)

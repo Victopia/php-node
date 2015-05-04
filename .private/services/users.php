@@ -12,7 +12,7 @@ use framework\Service;
 use framework\Session;
 use framework\exceptions\ServiceException;
 
-class users implements framework\interfaces\IAuthorizableWebService {
+class users extends \framework\AuthorizableWebService {
 
   //--------------------------------------------------
   //
@@ -48,13 +48,6 @@ class users implements framework\interfaces\IAuthorizableWebService {
   //
   //--------------------------------------------------
 
-  public function __call($name, $args = array()) {
-    // Get
-    if ( count($args) == 0 ) {
-      return $this->get($name);
-    }
-  }
-
   /**
    * List users, filtered with $_GET parameters.
    * Optionally restrict with List-Range header.
@@ -73,10 +66,10 @@ class users implements framework\interfaces\IAuthorizableWebService {
       ));
 
     $res = array_filter($res) + array(
-        NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_USER
+        Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_USER
       );
 
-    $res = Node::get($res, true, Utility::getListRange());
+    $res = (array) @Node::get($res, true, Utility::getListRange());
 
     $res = array_map(removes('password'), $res);
 
@@ -89,7 +82,7 @@ class users implements framework\interfaces\IAuthorizableWebService {
    */
   public /* array */
   function get($userId = '~') {
-    $user = Session::currentUser();
+    $user = $this->request()->user;
 
     /* Allows null user context on local processes. */
     if ( $userId === '~' && $user === null ) {
@@ -105,8 +98,8 @@ class users implements framework\interfaces\IAuthorizableWebService {
 
     // User other than session user.
     if ( $userId !== '~' && $userId !== @$user[$filter] ) {
-      $user = Node::get(array(
-          NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_USER
+      $user = (array) @Node::get(array(
+          Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_USER
         , $filter => $userId
         ));
 
@@ -119,12 +112,6 @@ class users implements framework\interfaces\IAuthorizableWebService {
 
     if ( !$user ) {
       throw new ServiceException('Specified user does not exist.', 1002);
-    }
-    else if ( $strcasecmp(@$_SERVER['REQUEST_METHOD'], 'delete') === 0 ) {
-      return Node::delete(array(
-          NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_USER
-        , $user['ID']
-        ));
     }
 
     return $user;
@@ -167,7 +154,7 @@ class users implements framework\interfaces\IAuthorizableWebService {
       }
 
       // Restrict updatable fields
-      remove(array('ID', 'username', NODE_FIELD_COLLECTION, 'timestamp'), $contents);
+      remove(array('ID', 'username', Node::FIELD_COLLECTION, 'timestamp'), $contents);
 
       $contents+= $user;
 
@@ -193,7 +180,7 @@ class users implements framework\interfaces\IAuthorizableWebService {
       }
     }
 
-    $contents[NODE_FIELD_COLLECTION] = FRAMEWORK_COLLECTION_USER;
+    $contents[Node::FIELD_COLLECTION] = FRAMEWORK_COLLECTION_USER;
 
     // Push into database
     $ret = Node::set($contents);
@@ -203,6 +190,13 @@ class users implements framework\interfaces\IAuthorizableWebService {
     }
 
     return $ret;
+  }
+
+  public function delete($userId) {
+    return Node::delete(array(
+        Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_USER
+      , $user['ID']
+      ));
   }
 
   //--------------------------------------------------

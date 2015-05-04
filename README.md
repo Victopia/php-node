@@ -1,4 +1,4 @@
-```
+<pre>
              DO WHAT THE FUCK YOU WANT TO PUBLIC LICENSE
                       Version 2, December 2004
 
@@ -12,7 +12,7 @@
    TERMS AND CONDITIONS FOR COPYING, DISTRIBUTION AND MODIFICATION
 
   0. You just DO WHAT THE FUCK YOU WANT TO.
-```
+</pre>
 
 # [PHP MySQL] Node Data Framework
 
@@ -58,12 +58,12 @@ You store and retrieve PHP data with this framework.
 What it exactly does, as a cascading logic:
 
 1. Table level virtualization
-    1. If a table exists with the name specified in NODE_FIELD_COLLECTION (defaults to '@collection'), use it.
-    2. Otherwise fallback to NODE_COLLECTION, which defaults to 'Nodes'.
+    1. If a table exists with the name specified in Node::FIELD_COLLECTION (defaults to '@collection'), use it.
+    2. Otherwise fallback to Node::BASE_COLLECTION, which defaults to 'Nodes'.
 2. Column level virtualization
     1. If a column of the same name as that PHP array key exists, use it.
-    2. If there is other fields left, json encode them and put the result string into the column with the name as NODE_FIELD_VIRTUAL, which defaults to '@contents'.
-    3. If column NODE_FIELD_VIRTUAL does not exists, those virtual fields are dropped silently.
+    2. If there is other fields left, json encode them and put the result string into the column with the name as Node::FIELD_VIRTUAL, which defaults to '@contents'.
+    3. If column Node::FIELD_VIRTUAL does not exists, those virtual fields are dropped silently.
 
 For all constants, see scripts/framework/constants.php.
 
@@ -86,7 +86,7 @@ We can search the database with these code,
 //          They are meant to be optional in later time.
 
 $filter = Array(
-  NODE_FIELD_COLLECTION => 'User',
+  Node::FIELD_COLLECTION => 'User',
   'username' => 'root'
 );
 

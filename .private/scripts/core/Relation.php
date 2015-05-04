@@ -117,7 +117,7 @@ class Relation {
 
   static function set($collection, $subject, $object) {
     return Database::upsert(FRAMEWORK_COLLECTION_RELATION, array(
-        NODE_FIELD_COLLECTION => $collection
+        Node::FIELD_COLLECTION => $collection
       , 'Subject' => $subject
       , 'Object' => $object
       ));

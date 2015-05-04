@@ -676,8 +676,7 @@ class Database {
     return self::getConnection()->errorInfo();
   }
 
-  public static /* null */
-  function lockTables($tables) {
+  public static function lockTables($tables) {
     if ( !is_array($tables) ) {
       $tables = func_get_args();
     }
@@ -691,15 +690,31 @@ class Database {
     return (bool) self::query('LOCK TABLES ' . implode(', ', $tables));
   }
 
-  public static /* null */
-  function unlockTables($autoRetry = false) {
+  /**
+   * Unlock tables in database, optionally with a retrying mechanism on failure.
+   *
+   * @param {int}   $autoRetry Same as $autoRetry['count'].
+   * @param {int}   $autoRetry['count'] The number of retries before giving up.
+   * @param {float} $autoRetry['interval'] Seconds to wait before the next retry.
+   */
+  public static function unlockTables($autoRetry = false) {
     if ( $autoRetry ) {
+      if ( !is_array($autoRetry) ) {
+        $autoRetry = array(
+            'count' => (int) $autoRetry
+          );
+      }
+
+      $autoRetry+= array(
+        'interval' => .4
+        );
+
       $ret = false;
 
       $i = 0;
 
-      while ( false === ( $ret = self::query('UNLOCK TABLES') && $i++ < FRAMEWORK_DATABASE_UNLOCK_RETRY_LIMIT ) ) {
-        usleep(FRAMEWORK_DATABASE_ENSURE_WRITE_INTERVAL * 1000000);
+      while ( false === ( $ret = self::query('UNLOCK TABLES') && $i++ < $autoRetry['count'] ) ) {
+        usleep(@$autoRetry['interval'] * 1000000);
       }
 
       return $ret;

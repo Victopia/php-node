@@ -1,20 +1,15 @@
 <?php
-/*! WebServiceResolver.php \ IRequestResovler
- *
- *  Eliminate the needs of service gateway.
- *
- *  CAUTION: This class calls global function
- *           redirect() and terminates request
- *           directly when client requests for
- *           unauthorized services.
- */
+/*! WebServiceResolver.php \ IRequestResovler | Resolves service API requests. */
 
 namespace resolvers;
 
 use core\Log;
 use core\Utility;
 
+use framework\Request;
+use framework\Response;
 use framework\Service;
+use framework\System;
 
 use framework\exceptions\ResolverException;
 
@@ -49,42 +44,50 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
   //--------------------------------------------------
 
   public /* String */
-  function resolve($path) {
+  function resolve(Request $request, Response $response) {
+    $path = $request->uri('path');
+
     // Request URI must start with the specified path prefix. e.g. /:resource/.
     if ( !$this->pathPrefix || 0 !== strpos($path, $this->pathPrefix) ) {
-      return $path;
+      return;
     }
 
     $res = substr($path, strlen($this->pathPrefix));
-
     $res = urldecode($res);
 
     // Resolve target service and apply appropiate parameters
-    preg_match('/^([^\/]+)\/([^\/\?,]+)(\/[^\?]+)?\/?/', $res, $matches);
+    preg_match('/^([^\/]+)(?:\/([^\/\?,]+))?(\/[^\?]+)?\/?/', $res, $matches);
 
     // Chain off to 404 instead of the original "501 Method Not Allowed".
-    if ( count($matches) < 3 ) {
-      return $path;
+    if ( count($matches) < 2 ) {
+      return;
     }
 
     $classname = '\\' . $matches[1];
-    $function = $matches[2];
+    $function = @$matches[2];
 
     Service::requireService($classname);
-
     if ( !class_exists($classname) ) {
-      return $path;
+      return;
     }
 
-    $instance = new $classname();
-
-    // Why instanceof fails on interfaces? God fucking knows!
-    if ( !is_a($instance, 'framework\interfaces\IWebService') ) {
-      return $path;
+    $instance = new $classname($request);
+    if ( !($instance instanceof \framework\interfaces\IWebService) ) {
+      return;
     }
 
+    // If the class is invokeable, it takes precedence.
+    if ( is_callable($instance) ) {
+      if ( $function ) {
+        @$matches[3] = "/$function/$matches[3]";
+      }
+
+      $function = '~';
+    }
+    else
     if ( !method_exists($classname, $function) && !is_callable(array($instance, $function)) ) {
-      throw new ResolverException( 501 );
+      $response->status(501);
+      return; // 404
     }
 
     if ( isset($matches[3]) ) {
@@ -116,11 +119,11 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
     // Allow constants and primitive values on $_GET parameters,
     // map on both keys and values.
 
-    /* Note by Eric @ 14 Feb, 2013
-       CAUTION: Should really prevent NODE_FIELD_RAWQUERY, serious security problem!
-                These constant things are originally designed for an OR search upon
-                eBay items.
-    */
+    /*! Note by Eric @ 14 Feb, 2013
+     *  CAUTION: Should really prevent Node::FIELD_RAWQUERY, serious security problem!
+     *           These constant things are originally designed for an OR search upon
+     *           eBay items.
+     */
     array_walk($_GET, function(&$value, $key) {
       if ( is_array($value) ) {
         return;
@@ -156,50 +159,32 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
       }
     });
 
-    $serviceOptions = array(
-        'overrideMethod' => null
-      );
-
-    // Shooto!
-    $response = Service::call($classname, $function, $parameters, $serviceOptions);
-
-    unset($serviceOptions);
-
-    $logContext = array();
-
-    if ( $parameters ) {
-      $logContext['parameters'] = $parameters;
+    if ($request->client('type') != 'cli' &&
+      $instance instanceof \framework\interfaces\IAuthorizableWebService &&
+      $instance->authorizeMethod($function, $parameters) === false) {
+      $response->status(401);
+      return;
     }
 
     // Access log
-    if ( FRAMEWORK_ENVIRONMENT == 'debug' || !Utility::isLocal() ) {
-      Log::write(@"[WebService] $_SERVER[REQUEST_METHOD] $classname->$function", 'Access', array_filter($logContext));
+    if ( System::environment() == 'debug' || !Utility::isLocal() ) {
+      Log::write(sprintf('[WebService] %s %s->%s', $request->method(), $classname, $function),
+        'Access', array_filter(array('parameters' => $parameters)));
     }
 
-    unset($logContext);
-
-    // unset($instance); unset($function); unset($parameters);
+    // Shooto!
+    $serviceResponse = call_user_func_array($function == '~' ? $instance : [$instance, $function], $parameters);
 
     // Return nothing when the service function returns nothing,
-    // this favors file download and other non-JSON outputs.
-    if ( $response !== null ) {
-      header('Content-Type: application/json; charset=utf-8', true);
-
+    // this favors file download and non-JSON outputs.
+    if ( $serviceResponse !== null ) {
       // JSON encode the result and response to client.
-      /* Note by Eric @ 11 Dec, 2012
-          Do not use JSON_NUMERIC_CHECK option, this might corrupt
-          values. Should ensure numeric on insertion instead.
-      */
-      $response = json_encode($response);
-
-      // JSONP request, do it so.
-      if ( @$_GET['callback'] ) {
-        $response = "$_GET[callback]($response)";
-      }
-
-      echo $response;
+      $response->header('Content-Type', 'application/json');
+      $response->send($serviceResponse); // This sets repsonse code to 200
     }
-
+    else {
+      $response->status(204);
+    }
   }
 
 }

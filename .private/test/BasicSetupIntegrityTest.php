@@ -3,6 +3,8 @@
 
 require_once('.private/test/simpletest/unit_tester.php');
 
+use framework\System;
+
 class BasicSetupIntegrityTest extends UnitTestCase {
 
   //--------------------------------------------------
@@ -20,10 +22,10 @@ class BasicSetupIntegrityTest extends UnitTestCase {
   //--------------------------------------------------
 
   function testCreateDummyFile() {
-    $this->assertTrue(is_writable(FRAMEWORK_PATH_ROOT),
+    $this->assertTrue(is_writable(System::getRoot()),
       'PHP does not have the permission to write to gateway directory, please ensure corresponding permissions.');
 
-    $this->dummyFile = tempnam(FRAMEWORK_PATH_ROOT, 'TEST_');
+    $this->dummyFile = tempnam(System::getRoot(), 'TEST_');
 
     $this->assertTrue(file_exists($this->dummyFile),
       'Dummy file cannot be created, please make sure PHP can write files in the gateway directory.');

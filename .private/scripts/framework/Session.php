@@ -1,9 +1,7 @@
 <?php
-/*! Session.php | https://github.com/victopia/PHPNode
- *
- * Manage login sessions.
- *
- * System flow:
+/*! Session.php | Manage login sessions. */
+
+/*! System flow:
  * - 1.  Client attemp to login
  * - 2.  Server returns session info of that user.
  * - 2.1 Server returns self::ERR_MISMATCH if login failure.
@@ -21,7 +19,6 @@
  * - 6.  When a client is back and want to revive an expired sessoin, use Session::restore().
  * - 7.  Server will return session info along with that user.
  * - 7.1 Server returns self::ERR_INVALID if session ID is not found.
- *
  */
 
 namespace framework;
@@ -31,6 +28,7 @@ use core\Node;
 use core\Log;
 
 class Session {
+
   //------------------------------
   //  Error constants
   //------------------------------
@@ -64,15 +62,16 @@ class Session {
   // 00001000: Users temporary locked
   const USR_LOCKED   = 0b001000;
 
-  // 00010000: Suspended users
-  const USR_BANNED   = 0b010000;
-
-  // 00100000: Users Not Verify
-  const USR_INACTIVE = 0b100000;
-
   // Session ID is stored when validate(), ensure(), or
   // restore() is called without failure.
   private static $currentSession = null;
+
+  /**
+   * @private
+   *
+   * User cache
+   */
+  protected static $currentUser = null;
 
   /**
    *  Login function, application commencement point.
@@ -90,7 +89,7 @@ class Session {
   static function validate($username, $password, $overrideExist = false) {
     // Username
     $res = array(
-        NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_USER
+        Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_USER
       , 'username' => $username
       );
 
@@ -301,7 +300,7 @@ class Session {
 
     else {
       $res = array(
-          NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION
+          Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION
         , 'sid' => self::$currentSession
         );
       $res = Node::get($res);
@@ -335,35 +334,38 @@ class Session {
    *  Shortcut function for getting user information.
    */
   static function currentUser($property = null) {
-    $sid = self::$currentSession;
+    $user = &self::$currentUser;
 
-    if ( !$sid ) {
-      return null;
+    if ( !$user ) {
+      $sid = self::$currentSession;
+
+      if ( $sid ) {
+        $res = 'SELECT `UserID` FROM `'.FRAMEWORK_COLLECTION_SESSION.'` WHERE `sid` = ?;';
+        $res = Database::fetchField($res, array($sid));
+        if ( $res ) {
+          $res = array(
+              Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_USER
+            , 'ID' => $res
+            );
+
+          $res = Node::get($res);
+          if ( $res ) {
+            $user = $res[0];
+          }
+        }
+
+        unset($res);
+      }
+
+      unset($sid);
     }
 
-    $res = 'SELECT `UserID` FROM `'.FRAMEWORK_COLLECTION_SESSION.'` WHERE `sid` = ?;';
-    $res = Database::fetchField($res, array($sid));
-
-    if ( !$res ) {
-      return null;
-    }
-
-    $res = array(
-        NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_USER
-      , 'ID' => $res
-      );
-    $res = Node::get($res);
-
-    if ( $res ) {
-      if ( $property !== null ) {
-        return @$res[0][$property];
-      }
-      else {
-        return $res[0];
-      }
+    if ( $property !== null ) {
+      return @$user[$property];
     }
     else {
-      return null;
+      return $user;
     }
   }
+
 }

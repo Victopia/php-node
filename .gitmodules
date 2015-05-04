@@ -7,3 +7,6 @@
 [submodule ".private/scripts/lib/Mustache"]
 	path = .private/scripts/lib/Mustache
 	url = git://github.com/bobthecow/mustache.php
+[submodule ".private/scripts/lib/Cron"]
+	path = .private/scripts/lib/Cron
+	url = https://github.com/mtdowling/cron-expression

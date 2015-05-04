@@ -8,6 +8,8 @@ use core\Log;
 use core\Node;
 use core\Utility;
 
+use Cron\CronExpression;
+
 use framework\ProcessPool;
 use framework\Configuration;
 use framework\Process;
@@ -39,16 +41,27 @@ $opts = (new framework\Optimist)
     }, explode("\n", `ps aux | grep 'php\\|node'`)));
 
     if ( $pids ) {
+      // Delete normal orphan processes
       $res = Database::query('DELETE FROM `'.FRAMEWORK_COLLECTION_PROCESS.'`
-        WHERE `type` != \'permanent\' AND `pid` IS NOT NULL AND `pid` NOT IN ('.Utility::fillArray($pids).')', $pids);
-
+        WHERE `type` NOT IN (\'permanent\', \'cron\')
+          AND `pid` IS NOT NULL
+          AND `pid` NOT IN ('.Utility::fillArray($pids).')', $pids);
       if ( $res ) {
         $affectedRows+= $res->rowCount();
       }
 
+      // Delete cron process only when current time is ahead of start_time
+      $res = Database::query('DELETE FROM `'.FRAMEWORK_COLLECTION_PROCESS.'`
+        WHERE `type` = \'cron\'
+          AND `pid` = 0
+          AND `pid` NOT IN ('.Utility::fillArray($pids).')', $pids);
+      if ( $res ) {
+        $affectedRows+= $res->rowCount();
+      }
+
+      // Clear pid of dead permanent process
       $res = Database::query('UPDATE `'.FRAMEWORK_COLLECTION_PROCESS.'` SET `pid` = NULL
         WHERE `type` = \'permanent\' AND `pid` IS NOT NULL AND `pid` NOT IN ('.Utility::fillArray($pids).')', $pids);
-
       if ( $res ) {
         $affectedRows+= $res->rowCount();
       }
@@ -103,13 +116,40 @@ $opts = (new framework\Optimist)
 // Logs for cron processes
   if ( @$opts['cron'] ) {
     Log::write('Cron started process.', 'Debug');
+
+    // Cron started worker also enqueues new process from the schdule table.
+    Node::getAsync(FRAMEWORK_COLLECTION_PROCESS_SCHEDULE, function($schedule) {
+      $nextTime = CronExpression::factory($schedule['schedule'])->getNextRunDate()->format('Y-m-d H:i:s');
+
+      /*! Note
+       *  The purpose of schedule_name alias is to use a less common name, and
+       *  leave the "name" property open for in-process use.
+       */
+      $schedules = Node::get(array(
+          Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
+        , 'start_time' => $nextTime
+        , 'command' => $schedule['command']
+        , 'schedule_name' => $schedule['name']
+        ));
+      if ( !$schedules ) {
+        $schedule =
+          [ 'command' => $schedule['command']
+          , 'start_time' => $nextTime
+          , 'schedule_name' => $schedule['name']
+          , '$type' => 'cron'
+          ];
+
+        Log::write('Scheduling new process', 'Debug', $schedule);
+
+        Process::enqueue($schedule['command'], $schedule);
+      }
+    });
   }
 
 // Get maximum allowed connections before table lock.
-  $capLimit = (int) Configuration::get('core.Net::maxConnections');
-
+  $capLimit = (int) @Configuration::get('core.Net::maxConnections');
   if ( !$capLimit ) {
-    $capLimit = FRAMEWORK_PROCESS_MAXIMUM_CAPACITY;
+    $capLimit = Process::MAXIMUM_CAPACITY;
   }
 
 // Start transaction before lock tables.
@@ -163,9 +203,9 @@ $opts = (new framework\Optimist)
     die;
   }
 
-  $processContents = (array) json_decode($process[NODE_FIELD_VIRTUAL], 1);
+  $processContents = (array) json_decode($process[Node::FIELD_VIRTUAL], 1);
 
-  unset($process[NODE_FIELD_VIRTUAL]);
+  unset($process[Node::FIELD_VIRTUAL]);
 
   $process+= $processContents;
 
@@ -187,7 +227,7 @@ $opts = (new framework\Optimist)
   }
   else {
     $process['pid'] = getmypid();
-    $process[NODE_FIELD_COLLECTION] = FRAMEWORK_COLLECTION_PROCESS;
+    $process[Node::FIELD_COLLECTION] = FRAMEWORK_COLLECTION_PROCESS;
   }
 
 // Check if $env specified in option
@@ -212,10 +252,10 @@ $opts = (new framework\Optimist)
       break;
     }
     else {
-      usleep(FRAMEWORK_PROCESS_SPAWN_RETRY_INTERVAL);
+      usleep(Process::$spawnCaptureInterval * 1000000);
     }
   }
-  while ( ++$retryCount < FRAMEWORK_PROCESS_SPAWN_RETRY_COUNT );
+  while ( ++$retryCount < Process::$spawnCaptureCount );
 
   if ( !$proc ) {
     throw new ProcessException('Unable to spawn process, please check error logs.');
@@ -241,9 +281,14 @@ $opts = (new framework\Optimist)
       Log::write('Permanent process died, clearing pid.', 'Debug', [$res, $process]);
       break;
 
+    // Sets pid to 0, prevents it fire again and double enqueue of the same time slot.
+    case 'cron':
+      core\Database::query('UPDATE `'.FRAMEWORK_COLLECTION_PROCESS.'` SET `pid` = 0 WHERE `ID` = ?', $process['ID']);
+      break;
+
     // Deletes the process object upon exit
     default:
-      $process = array_select($process, array(NODE_FIELD_COLLECTION, 'ID', /*'type', 'weight', 'capacity', */'pid'));
+      $process = array_select($process, array(Node::FIELD_COLLECTION, 'ID', /*'type', 'weight', 'capacity', */'pid'));
 
       $res = Node::delete($process);
 

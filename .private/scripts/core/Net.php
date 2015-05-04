@@ -3,6 +3,8 @@
 
 namespace core;
 
+use framework\System;
+
 /**
  * Net class
  */
@@ -46,6 +48,23 @@ class Net {
     }
   }
 
+  //------------------------------
+  //  progressInterval
+  //------------------------------
+  /**
+   * Seconds to wait before sending the next progress event, defaults to 0.3 second.
+   */
+  public static function progressInterval($value = null) {
+    static $progressInterval = .3;
+
+    if ( $value === null ) {
+      return $progressInterval;
+    }
+    else {
+      $progressInterval = $value;
+    }
+  }
+
   //--------------------------------------------------
   //
   //  Methods
@@ -70,8 +89,24 @@ class Net {
   /**
    * Send HTTP request to a URL.
    *
+   * The format is purposedly copied as much as possible from jQuery.ajax() function.
+   *
    * To initiate multiple requests, pass it as an array and wrapping parameters of
    * each single request as an array.
+   *
+   * @param {string} $options['url'] Target request url
+   * @param {?string} $options['type'] Request method, defaults to GET.
+   * @param {?array|string} $options['data'] Either raw string or array to be encoded,
+   *                                         to be sent as query string on GET, HEAD, DELETE and OPTION
+   *                                         or message body on POST or PUT.
+   * @param {?array} $options['headers'] Request headers to be sent.
+   * @param {?callable} $options['progress'] Callback function for progress ticks.
+   *                                         function($progress, $current, $maximum);
+   * @param {?callable} $options['success'] Callback function on successful request.
+   *                                        function($responseText, $curlOptions);
+   * @param {?callable} $options['failure'] Callback function on request failure, with curl errors as parameters.
+   *                                        function($errorNumber, $errorMessage, $curlOptions);
+   * @param {?array} $options['__curlOpts'] Curl options to be passed directly to curl_setopt_array.
    *
    * @return void
    */
@@ -241,7 +276,7 @@ class Net {
 
       $curlOption = (array) @$option['__curlOpts'] + $curlOption;
 
-      if ( FRAMEWORK_ENVIRONMENT == 'debug' ) {
+      if ( System::environment() == 'debug' ) {
         Log::write('Net ' . $curlOption[CURLOPT_CUSTOMREQUEST] . ' to ' . $curlOption[CURLOPT_URL], 'Debug', $curlOption);
       }
 
@@ -309,15 +344,15 @@ class Net {
             if ( $_dLen != $dLen ) {
               $_dLen = $dLen;
 
-              /* Note by Vicary @ 2.Oct.2012
-                 Total download size is often 0 if server doesn't
-                 response with a Content-Length header.
-
-                 Total size guessing logic:
-                 1. if $dLen < 1M, assume 1M.
-                 2. if $dLen < 10M, assume 10M.
-                 3. if $dLen < 100M, assume 100M.
-                 4. if $dLen < 1G, assume 1G.
+              /*! Note by Vicary @ 2.Oct.2012
+               *  Total download size is often 0 if server doesn't
+               *  response with a Content-Length header.
+               *
+               *  Total size guessing logic:
+               *  1. if $dLen < 1M, assume 1M.
+               *  2. if $dLen < 10M, assume 10M.
+               *  3. if $dLen < 100M, assume 100M.
+               *  4. if $dLen < 1G, assume 1G.
                */
               if ( !$dSize ) {
                 // Do not assume when size under 1K
@@ -363,7 +398,7 @@ class Net {
 
           $tOffset = microtime(1);
 
-          if ( isset($progressArgs) && $tOffset - $_tOffset > FRAMEWORK_NET_PROGRESS_INTERVAL ) {
+          if ( isset($progressArgs) && $tOffset - $_tOffset > self::progressInterval() ) {
             $_tOffset = $tOffset;
 
             Utility::forceInvoke($progressCallback, $progressArgs);
@@ -418,7 +453,7 @@ class Net {
           if ( @$callbacks['progress'] ) {
             Utility::forceInvoke($callbacks['progress'], array(1, 1, 1));
 
-            usleep(FRAMEWORK_NET_PROGRESS_INTERVAL * 1000000);
+            usleep(self::progressInterval() * 1000000);
           }
 
           // Append HTTP status code
@@ -442,8 +477,9 @@ class Net {
               $errorNumber = (int) $matches[1];
 
               $curlErrors = unserialize(FRAMEWORK_NET_CURL_ERRORS);
-
-              $errorMessage = "curl error #$matches[1]: " . @$curlErrors[$errorNumber];
+              if ( isset($curlErrors[$errorNumber]) ) {
+                $errorMessage = $curlErrors[$errorNumber];
+              }
             }
           }
 

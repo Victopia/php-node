@@ -4,14 +4,17 @@
 #
 # Assign HTTP headers to $_SERVER in PHP
 #
-SetEnvIfNoCase ^If-Modified-Since$ "(.+)" HTTP_IF_MODIFIED_SINCE=$1
-SetEnvIfNoCase ^If-None-Match$ "(.+)" HTTP_IF_NONE_MATCH=$1
-SetEnvIfNoCase ^If-Match$ "(.+)" HTTP_IF_MATCH=$1
-SetEnvIfNoCase ^If-Range$ "(.+)" HTTP_IF_RANGE=$1
-SetEnvIfNoCase ^Cache-Control$ "(.+)" HTTP_CACHE_CONTROL=$1
-SetEnvIfNoCase ^Connection$ "(.+)" HTTP_CONNECTION=$1
-SetEnvIfNoCase ^Keep-Alive$ "(.+)" HTTP_KEEP_ALIVE=$1
-SetEnvIfNoCase ^Authorization$ "(.+)" HTTP_AUTHORIZATION=$1
+# Quoted @ 29 Apr, 2015
+# Because they just appears in getallheaders().
+#
+# SetEnvIfNoCase ^If-Modified-Since$ "(.+)" HTTP_IF_MODIFIED_SINCE=$1
+# SetEnvIfNoCase ^If-None-Match$ "(.+)" HTTP_IF_NONE_MATCH=$1
+# SetEnvIfNoCase ^If-Match$ "(.+)" HTTP_IF_MATCH=$1
+# SetEnvIfNoCase ^If-Range$ "(.+)" HTTP_IF_RANGE=$1
+# SetEnvIfNoCase ^Cache-Control$ "(.+)" HTTP_CACHE_CONTROL=$1
+# SetEnvIfNoCase ^Connection$ "(.+)" HTTP_CONNECTION=$1
+# SetEnvIfNoCase ^Keep-Alive$ "(.+)" HTTP_KEEP_ALIVE=$1
+# SetEnvIfNoCase ^Authorization$ "(.+)" HTTP_AUTHORIZATION=$1
 
 #
 # Use ENV in notifying gateway to throw HTTP header at once.
@@ -26,30 +29,30 @@ SetEnvIfNoCase ^Authorization$ "(.+)" HTTP_AUTHORIZATION=$1
 #
 <IfModule rewrite_module>
 
-	#
-	# Rewrite starts
-	RewriteEngine On
+  #
+  # Rewrite starts
+  RewriteEngine On
 
-	#
-	# Rewrite Debug
-	#RewriteCond %{QUERY_STRING} !rdebug
-	#RewriteRule (.*) _dump.php?rdebug&r=%{REQUEST_FILENAME} [R=301,QSA,L]
+  #
+  # Rewrite Debug
+  #RewriteCond %{QUERY_STRING} !rdebug
+  #RewriteRule (.*) _dump.php?rdebug&r=%{REQUEST_FILENAME} [R=301,QSA,L]
 
-	RewriteBase /
+  RewriteBase /
 
-	#
-	# Restrict access to certein directories
+  #
+  # Restrict access to certein directories
 
-	# 1. Restrict access to .private folder
-	RewriteCond %{REQUEST_URI} \.private
-	RewriteCond %{REMOTE_ADDR} %{SERVER_ADDR}
-	RewriteRule .* - [R=404,L]
+  # 1. Restrict access to .private folder
+  RewriteCond %{REQUEST_URI} \.private
+  RewriteCond %{REMOTE_ADDR} %{SERVER_ADDR}
+  RewriteRule .* - [R=404,L]
 
-	#
-	# Prevent redirection loops
-	RewriteCond %{REQUEST_URI} !gateway.php$ [NC]
-	# Start redirecting to gateway
-	RewriteRule .* gateway.php [L]
+  #
+  # Prevent redirection loops
+  RewriteCond %{REQUEST_URI} !gateway.php$ [NC]
+  # Start redirecting to gateway
+  RewriteRule .* gateway.php [L]
 
 </IfModule>
 

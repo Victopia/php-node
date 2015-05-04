@@ -8,6 +8,8 @@ use core\Log;
 use core\Node;
 use core\Utility as util;
 
+use Cron\CronExpression;
+
 use framework\exceptions\ProcessException;
 
 class Process {
@@ -22,9 +24,18 @@ class Process {
   const ERR_EPERM = 2;
   const ERR_ENQUE = 3;
   const ERR_SPAWN = 4;
+  const ERR_CEXPR = 5;
 
   // Assume gateway redirection, pwd should always at DOCUMENT_ROOT
   const EXEC_PATH = 'php .private/Process.php';
+
+  /**
+   * Maximum server capacity.
+   *
+   * Workers will stop capturing processes when the sum of capacity in active
+   * processes exceed this limit.
+   */
+  const MAXIMUM_CAPACITY = 100;
 
   //----------------------------------------------------------------------------
   //
@@ -40,6 +51,16 @@ class Process {
     , '$weight' => 100
     , '$capacity' => 5
     );
+
+  /**
+   * Retry number when workers try to capture for a process.
+   */
+  public static $spawnCaptureCount = 5;
+
+  /**
+   * Delay in seconds between capture retry of a worker.
+   */
+  public static $spawnCaptureInterval = .4;
 
   //----------------------------------------------------------------------------
   //
@@ -70,7 +91,6 @@ class Process {
    */
   public static /* array */
   function enqueue($command, $options = array()) {
-
     // For backward-compatibility, this parameter is originally $spawnProcess.
     if ( is_bool($options) ) {
       $options = array(
@@ -86,14 +106,14 @@ class Process {
     $options+= self::$defaultOptions;
 
     $process = array(
-        NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
+        Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
       , 'command' => $command
       ) + array_select($options, array_filter(array_keys($options), compose('not', startsWith('$'))));
 
     // Remove identical inactive commands
     if ( $options['$requeue'] ) {
       Node::delete(array(
-          NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
+          Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
         , 'command' => $command
         , 'pid' => null
         ));
@@ -106,7 +126,7 @@ class Process {
       }
 
       $activeProcesses = Node::get(array(
-          NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
+          Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
         , 'command' => $command
         , 'pid' => '!=null'
         ));
@@ -121,7 +141,7 @@ class Process {
     // Only pushes the command into queue when there are no identical process.
     if ( $options['$singleton'] ) {
       $identicalProcesses = Node::get(array(
-          NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
+          Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
         , 'command' => $command
         ));
 
@@ -152,7 +172,7 @@ class Process {
      *  ProcessPool history.
      */
     Node::set(
-      [ NODE_FIELD_COLLECTION => 'ProcessPool'
+      [ Node::FIELD_COLLECTION => 'ProcessPool'
       , 'command' => $command
       , 'type' => $options['$type']
       , 'weight' => $options['$weight']
@@ -211,7 +231,7 @@ class Process {
   public static /* boolean */
   function kill($procId, $signal) {
     $proc = Node::get(array(
-        NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
+        Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
       , 'ID' => (int) $procId
       ));
 
@@ -222,6 +242,47 @@ class Process {
     }
 
     return posix_kill($proc['pid'], $signal);
+  }
+
+  /**
+   * Puts a command into recursive schduled task, this will be enqueued by
+   * cron spawned workers for the next single process.
+   *
+   * @param {string} $name Unique identifier for this schdule task.
+   * @param {string} $expr Cron expression for the schdule.
+   * @param {string} $command The command to run.
+   * @param {?array} $options This is identical to the option array in enqueue()
+   *                          but also includes properties starts with dollar sign.
+   */
+  public static function schedule($name, $expr, $command, $options = array()) {
+    $schedules = Node::get(array(
+        Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS_SCHEDULE
+      , 'name' => $name
+      ));
+    if ( $schedules ) {
+      throw new ProcessException('Schedule with the same name already exists.', self::ERR_ENQUE);
+    }
+
+    if ( !CronExpression::isValidExpression($expr) ) {
+      throw new ProcessException('Expression is not in valid cron format.', self::ERR_CEXPR);
+    }
+
+    return Node::set(array(
+        Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS_SCHEDULE
+      , 'name' => $name
+      , 'schedule' => $expr
+      , 'command' => $command
+      ) + $options);
+  }
+
+  /**
+   * Remove a scheduled process with specified name.
+   */
+  public static function unschedule($name) {
+    return Node::delete(array(
+        Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS_SCHEDULE
+      , 'name' => $name
+      ));
   }
 
   /**
@@ -276,7 +337,7 @@ class Process {
     $processData = &self::$_processData;
     if ( !$processData ) {
       $processData = Node::get(array(
-          NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
+          Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
         , 'pid' => [getmypid(), posix_getppid()] // Both processes should be alive and no collision should ever exists.
         ));
 

@@ -1,5 +1,5 @@
 <?php
-/* Gateway.php | Starting point of all URI access. */
+/*! Gateway.php | Starting point of all URI access. */
 
 /***********************************************************************\
 **                                                                     **
@@ -19,12 +19,6 @@
 **                                                                     **
 \************************************************************************/
 
-use core\Log;
-use core\Utility as util;
-
-use framework\Configuration;
-use framework\Session;
-
 //--------------------------------------------------
 //
 //  Initialization
@@ -32,160 +26,86 @@ use framework\Session;
 //--------------------------------------------------
 require_once('.private/scripts/Initialize.php');
 
-//------------------------------
-//  Environment variables
-//------------------------------
-foreach ( $_SERVER as $key => $value ) {
-  if ( $key == 'REDIRECT_URL' ) continue;
-
-  $res = preg_replace('/^REDIRECT_/', '', $key, -1, $count);
-
-  if ( $count > 0 ) {
-    unset($_SERVER[$key]);
-
-    $_SERVER[$res] = $value;
-  }
-}
-
-if ( isset($_SERVER['HTTP_STATUS']) ) {
-  redirect(intval($_SERVER['HTTP_STATUS']));
-}
-
-//------------------------------
-//  JSON typed POST
-//------------------------------
-
-if ( @$_SERVER['REQUEST_METHOD'] == 'POST' && preg_match('/^application\/json/', core\Request::headers('Content-Type')) ) {
-  $_POST = json_decode(file_get_contents('php://input'), true);
-}
-
-//------------------------------
-//  Session & Authentication
-//------------------------------
-// Session ID provided, validate it.
-$sid = util::cascade(@$_REQUEST['__sid'], @$_COOKIE['__sid']);
-if ( $sid !== null ) {
-  $res = Session::ensure($sid, @$_REQUEST['__token']);
-
-  if ( $res === false || $res === Session::ERR_EXPIRED ) {
-    // Session doesn't exists, delete exsting cookie.
-    setcookie('__sid', '', time() - 3600);
-  }
-  else if ( is_integer($res) ) {
-    switch ( $res ) {
-      // Treat as public user.
-      case Session::ERR_INVALID:
-        break;
-    }
-  }
-  else {
-    // Success, proceed.
-  }
-}
-
-$res = array(&$_POST, &$_GET, &$_REQUEST, &$_COOKIE);
-
-foreach ( $res as &$ref ) {
-  remove(['__sid', '__token'], $ref);
-}
-
-unset($sid, $res, $ref);
-
-//------------------------------
-//  Locale
-//------------------------------
-if ( @$_REQUEST['locale'] ) {
-  setcookie('locale', $_REQUEST['locale'], FRAMEWORK_COOKIE_EXPIRE_TIME, '/');
-}
-
-$locale = util::cascade(@$_REQUEST['locale'], @$_COOKIE['locale'], 'en_US');
-
-$resource = util::getResourceContext($locale);
-
-unset($locale);
-
 //--------------------------------------------------
 //
-//  Request handling
+//  Resolve the request
 //
 //--------------------------------------------------
 
-//------------------------------
-//  Access log
-//------------------------------
-if ( FRAMEWORK_ENVIRONMENT == 'debug' ) {
-  $accessTime = microtime(1);
-}
-
-//------------------------------
-//  Resolve request URI
-//------------------------------
-
-$resolver = 'framework\Resolver';
+$resolver = new framework\Resolver();
 
 // Maintenance resolver
-$resolver::registerResolver(new resolvers\MaintenanceResolver(FRAMEWORK_PATH_MAINTENANCE_TEMPLATE), 70);
+$resolver->registerResolver(new resolvers\MaintenanceResolver(FRAMEWORK_PATH_MAINTENANCE_TEMPLATE), 999);
+
+// Session authentication
+$resolver->registerResolver(new resolvers\UserContextResolver(array(
+    'setup' => true // This enables the "startup" super user when no user in database.
+  )), 100);
+
+// AuthententicationResolver
+$resolver->registerResolver(new resolvers\AuthenticationResolver(), 80);
+
+// Locale
+$resolver->registerResolver(new resolvers\LocaleResolver(array(
+  'default' => framework\Configuration::get('core.i18n::localeChain')
+  )), 70);
 
 // Web Services
-$resolver::registerResolver(new resolvers\WebServiceResolver('/service/'), 60);
-
-// Cache resolver
-// $resolver::registerResolver(new resolvers\CacheResolver('/:cache/'), 50);
+$resolver->registerResolver(new resolvers\WebServiceResolver('/service/'), 60);
 
 // Template resolver
-$templateResolver = new resolvers\TemplateResolver(array(
-    'render' => function($path) {
-        static $mustache;
+// $templateResolver = new resolvers\TemplateResolver(array(
+//     'render' => function($path) {
+//         static $mustache;
+//         if ( !$mustache ) {
+//           $mustache = new Mustache_Engine();
+//         }
 
-        if ( !$mustache ) {
-          $mustache = new Mustache_Engine();
-        }
+//         $resource = util::getResourceContext();
 
-        $resource = util::getResourceContext();
+//         return $mustache->render(file_get_contents($path), $resource);
+//       }
+//   , 'extensions' => 'mustache html'
+//   ));
 
-        return $mustache->render(file_get_contents($path), $resource);
-      }
-  , 'extensions' => 'mustache html'
-  ));
+// $templateResolver->directoryIndex('Home index');
 
-$templateResolver->directoryIndex('Home index');
+// $resolver->registerResolver($templateResolver, 50);
 
-$resolver::registerResolver($templateResolver, 40);
-
-unset($templateResolver);
-
-// Database resources
-// $resolver::registerResolver(new resolvers\ResourceResolver('/:resource/'), 30);
+// unset($templateResolver);
 
 // External URL
-$resolver::registerResolver(new resolvers\ExternalResolver(), 20);
+// $resolver->registerResolver(new resolvers\ExternalResolver(), 30);
 
-// Physical file resolver ( Directory Indexing )
+// Physical file handling
 $fileResolver = new resolvers\FileResolver();
 $fileResolver->directoryIndex('Home index');
-$fileResolver->cacheExclusions('htm html php');
 
-$resolver::registerResolver($fileResolver, 10);
+$resolver->registerResolver($fileResolver, 10);
 
 unset($fileResolver);
 
-// Perform resolving
-$response = $resolver::resolve($_SERVER['REQUEST_URI']);
+/*! Note @ 24 Apr, 2015
+ *  Till now we cannot think of a way to use this resource resolver, resources
+ *  are supposed to be used internally.
+ *
+ *  Reserve this for future client-side translation.
+ *
+ *  $resolver->registerResolver(new resolvers\ResourceResolver('/resource/'), 0);
+ */
 
-//------------------------------
-//  Access log
-//------------------------------
-if ( FRAMEWORK_ENVIRONMENT == 'debug' ) {
-  Log::write("$_SERVER[REQUEST_METHOD] $_SERVER[REQUEST_URI]", 'Debug', array_filter(array(
-      'origin' => @$_SERVER['HTTP_REFERER']
-    , 'userAgent' => util::cascade(@$_SERVER['HTTP_USER_AGENT'], 'Unknown')
-    , 'timeElapsed' => round(microtime(1) - $accessTime, 4) . ' secs'
-    )));
+/*! Note @ 24 Apr, 2015
+ *  Cache resolver is now disabled because it handles way more than expected,
+ *  such as conditional request and etag.
+ *
+ *  $resolver->registerResolver(new resolvers\CacheResolver('/cache/'), 0);
+ */
 
-  unset($accessTime);
-}
+// Error status in HTML or JSON
+$resolver->registerResolver(new resolvers\StatusDocumentResolver('assets/errordocs'), 5);
 
-// HTTP status code returned
-if ( is_integer($response) ) {
-  redirect($response);
-}
+// Logging
+$resolver->registerResolver(new resolvers\LogResolver(), 0);
+
+// Start the application
+$resolver->run();

@@ -7,6 +7,8 @@ use core\Database;
 use core\Log;
 use core\Utility;
 
+use framework\System;
+
 class ExceptionsHandler {
   public static function setHandlers() {
         set_error_handler('framework\ExceptionsHandler::handleError');
@@ -115,7 +117,7 @@ class ExceptionsHandler {
       , 'code' => $eN
       );
 
-    if ( FRAMEWORK_ENVIRONMENT == 'debug' ) {
+    if ( System::environment() == 'debug' ) {
       $output['file'] = $eF;
       $output['line'] = $eL;
       $output['trace'] = $eC;

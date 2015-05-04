@@ -3,12 +3,49 @@
 
 namespace core;
 
+use core\exceptions\CoreException;
+
 /**
  * Node entity access class.
  *
  * @errors Code range 300-399
  */
 class Node {
+
+  /**
+   * The table name to use when no real table is found.
+   */
+  const BASE_COLLECTION = 'Nodes';
+
+  /**
+   * The field name to store the virtual collection name when using BASE_COLLECTION.
+   */
+  const FIELD_COLLECTION = '@collection';
+
+  /**
+   * The field to store the encoded JSON string for virtual fields.
+   */
+  const FIELD_VIRTUAL = '@contents';
+
+  /**
+   * The field of filter for the fields in SELECT queries.
+   */
+  const FIELD_SELECT = '@select';
+
+  /**
+   * The field of filter to specify index hints.
+   */
+  const FIELD_INDEX = '@index';
+
+  /**
+   * The field of filter to use as raw query text.
+   */
+  const FIELD_RAWQUERY = '@raw';
+
+  /**
+   * Number of rows to fetch when virtual column is in sight.
+   */
+  public static $fetchSize = 200;
 
   //--------------------------------------------------
   //
@@ -52,7 +89,7 @@ class Node {
     // Defaults string to collections.
     if ( is_string($filter) ) {
       $filter = array(
-        NODE_FIELD_COLLECTION => $filter
+        self::FIELD_COLLECTION => $filter
       );
     }
 
@@ -83,7 +120,7 @@ class Node {
     // Defaults string to collections.
     if ( is_string($filter) ) {
       $filter = array(
-        NODE_FIELD_COLLECTION => $filter
+        self::FIELD_COLLECTION => $filter
       );
     }
 
@@ -117,7 +154,7 @@ class Node {
     // Defaults string to collections.
     if ( is_string($filter) ) {
       $filter = array(
-        NODE_FIELD_COLLECTION => $filter
+        self::FIELD_COLLECTION => $filter
       );
     }
 
@@ -138,26 +175,26 @@ class Node {
 
     $filter = (array) $filter;
 
-    $tableName = self::resolveCollection(@$filter[NODE_FIELD_COLLECTION]);
+    $tableName = self::resolveCollection(@$filter[self::FIELD_COLLECTION]);
 
-    if ( $tableName !== NODE_COLLECTION ) {
-      unset($filter[NODE_FIELD_COLLECTION]);
+    if ( $tableName !== self::BASE_COLLECTION ) {
+      unset($filter[self::FIELD_COLLECTION]);
     }
 
     /* If index hint is specified, append the clause to collection. */
-    if ( @$filter[NODE_FIELD_INDEX_HINT] ) {
-      $indexHints = $filter[NODE_FIELD_INDEX_HINT];
+    if ( @$filter[self::FIELD_INDEX] ) {
+      $indexHints = $filter[self::FIELD_INDEX];
     }
     else {
       $indexHints = null;
     }
 
     /* Removes the index hint field. */
-    unset($filter[NODE_FIELD_INDEX_HINT]);
+    unset($filter[self::FIELD_INDEX]);
 
-    $selectField = isset($filter[NODE_FIELD_SELECT]) ? $filter[NODE_FIELD_SELECT] : '*';
+    $selectField = isset($filter[self::FIELD_SELECT]) ? $filter[self::FIELD_SELECT] : '*';
 
-    unset($filter[NODE_FIELD_SELECT]);
+    unset($filter[self::FIELD_SELECT]);
 
     $queryString = '';
 
@@ -169,8 +206,8 @@ class Node {
     // $columns = Database::query("SHOW COLUMNS FROM $tableName;");
     // $columns = $columns->fetchAll(\PDO::FETCH_COLUMN, 0);
 
-    if ( isset($filter[NODE_FIELD_RAWQUERY]) ) {
-      $rawQuery = (array) $filter[NODE_FIELD_RAWQUERY];
+    if ( isset($filter[self::FIELD_RAWQUERY]) ) {
+      $rawQuery = (array) $filter[self::FIELD_RAWQUERY];
 
       array_walk($rawQuery,
         function($value, $key) use(&$query, &$params) {
@@ -191,7 +228,7 @@ class Node {
           }
         });
 
-      unset($filter[NODE_FIELD_RAWQUERY], $rawQuery);
+      unset($filter[self::FIELD_RAWQUERY], $rawQuery);
     }
 
     // Pick real columns for SQL merging
@@ -212,7 +249,7 @@ class Node {
         array_walk($contents, function($content) use(&$subQuery, &$params, &$inValues, &$notInValues) {
           // Error checking
           if ( is_array($content) ) {
-            throw new NodeException('Node does not support composite array types.', 301);
+            throw new CoreException('Node does not support composite array types.', 301);
           }
 
           // 1. Boolean comparison: true, false
@@ -398,10 +435,10 @@ class Node {
       $res->setFetchMode(\PDO::FETCH_ASSOC);
 
       $decodesContent = function(&$row) use($tableName) {
-        if ( isset($row[NODE_FIELD_VIRTUAL]) ) {
-          $contents = (array) json_decode($row[NODE_FIELD_VIRTUAL], true);
+        if ( isset($row[self::FIELD_VIRTUAL]) ) {
+          $contents = (array) json_decode($row[self::FIELD_VIRTUAL], true);
 
-          unset($row[NODE_FIELD_VIRTUAL]);
+          unset($row[self::FIELD_VIRTUAL]);
 
           if ( is_array($contents) ) {
             $row = $contents + $row;
@@ -410,7 +447,7 @@ class Node {
           unset($contents);
         }
 
-        $row[NODE_FIELD_COLLECTION] = $tableName;
+        $row[self::FIELD_COLLECTION] = $tableName;
 
         return $row;
       };
@@ -432,14 +469,14 @@ class Node {
       }
 
       $fetchOffset = 0; // Always starts with zero as we are calculating virtual fields.
-      $fetchLength = NODE_FETCHSIZE; // Node fetch size, or the target size if smaller.
+      $fetchLength = self::$fetchSize; // Node fetch size, or the target size if smaller.
 
       // Row decoding function.
       $decodesContent = function(&$row) use($filter, $fieldsRequired) {
-        if ( isset($row[NODE_FIELD_VIRTUAL]) ) {
-          $contents = (array) json_decode($row[NODE_FIELD_VIRTUAL], true);
+        if ( isset($row[self::FIELD_VIRTUAL]) ) {
+          $contents = (array) json_decode($row[self::FIELD_VIRTUAL], true);
 
-          unset($row[NODE_FIELD_VIRTUAL]);
+          unset($row[self::FIELD_VIRTUAL]);
 
           $row+= $contents;
 
@@ -479,8 +516,8 @@ class Node {
               $limits[0]--;
             }
             else {
-              if ( $tableName !== NODE_COLLECTION ) {
-                $row[NODE_FIELD_COLLECTION] = $tableName;
+              if ( $tableName !== self::BASE_COLLECTION ) {
+                $row[self::FIELD_COLLECTION] = $tableName;
               }
 
               $dataCallback($row);
@@ -492,9 +529,6 @@ class Node {
             }
           }
         }
-
-        // You'll never know if upcoming rows are qualifying.
-        // $fetchLength = min($limits[1], NODE_FETCHSIZE);
       } unset($fetchOffset, $fetchLength, $res);
     }
   }
@@ -564,7 +598,7 @@ class Node {
 
   public static /* int */
   function nodeSorter($itemA, $itemB) {
-    $itemIndex = strcmp($itemA[NODE_FIELD_COLLECTION], $itemB[NODE_FIELD_COLLECTION]);
+    $itemIndex = strcmp($itemA[self::FIELD_COLLECTION], $itemB[self::FIELD_COLLECTION]);
 
     if ( $itemIndex === 0 ) {
       $itemIndex = 'ID';
@@ -612,8 +646,8 @@ class Node {
    *
    * @returns Array of Booleans, true on success of specific row, false otherwises.
    *
-   * @throws NodeException thrown when $contents did not specify a collection.
-   * @throws NodeException thrown when more than one row is selected with the provided keys,
+   * @throws CoreException thrown when $contents did not specify a collection.
+   * @throws CoreException thrown when more than one row is selected with the provided keys,
    *                       and $extendExists is true.
    */
   static /* Array */
@@ -635,13 +669,13 @@ class Node {
         continue;
       }
 
-      if ( !trim(@$row[NODE_FIELD_COLLECTION]) ) {
-        throw new NodeException('Data object must specify a collection with property "'.NODE_FIELD_COLLECTION.'".', 302);
+      if ( !trim(@$row[self::FIELD_COLLECTION]) ) {
+        throw new CoreException('Data object must specify a collection with property "'.self::FIELD_COLLECTION.'".', 302);
 
         continue;
       }
 
-      $tableName = self::resolveCollection($row[NODE_FIELD_COLLECTION]);
+      $tableName = self::resolveCollection($row[self::FIELD_COLLECTION]);
 
       // Get physical columns of target collection,
       // merges into SQL for physical columns.
@@ -664,8 +698,8 @@ class Node {
       // the exact row.
       if ( $extendExists === true ) {
         $res = array(
-          NODE_FIELD_COLLECTION => $tableName === NODE_COLLECTION ?
-            $row[NODE_FIELD_COLLECTION] : $tableName
+          self::FIELD_COLLECTION => $tableName === self::BASE_COLLECTION ?
+            $row[self::FIELD_COLLECTION] : $tableName
         );
 
         $res+= array_select($row, $keys);
@@ -673,7 +707,7 @@ class Node {
         $res = node::get($res);
 
         if ( count($res) > 1 ) {
-          throw new NodeException('More than one row is selected when extending '.
+          throw new CoreException('More than one row is selected when extending '.
             'current object, please provide ALL keys when calling with $extendExists = true.', 303);
         }
 
@@ -689,7 +723,7 @@ class Node {
 
       foreach ( $row as $field => $fieldContents ) {
         // Physical columns exists, pass in.
-        if ( $field !== NODE_FIELD_VIRTUAL && in_array($field, array_merge($keys, $cols)) ) {
+        if ( $field !== self::FIELD_VIRTUAL && in_array($field, array_merge($keys, $cols)) ) {
           $data[$field] = $fieldContents;
 
           unset($row[$field]);
@@ -697,13 +731,13 @@ class Node {
       }
 
       // Do not pass in @collection as data row below, physical tables only.
-      if ( @$row[NODE_FIELD_COLLECTION] !== NODE_COLLECTION ) {
-        unset($row[NODE_FIELD_COLLECTION]);
+      if ( @$row[self::FIELD_COLLECTION] !== self::BASE_COLLECTION ) {
+        unset($row[self::FIELD_COLLECTION]);
       }
 
       // Encode the rest columns and put inside virtual field.
       // Skip the whole action when `@contents` columns doesn't exists.
-      if ( in_array(NODE_FIELD_VIRTUAL, $cols) ) {
+      if ( in_array(self::FIELD_VIRTUAL, $cols) ) {
         array_walk_recursive($row, function(&$value) {
           if ( is_resource($value) ) {
             $value = get_resource_type($value);
@@ -711,11 +745,11 @@ class Node {
         });
 
         // Silently swallow json_encode() errors.
-        $data[NODE_FIELD_VIRTUAL] = @json_encode($row);
+        $data[self::FIELD_VIRTUAL] = @json_encode($row);
 
         // Defaults to be an empty object.
-        if ( !$data[NODE_FIELD_VIRTUAL] || $data[NODE_FIELD_VIRTUAL] == '[]' ) {
-          $data[NODE_FIELD_VIRTUAL] = '{}';
+        if ( !$data[self::FIELD_VIRTUAL] || $data[self::FIELD_VIRTUAL] == '[]' ) {
+          $data[self::FIELD_VIRTUAL] = '{}';
         }
       }
 
@@ -745,8 +779,8 @@ class Node {
       $tableName = self::resolveCollection($filter);
 
       // Delete all fields of specified collection name.
-      if ( $tableName == NODE_COLLECTION ) {
-        $res = Database::query('DELETE FROM `'.NODE_COLLECTION.'` WHERE `@collection` = ?', [$filter]);
+      if ( $tableName == self::BASE_COLLECTION ) {
+        $res = Database::query('DELETE FROM `'.self::BASE_COLLECTION.'` WHERE `@collection` = ?', [$filter]);
 
         return $res->rowCount();
       }
@@ -762,7 +796,7 @@ class Node {
     $affectedRows = 0;
 
     foreach ( $res as $key => $row ) {
-      $tableName = self::resolveCollection($row[NODE_FIELD_COLLECTION]);
+      $tableName = self::resolveCollection($row[self::FIELD_COLLECTION]);
 
       $fields = Database::getFields($tableName, array('PRI', 'UNI'));
 
@@ -797,7 +831,7 @@ class Node {
     }
 
     if ( !Database::hasTable($tableName) ) {
-      return NODE_COLLECTION;
+      return self::BASE_COLLECTION;
     }
     else {
       return $tableName;
@@ -808,7 +842,7 @@ class Node {
   function ensureConnection() {
     if ( !Database::isConnected() ) {
       if ( error_reporting() ) {
-        throw new NodeException('Database is not connected.', 300);
+        throw new CoreException('Database is not connected.', 300);
       }
       else {
         return false;
@@ -834,15 +868,15 @@ class Node {
    *
    * @returns true on success, false otherwise;
    *
-   * @throws NodeException thrown when the call tries to make a virtual collection physical.
-   * @throws NodeException thrown when target table is no virtual column field.
-   * @throws NodeException thrown when no physical field description ($fieldDesc) is given.
+   * @throws CoreException thrown when the call tries to make a virtual collection physical.
+   * @throws CoreException thrown when target table is no virtual column field.
+   * @throws CoreException thrown when no physical field description ($fieldDesc) is given.
    */
   public static /* Boolean */
   function makePhysical($collection, $fieldName = null, $fieldDesc = null) {
     // Create table
     if ( !Database::hasTable($collection) ) {
-      throw new NodeException('Table creation is not supported in this version.');
+      throw new CoreException('Table creation is not supported in this version.');
 
       // Mimic result after table creation.
       if ( $fieldName === null ) {
@@ -852,8 +886,8 @@ class Node {
 
     $fields = Database::getFields($collection);
 
-    if ( !in_array(NODE_FIELD_VIRTUAL, $fields) ) {
-      throw new NodeException( 'Specified table `'
+    if ( !in_array(self::FIELD_VIRTUAL, $fields) ) {
+      throw new CoreException( 'Specified table `'
                              . $collection
                              . '` does not support virtual fields, no action is taken.',
                              305
@@ -861,7 +895,7 @@ class Node {
     }
 
     if ( $fieldName !== null && !$fieldDesc ) {
-      throw new NodeException('You must specify $fieldDesc when adding physical column.', 306);
+      throw new CoreException('You must specify $fieldDesc when adding physical column.', 306);
     }
 
     $field = Database::escape($fieldName);
@@ -876,7 +910,7 @@ class Node {
 
     $fields = Database::getFields($collection, array('PRI'));
 
-    array_push($fields, NODE_FIELD_VIRTUAL, $fieldName);
+    array_push($fields, self::FIELD_VIRTUAL, $fieldName);
 
     $fields = Database::escape($fields);
 
@@ -888,14 +922,14 @@ class Node {
     $res->setFetchMode(\PDO::FETCH_ASSOC);
 
     foreach ( $res as $row ) {
-      $contents = json_decode($row[NODE_FIELD_VIRTUAL], true);
+      $contents = json_decode($row[self::FIELD_VIRTUAL], true);
 
       $row[$fieldName] = $contents[$fieldName];
 
       unset($contents[$fieldName]);
 
-      $row[NODE_FIELD_VIRTUAL] = json_encode($contents);
-      $row[NODE_FIELD_COLLECTION] = $collection;
+      $row[self::FIELD_VIRTUAL] = json_encode($contents);
+      $row[self::FIELD_COLLECTION] = $collection;
 
       if ( self::set($row) === false ) {
         $migrated = false;
@@ -905,5 +939,3 @@ class Node {
     return $migrated;
   }
 }
-
-class NodeException extends \Exception {}

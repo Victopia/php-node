@@ -19,7 +19,7 @@ class files implements framework\interfaces\IAuthorizableWebService {
   //
   //--------------------------------------------------
 
-  public function authorizeMethod($name, $args = NULL) {
+  public function authorizeMethod($name, $args = array()) {
     // Two ways to delete a file:
     // 1. files/get/$userId/$fileId
     // 2. files/$userId/$fileId
@@ -38,7 +38,7 @@ class files implements framework\interfaces\IAuthorizableWebService {
       // Otherwise, only allow logged in session to access themselves.
       else {
         // Session will be enforced in this service, don't need to do again.
-        $user = Service::call('users', 'get', array($args[0]));
+        $user = Service::call('users', 'get', array(@$args[0]));
 
         return @$user['ID'] == Session::currentUser('ID');
       }
@@ -147,7 +147,7 @@ class files implements framework\interfaces\IAuthorizableWebService {
     // File deletion
     if ( strcasecmp(@$_SERVER['REQUEST_METHOD'], 'DELETE') === 0 ) {
       return Node::delete(array(
-          NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_FILE
+          Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_FILE
         , 'id' => $fileObj['id']
         ));
     }

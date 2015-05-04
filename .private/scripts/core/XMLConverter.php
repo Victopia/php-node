@@ -3,6 +3,9 @@
 
 namespace core;
 
+use XMLReader;
+use XMLWriter;
+
 /**
  * XMLConverter class.
  *
@@ -16,12 +19,19 @@ namespace core;
 class XMLConverter {
 
   /**
+   * @private
+   *
+   * String values exceed this length will be written as CDATA tag.
+   */
+  const CDATA_THRESHOLD = 70;
+
+  /**
    * Parses source XML into a PHP array.
    *
    * @param $source This can be raw XML source, or path to the XML.
    */
   public static function fromXML($source) {
-    $reader = new \XMLReader();
+    $reader = new XMLReader();
     $method = preg_match('/^\s*\</', $source) ? 'xml' : 'open';
 
     $method = new \ReflectionMethod($reader, $method);
@@ -57,7 +67,7 @@ class XMLConverter {
     $_value = &$node['@value'];
 
     switch ($reader->nodeType) {
-      case \XMLReader::ELEMENT:                // #1
+      case XMLReader::ELEMENT:                // #1
         $currentNode = array();
 
         if (!isset($_value[$nodeName])) {
@@ -99,8 +109,8 @@ class XMLConverter {
 
         break;
 
-      case \XMLReader::TEXT:                   // #3
-      case \XMLReader::CDATA:                  // #4
+      case XMLReader::TEXT:                   // #3
+      case XMLReader::CDATA:                  // #4
         $value = $reader->value;
 
         if ( is_numeric($value) && $value < PHP_INT_MAX && strlen($value) < 15 ) {
@@ -122,7 +132,7 @@ class XMLConverter {
         $reader->read();
         break;
 
-      case \XMLReader::COMMENT:
+      case XMLReader::COMMENT:
         if ($reader->value) {
           if (!isset($node['@comments'])) {
             $node['@comments'] = array();
@@ -134,7 +144,7 @@ class XMLConverter {
         $reader->read();
         break;
 
-      case \XMLReader::END_ELEMENT:            // #15
+      case XMLReader::END_ELEMENT:            // #15
         if (is_array($_value)) {
           // Flatten numeric arrays with one element.
           if (!Utility::isAssoc($_value)) {
@@ -206,9 +216,9 @@ class XMLConverter {
   }
 
   public static function toXML($source) {
-    $writer = new \XMLWriter();
-    $writer->openMemory();
+    $writer = new XMLWriter();
 
+    $writer->openMemory();
     $writer->startDocument('1.0', 'utf-8');
 
     self::walkArray($source, $writer);
@@ -225,7 +235,12 @@ class XMLConverter {
 
     // Text value
     if (!is_array($node)) {
-      $writer->text($node);
+      if (strlen($node) > self::CDATA_THRESHOLD) {
+        $writer->writeCData($node);
+      }
+      else {
+        $writer->text($node);
+      }
       return;
     }
 
@@ -284,7 +299,7 @@ class XMLConverter {
     //  Children
     //------------------------------
 
-    if (Utility::isAssoc($node)) {;
+    if (Utility::isAssoc($node)) {
       foreach ($node as $key => $value) {
         if (!is_array($value)) {
           self::writeElement($key, $writer, $ns, $value);
@@ -332,11 +347,36 @@ class XMLConverter {
       $value = (string) $value;
     }
 
-    if (count($nodeName) == 2) {
-      $writer->writeElementNS($nodeName[0], $nodeName[1], $ns[$nodeName[0]], $value);
+    /*! Note
+     *  As XMLWriter does not do smart self closing tags depends on the value
+     *  itself, we need to do this threshold check twice. One here, and one
+     *  at the start of walkArray().
+     */
+    if (strlen($value) > self::CDATA_THRESHOLD) {
+      if (count($nodeName) == 2) {
+        $writer->startElementNS($nodeName[0], $nodeName[1], $ns[$nodeName[0]]);
+      }
+      else {
+        $writer->startElement($nodeName[0]);
+      }
+
+      // Single point of logic for text writing
+      self::walkArray($value, $writer, $ns);
+
+      $writer->endElement();
     }
     else {
-      $writer->writeElement($nodeName[0], $value);
+      // null for self closing tag
+      if (!$value) {
+        $value = null;
+      }
+
+      if (count($nodeName) == 2) {
+        $writer->writeElementNS($nodeName[0], $nodeName[1], $ns[$nodeName[0]], $value);
+      }
+      else {
+        $writer->writeElement($nodeName[0], $value);
+      }
     }
   }
 }

@@ -90,13 +90,18 @@ class Configuration implements \Iterator, \ArrayAccess {
 	//--------------------------------------------------
 
 	// Shorthand accessor
-	static function get($key) {
+	static function get($key, $defaultValue = null) {
 		if ( strpos($key, '::') !== false ) {
 			list($key, $property) = explode('::', $key, 2);
 
 			$key = new Configuration($key);
 
-			return $key[$property];
+			if ( isset($key[$property]) ) {
+				return $key[$property];
+			}
+			else {
+				return $defaultValue;
+			}
 		}
 		else {
 			return new Configuration($key);
@@ -111,7 +116,7 @@ class Configuration implements \Iterator, \ArrayAccess {
     // Root objects will get value from database upon creation
 		if ( $this->parentObject === null ) {
 			$confObj = array(
-				NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_CONFIGURATION
+				Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_CONFIGURATION
 			, '@key' => $this->key
 			);
 
@@ -121,7 +126,7 @@ class Configuration implements \Iterator, \ArrayAccess {
 				$confObj = @$res[0];
 			}
 
-			unset($res, $confObj['@key'], $confObj[NODE_FIELD_COLLECTION]);
+			unset($res, $confObj['@key'], $confObj[Node::FIELD_COLLECTION]);
 		}
 		else {
 			$confObj = &$this->parentObject->__valueOf();
@@ -184,7 +189,7 @@ class Configuration implements \Iterator, \ArrayAccess {
 		$confKey = $cObj->getKey();
 
     $filter = array(
-  			NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_CONFIGURATION
+  			Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_CONFIGURATION
   		, '@key' => $confKey
   		);
 

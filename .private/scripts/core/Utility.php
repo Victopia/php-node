@@ -5,6 +5,9 @@ namespace core;
 
 use framework\Configuration;
 use framework\MustacheResource;
+use framework\Request;
+use framework\Resolver;
+use framework\System;
 
 /**
  * Utility class.
@@ -118,80 +121,15 @@ class Utility {
    * Mimic the output of os.networkInterfaces() in node.js.
    */
   static function networkInterfaces() {
-    switch ( strtoupper(PHP_OS) ) {
-      case 'DARWIN': // MAC OS X
-        $res = preg_split('/\n/', @`ifconfig`);
-        $res = array_filter(array_map('trim', $res));
-
-        $result = array();
-
-        foreach ( $res as $row ) {
-          if ( preg_match('/^(\w+\d+)\:\s+(.+)/', $row, $matches) ) {
-            $result['__currentInterface'] = $matches[1];
-
-            $result[$result['__currentInterface']]['__internal'] = false !== strpos($matches[2], 'LOOPBACK');
-          }
-          else if ( preg_match('/^inet(6)?\s+([^\/\s]+)(?:%.+)?/', $row, $matches) ) {
-            $iface = &$result[$result['__currentInterface']];
-
-            @$iface[] = array(
-                'address' => $matches[2]
-              , 'family' => $matches[1] ? 'IPv6' : 'IPv4'
-              , 'internal' => $iface['__internal']
-              );
-
-            unset($iface);
-          }
-
-          unset($matches);
-        } unset($row, $res);
-
-        unset($result['__currentInterface']);
-
-        return array_filter(array_map(compose('array_filter', removes('__internal')), $result));
-
-      case 'LINUX':
-        // $ifaces = `ifconfig -a | sed 's/[ \t].*//;/^\(lo\|\)$/d'`;
-        // $ifaces = preg_split('/\s+/', $ifaces);
-        $res = preg_split('/\n/', @`ip addr`);
-        $res = array_filter(array_map('trim', $res));
-
-        $result = array();
-
-        foreach ( $res as $row ) {
-          if ( preg_match('/^\d+\:\s+(\w+)/', $row, $matches) ) {
-            $result['__currentInterface'] = $matches[1];
-          }
-          else if ( preg_match('/^link\/(\w+)/', $row, $matches) ) {
-            $result[$result['__currentInterface']]['__internal'] = strtolower($matches[1]) == 'loopback';
-          }
-          else if ( preg_match('/^inet(6)?\s+([^\/]+)(?:\/\d+)?.+\s([\w\d]+)(?:\:\d+)?$/', $row, $matches) ) {
-            @$result[$matches[3]][] = array(
-                'address' => $matches[2]
-              , 'family' => $matches[1] ? 'IPv6' : 'IPv4'
-              , 'internal' => Utility::cascade(@$result[$matches[3]]['__internal'], false)
-              );
-          }
-
-          unset($matches);
-        } unset($row, $res);
-
-        unset($result['__currentInterface']);
-
-        return array_filter(array_map(compose('array_filter', removes('__internal')), $result));
-
-      case 'WINNT': // Currently not supported.
-      default:
-        return array();
-    }
+    return System::networkInterfaces();
   }
 
   /**
    * Returns whether current request is made by local redirect.
    */
   static function isLocalRedirect() {
-    return @$_SERVER['HTTP_REFERER'] == FRAMEWORK_SERVICE_HOSTNAME_LOCAL &&
-      @$_SERVER['HTTP_HOST'] == FRAMEWORK_SERVICE_HOSTNAME &&
+    return @$_SERVER['HTTP_REFERER'] == System::getHostname('local') &&
+      @$_SERVER['HTTP_HOST'] == System::getHostname() &&
       @$_SERVER['HTTP_USER_AGENT'] == 'X-PHP';
   }
 
@@ -297,17 +235,17 @@ class Utility {
    * To determine a numeric array, inverse the result of this function.
    */
   static function isAssoc($value) {
-    /* This is the original version found somewhere in the internet,
-       keeping it to respect the author.
-
-       Problem is numeric arrays with inconsecutive keys will return
-       as associative, might be a desired outcome when doing json_encode,
-       but this led to a not very descriptive function name.
-
-    return is_array($value) && count($value) &&
-      count(array_diff_key($value, array_keys(array_keys($value))));
-    */
-
+    /*! Note
+     *  This is the original version found somewhere in the internet,
+     *  keeping it to respect the author.
+     *
+     *  Problem is numeric arrays with inconsecutive keys will return
+     *  as associative, might be a desired outcome when doing json_encode,
+     *  but this led to a not very descriptive function name.
+     *
+     *  return is_array($value) && count($value) &&
+     *    count(array_diff_key($value, array_keys(array_keys($value))));
+     */
     return is_array($value) && $value &&
       // All keys must be numeric to qualify as NOT assoc.
       array_filter(array_keys($value), compose('not', 'is_numeric'));
@@ -368,7 +306,7 @@ class Utility {
   }
 
   /**
-   *
+   * Case-insenstive version of array_diff.
    */
   static function arrayDiffIgnoreCase() {
     $arrays = array_map(function($input) {
@@ -434,29 +372,54 @@ class Utility {
 
   /**
    * Flatten an array, concatenating keys with specified delimiter.
+   *
+   * @param {array}   $input The array to be flattened
+   * @param {string}  $options['delimiter'] The delimiter string of the output key
+   * @param {boolean} $options['numeric'] Include numeric array when flattening, default true.
+   * @param {int}     $options['level'] Maximum level of flattening, defaults to infinite.
    */
-  static function flattenArray(&$input, $delimiter = '.', $flattenNumeric = true) {
-    if ( !is_array($input) ) {
-      return $input;
+  static function flattenArray($input, $options = array(), $_numeric = null) {
+    // Backward compatibility
+    if ( is_string($options) ) {
+      $options = array(
+          'delimiter' => $options
+        );
     }
 
-    // Could have a single layer solution,
-    // can't think of it at the moment so leave it be.
-    if ( Utility::isAssoc($input) || $flattenNumeric ) {
-      foreach ($input as $key1 => $value) {
-        $value = self::flattenArray($value, $delimiter, $flattenNumeric);
+    if ( is_bool($_numeric) ) {
+      $options['numeric'] = $_numeric;
+    }
 
-        if ( is_array($value) && ($flattenNumeric || Utility::isAssoc($value)) ) {
-          foreach ($value as $key2 => $val) {
-            $input["$key1$delimiter$key2"] = $val;
+    // Default values
+    $options+= array(
+        'numeric' => true
+      , 'delimiter' => '.'
+      );
+
+    $recursion = function(&$input, $options) use(&$recursion) {
+      if ( !is_array($input) || (is_numeric(@$options['level']) && $options['level'] <= 1) ) {
+        return $input;
+      }
+
+      $result = array();
+
+      // Merge one level
+      foreach ( $input as $key1 => $value1 ) {
+        if ( is_array($value1) && ( self::isAssoc($value1) || @$options['numeric'] ) ) {
+          foreach ( $value1 as $key2 => $value2 ) {
+            $result["$key1$options[delimiter]$key2"] = $value2;
           }
-
-          unset($input[$key1]);
         }
       }
-    }
 
-    return $input;
+      if ( is_numeric(@$options['level']) ) {
+        $options['level']--;
+      }
+
+      return $recursion($result, $options);
+    };
+
+    return $recursion($input, $options);
   }
 
   /**
@@ -495,10 +458,10 @@ class Utility {
   }
 
   /**
-   * Return the first value that is not interpreted as false.
+   * Return the first truthy value.
    *
-   * This is made for those lazy shits like me, who does
-   * (foo || bar || baz) a lot in Javascript.
+   * This is made for those lazy shits like me, who does (foo || bar || baz)
+   * a lot in Javascript.
    *
    * @param {array} $list Array of values to cascade, or it will func_get_args().
    */
@@ -796,27 +759,10 @@ class Utility {
   }
 
   /**
-   * @deprecated
-   *
-   * Call a WebService internally.
-   *
-   * @param {string} $service Name of the service.
-   * @param {string} $method Name of the service method.
-   * @param {array} $parameters Optional, array of parameters passed to the methdod.
-   *
-   * @return Whatever the method returns, or false in case of method not exists.
-   */
-  static function callService($service, $method, $parameters = array()) {
-    triggerDeprecate('framework\Service::call');
-
-    return \service::call($service, $method, $parameters);
-  }
-
-  /**
-   * Fix weird array format in _FILES.
+   * Fix weird array format in $_FILES.
    */
   static function filesFix() {
-    if ( @$_FILES ) {
+    if ( @$_FILES && !@$_FILES['__fixed'] ) {
       foreach ( $_FILES as &$file ) {
         $output = array();
 
@@ -837,6 +783,8 @@ class Utility {
 
         $file = $output;
       }
+
+      $_FILES['__fixed'] = true;
     }
   }
 
@@ -853,11 +801,125 @@ class Utility {
 
   /**
    * Get file info with the finfo class.
+   *
+   * When mime type cannot be determined from the file contents, it tries to add
+   * default mime type by looking at the file extension.
    */
-  static function getInfo($file, $options = null) {
+  static function getInfo($file, $options = FILEINFO_MIME_TYPE) {
     $finfo = new \finfo($options);
+    $finfo = $finfo->file($file);
 
-    return $finfo->file($file);
+    if ( $options === FILEINFO_MIME_TYPE ) {
+      $mime = &$finfo;
+    }
+    else if ( is_array($finfo) ) {
+      $mime = &$finfo['type'];
+    }
+
+    switch ( pathinfo($file, PATHINFO_EXTENSION) ) {
+      case 'css':
+        $mime = 'text/css; charset=utf-8';
+        break;
+      case 'js':
+        $mime = 'text/javascript; charset=utf-8';
+        break;
+      case 'pdf':
+        $mime = 'application/pdf';
+        break;
+      case 'php':
+      case 'phps':
+      case 'html':
+        $mime = 'text/x-php';
+        break;
+      case 'cff':
+        $mime = 'application/font-cff';
+        break;
+      case 'ttf':
+        $mime = 'application/font-ttf';
+        break;
+      case 'woff':
+        $mime = 'application/font-woff';
+        break;
+      case 'eot':
+        $mime = 'applicaiton/vnd.ms-fontobject';
+        break;
+      case 'otf':
+        $mime = 'font/otf';
+        break;
+      case 'svgz':
+        header('Content-Encoding: gzip');
+      case 'svg':
+        $mime = 'image/svg+xml; charset=utf-8';
+        break;
+      case 'doc':
+      case 'dot':
+        $mime = 'application/msword';
+        break;
+      case 'docx':
+        $mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+        break;
+      case 'dotx':
+        $mime = 'application/vnd.openxmlformats-officedocument.wordprocessingml.template';
+        break;
+      case 'docm':
+        $mime = 'application/vnd.ms-word.document.macroEnabled.12';
+        break;
+      case 'dotm':
+        $mime = 'application/vnd.ms-word.template.macroEnabled.12';
+        break;
+      case 'xls':
+      case 'xlt':
+      case 'xla':
+        $mime = 'application/vnd.ms-excel';
+        break;
+      case 'xlsx':
+        $mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+        break;
+      case 'xltx':
+        $mime = 'application/vnd.openxmlformats-officedocument.spreadsheetml.template';
+        break;
+      case 'xlsm':
+        $mime = 'application/vnd.ms-excel.sheet.macroEnabled.12';
+        break;
+      case 'xltm':
+        $mime = 'application/vnd.ms-excel.template.macroEnabled.12';
+        break;
+      case 'xlam':
+        $mime = 'application/vnd.ms-excel.addin.macroEnabled.12';
+        break;
+      case 'xlsb':
+        $mime = 'application/vnd.ms-excel.sheet.binary.macroEnabled.12';
+        break;
+      case 'ppt':
+      case 'pot':
+      case 'pps':
+      case 'ppa':
+        $mime = 'application/vnd.ms-powerpoint';
+        break;
+      case 'pptx':
+        $mime = 'application/vnd.openxmlformats-officedocument.presentationml.presentation';
+        break;
+      case 'potx':
+        $mime = 'application/vnd.openxmlformats-officedocument.presentationml.template';
+        break;
+      case 'ppsx':
+        $mime = 'application/vnd.openxmlformats-officedocument.presentationml.slideshow';
+        break;
+      case 'ppam':
+        $mime = 'application/vnd.ms-powerpoint.addin.macroEnabled.12';
+        break;
+      case 'pptm':
+        $mime = 'application/vnd.ms-powerpoint.presentation.macroEnabled.12';
+        break;
+      case 'potm':
+        $mime = 'application/vnd.ms-powerpoint.template.macroEnabled.12';
+        break;
+      case 'ppsm':
+        $mime = 'application/vnd.ms-powerpoint.slideshow.macroEnabled.12';
+        break;
+    }
+
+    return $finfo;
   }
 
   /**
@@ -869,7 +931,7 @@ class Utility {
    * Unlike the Range header, only one range is allowed in this header.
    */
   static function getListRange($defaultLength = 20) {
-    $range = Request::headers('List-Range');
+    $range = Resolver::getActiveInstance()->request()->header('List-Range');
 
     if ( !preg_match('/^(\d*)?(?:-(\d*|\*))?$/', trim($range), $matches) ) {
       return null;

@@ -10,33 +10,9 @@
 // Epoach in seconds before 1970-01-01
 define('EPOACH', -62167246596);
 
-// Table name for Data class
-define('NODE_COLLECTION', 'Nodes');
-// A field for Node framework to identify as table (collection).
-define('NODE_FIELD_COLLECTION', '@collection');
-// Physical column for storing virtual field data
-define('NODE_FIELD_VIRTUAL', '@contents');
-// Define selecting fields in a node filter, default to *
-define('NODE_FIELD_SELECT', md5('@@select'));
-// Array of index hints mappings to specific collection(s)
-define('NODE_FIELD_INDEX_HINT', md5('@@useIndex'));
-// Untapped queries passed directly into SQL statements
-define('NODE_FIELD_RAWQUERY', md5('@@rawQuery'));
-// Row limit for each data fetch, be careful on setting this.
-// Required system resources will change exponentially.
-define('NODE_FETCHSIZE', 200);
+// Shorthand
+define('DS', DIRECTORY_SEPARATOR);
 
-// Current environment, 'debug' or 'production'
-define('FRAMEWORK_ENVIRONMENT', 'debug');
-
-// Document root to this framework
-define('FRAMEWORK_PATH_ROOT', realpath(__DIR__ . '/../..'));
-// Define web directories
-define('FRAMEWORK_PATH_VIRTUAL', '/');
-// Path to internal scripts
-define('FRAMEWORK_PATH_SCRIPTS', '/scripts');
-// Path to services
-define('FRAMEWORK_PATH_SERVICES', '/services');
 // Path to maintenance template
 define('FRAMEWORK_PATH_MAINTENANCE_TEMPLATE', '/assets/templates/maintenance.html');
 
@@ -48,6 +24,8 @@ define('FRAMEWORK_COLLECTION_RELATION', 'NodeRelations');
 define('FRAMEWORK_COLLECTION_LOG', 'Logs');
 // Collection of processes
 define('FRAMEWORK_COLLECTION_PROCESS', 'Processes');
+// Collection of schedules process
+define('FRAMEWORK_COLLECTION_PROCESS_SCHEDULE', 'ProcessSchedules');
 // Collection of users
 define('FRAMEWORK_COLLECTION_USER', 'Users');
 // Collection of http user sessions
@@ -56,27 +34,6 @@ define('FRAMEWORK_COLLECTION_SESSION', 'Sessions');
 define('FRAMEWORK_COLLECTION_FILE', 'Files');
 // Collection of locale resources.
 define('FRAMEWORK_COLLECTION_RESOURCES', 'Resources');
-
-// Times to retry for failed process spawning.
-define('FRAMEWORK_PROCESS_SPAWN_RETRY_COUNT', 5);
-define('FRAMEWORK_PROCESS_SPAWN_RETRY_INTERVAL', 0.4);
-
-// Times to retry to ensure a process is written to disc,
-// before spawning background process
-define('FRAMEWORK_PROCESS_INSERT_RETRY_COUNT', 50);
-// Times to retry when deletion on process table fails.
-define('FRAMEWORK_PROCESS_DELETE_RETRY_COUNT', 50);
-
-// Maximum process capacity of this server can affort.
-define('FRAMEWORK_PROCESS_MAXIMUM_CAPACITY', 100);
-
-// Maximum times to auto retry when 'UNLOCK TABLES;' returns false.
-define('FRAMEWORK_DATABASE_UNLOCK_RETRY_LIMIT', 20);
-// Interval to wait before checks that ensure data is written to disk.
-define('FRAMEWORK_DATABASE_ENSURE_WRITE_INTERVAL', 0.4);
-
-// Seconds to wait before sending next core\Net progress event.
-define('FRAMEWORK_NET_PROGRESS_INTERVAL', 0.3);
 
 // Predefined error messages in libcurl.
 define('FRAMEWORK_NET_CURL_ERRORS', serialize(array(
@@ -161,15 +118,8 @@ define('FRAMEWORK_NET_CURL_ERRORS', serialize(array(
 //  , CURLE_CHUNK_FAILED => 'Chunk callback reported error.'
   )));
 
-// Respose Header - Cache-Control: max-age=
-define('FRAMEWORK_RESPONSE_CACHE_PERMANANT', 31120135);
-define('FRAMEWORK_RESPONSE_CACHE_TEMPORARY', 108000);
-
 // For how long a cookie should be stored.
 define('FRAMEWORK_COOKIE_EXPIRE_TIME', strtotime('+ 1 week'));
-
-// Regex pattern to match custom request headers
-define('FRAMEWORK_CUSTOM_HEADER_PATTERN', '/^X\-/');
 
 // Date format for framework outputs
 define('FRAMEWORK_DATE_FORMAT', 'd M, H:i');

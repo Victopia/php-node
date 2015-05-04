@@ -32,11 +32,18 @@ class Resource {
   //----------------------------------------------------------------------------
 
   /**
+   * Shorthand to __get()
+   */
+  public function __invoke($key) {
+    return $this->__get($key);
+  }
+
+  /**
    * Set a locale object.
    */
   public function set($key, $value, $locale = null) {
     $contents = array(
-      NODE_FIELD_COLLECTION => 'Resource',
+      Node::FIELD_COLLECTION => 'Resource',
       'contents' => $value
     );
 
@@ -117,7 +124,7 @@ class Resource {
     $cache = &$this->localeCache[$key];
 
     $res = Node::get(array(
-        NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_RESOURCES
+        Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_RESOURCES
       , 'identifier' => $key
     ));
 

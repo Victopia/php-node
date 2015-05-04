@@ -16,55 +16,40 @@ interface IEventEmitter {
 	 * The same callback could be passed in multiple times, and it
 	 * will be fired with times accordingly.
 	 */
-	public function
-	/* void */ addEventListener($eventName, $listener);
+	public /* void */ function addEventListener($eventName, $listener);
 
 	/**
 	 * Shorthand of addEventListener().
 	 */
-	public function
-	/* void */ on($eventName, $listener);
+	public /* void */ function on($eventName, $listener);
 
 	/**
 	 * Adds a one time listener for the event. This listener is
 	 * invoked only the next time the event is fired, after
 	 * which it is removed.
 	 */
-	public function
-	/* void */ once($eventName, $listener);
+	public /* void */ function once($eventName, $listener);
 
   /**
    * Shorthand of removeEventListener().
    */
-  public function
-  /* void */ off($eventName, $listener = NULL);
+  public /* void */ function off($eventName, $listener = NULL);
 
 	/**
 	 * Remove specified listener from the callback stack if exists.
 	 */
-	public function
-	/* void */ removeEventListener($eventName, $listener);
+	public /* void */ function removeEventListener($eventName, $listener);
 
 	/**
 	 * Remove all event listeners, or of a specific event.
 	 */
-	public function
-	/* void */ removeAllListeners($eventName = NULL);
+	public /* void */ function removeAllListeners($eventName = NULL);
 
 	/**
-	 * Remove target or all event listeners.
-	 *
-	 * Shorthand for removeEventListener and removeAllListeners.
+	 * Returns true when this object has listeners attached,
+	 * false otherwise.
 	 */
-  public function
-  /* void */ off($eventName, $listener = NULL);
-
-	/**
-	 * Returns TRUE when this object has listeners attached,
-	 * FALSE otherwise.
-	 */
-	public function
-	/* boolean */ hasEventListener(&$eventName, &$listener);
+	public /* boolean */ function hasEventListener(&$eventName, &$listener);
 
 	/**
 	 * This method should trigger all registered
@@ -76,7 +61,6 @@ interface IEventEmitter {
 	 * * Optimally all of the extra data should be passed
 	 * inside the event object instead of extra parameters.
 	 */
-	public function
-	/* void */ dispatchEvent($event, $arguments = NULL);
+	public /* void */ function dispatchEvent($event, $arguments = NULL);
 
 }

@@ -20,7 +20,7 @@ class Deferred {
 	//--------------------------------------------------
 
 	public function __construct() {
-		$this->promiseObject = new Promise();
+		$this->promiseObject = new Promise($this);
 	}
 
 	//--------------------------------------------------
