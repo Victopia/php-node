@@ -1,17 +1,20 @@
 <?php
-/* ExceptionsHandler.php | Exception handler class of the framework. */
+/*! ExceptionsHandler.php | Exception handler class of the framework. */
 
 namespace framework;
+
+use ErrorException;
 
 use core\Database;
 use core\Log;
 use core\Utility;
 
+use framework\Resolver;
 use framework\System;
 
 class ExceptionsHandler {
   public static function setHandlers() {
-        set_error_handler('framework\ExceptionsHandler::handleError');
+        set_error_handler('framework\ExceptionsHandler::handleError', error_reporting());
     set_exception_handler('framework\ExceptionsHandler::handleException');
   }
 
@@ -20,7 +23,8 @@ class ExceptionsHandler {
       return;
     }
 
-    throw new \ErrorException($eS, 0, $eN, $eF, $eL);
+    // Use severity as the error placement
+    throw new ErrorException($eS, 0, $eN, $eF, $eL);
   }
 
   public static function handleException($e) {
@@ -29,16 +33,14 @@ class ExceptionsHandler {
     }
 
     $eS = $e->getMessage();
-    $eF = $e->getFile();
-    $eL = $e->getLine();
-    $eC = $e->getTrace();
     $eN = $e->getCode();
+    $eC = $e->getTrace();
+
+    // Put current context into stack trace
+    array_unshift($eC, array('file' => $e->getFile(), 'line' => $e->getLine()));
 
     if ( $e instanceof exceptions\GeneralException ) {
-      $r = new Resource;
-
-      $r = (string) $r->$eS;
-
+      $r = (string) (new Resource)->$eS;
       if ( $r ) {
         $eS = $r;
       }
@@ -46,8 +48,8 @@ class ExceptionsHandler {
       unset($r);
     }
 
-    if ( $e instanceof \ErrorException ) {
-      switch ( error_reporting() ) {
+    if ( $e instanceof ErrorException ) {
+      switch ( $e->getSeverity() ) {
         case E_ERROR:
         case E_PARSE:
         case E_CORE_ERROR:
@@ -79,37 +81,33 @@ class ExceptionsHandler {
     else {
       $exceptionType = get_class($e);
 
-      if ( strpos($exceptionType, '\\') !== FALSE ) {
+      if ( strpos($exceptionType, '\\') !== false ) {
         $exceptionType = substr(strrchr($exceptionType, '\\'), 1);
       }
 
       $logType = 'Exception';
     }
 
+    // Current request context
+    $request = @Resolver::getActiveInstance()->request();
+    $response = @Resolver::getActiveInstance()->response();
+
     // Prevent recursive errors on logging when database fails to connect.
     if ( Database::isConnected() ) {
       // Release table locks of current session.
       @Database::unlockTables(false);
 
-      if ( Utility::isCLI() ) {
-        $logContext = $eC;
-      }
-      else {
-        $logContext = array_filter(array(
-            'remoteAddr' => @$_SERVER['REMOTE_ADDR']
-          , 'forwarder' => @$_SERVER['HTTP_X_FORWARDED_FOR']
-          , 'referrer' => @$_SERVER['HTTP_REFERER']
-          , 'userAgent' => Utility::cascade(@$_SERVER['HTTP_USER_AGENT'], 'Unknown')
-          , 'errorContext' => $eC
-          ));
+      $logContext = array('errorContext' => $eC);
+      if ( $request ) {
+        $logContext+= $request->client();
       }
 
-      $logString = sprintf('[Gateway] Uncaught %s with message: "%s" #%d, on %s:%d.', $exceptionType, $eS, $eN, $eF, $eL);
+      $logString = sprintf('[Gateway] Uncaught %s with message: "%s" #%d.', $exceptionType, $eS, $eN);
 
       // Log the error
       Log::write($logString, $logType, $logContext);
 
-      unset($logContext);
+      unset($logString, $logContext);
     }
 
     $output = array(
@@ -118,34 +116,17 @@ class ExceptionsHandler {
       );
 
     if ( System::environment() == 'debug' ) {
-      $output['file'] = $eF;
-      $output['line'] = $eL;
       $output['trace'] = $eC;
     }
 
-    $output = ob_get_clean() . @json_encode($output);
-
-    if ( !Utility::isCLI() ) {
-      if ( !headers_sent() ) {
-        header('Content-Type: application/json; charset=utf-8');
-        header('Content-Length: ' . strlen($output));
-      }
-
-      // JSONP support
-      if ( @$_GET['callback'] ) {
-        $output = "$_GET[callback]($output)";
-      }
-    }
-
-    http_response_code(500);
-
     // Display error message
-    echo $output;
+    $response->clearHeaders();
+    $response->header('Content-Type', 'application/json; charset=utf-8');
+    $response->send($output, $e instanceof ErrorException ? 500 : 400);
 
-    // Terminates on Exceptions and Errors.
-    if ( $logType == 'Exception' || $logType == 'Error' ) {
+    // CLI exit code on Exceptions and Errors
+    if ( in_array($logType, array('Exception', 'Error')) ) {
       $exitCode = $e->getCode();
-
       if ( $exitCode <= 0 ) {
         $exitCode = 1;
       }
