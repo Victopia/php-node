@@ -11,10 +11,15 @@
  * 4. To access this, GET request to http(s)://(your_domain)/services/TestService/echo/(foobar)
  * 5. Does NOT support sub-directories yet.
  */
-class TestService implements framework\interfaces\IWebService {
+class TestService extends \framework\WebService {
 
-  function testMethod($input) {
-    return $input;
+  function testMethod($input = null) {
+    if ( $input !== null ) {
+      return $input;
+    }
+    else {
+      return $this->request()->param();
+    }
   }
 
 }
