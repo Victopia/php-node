@@ -92,12 +92,12 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
     }
     else
     if ( !method_exists($classname, $function) && !is_callable(array($instance, $function)) ) {
-      $response->status(501);
-      return; // 404
+      $response->status(501); // Not implemented
+      return;
     }
 
     if ( isset($matches[3]) ) {
-      $parameters = explode('/', substr($matches[3], 1));
+      $parameters = explode('/', trim($matches[3], '/'));
     }
     else {
       $parameters = array();
