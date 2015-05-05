@@ -1,7 +1,9 @@
 <?php
-/*! sessions.php | Service for framework Session. */
+/*! sessions.php | Service to manage login sessions. */
 
 use framework\Session;
+
+use framework\exceptions\ServiceException;
 
 /**
  * This class act as a sample service, further demonstrates how to write RESTful functions.
@@ -9,14 +11,14 @@ use framework\Session;
 class sessions implements framework\interfaces\IWebService {
 	function validate($username, $password, $overrideExists = false) {
 		$res = Session::validate($username, $password, $overrideExists);
-
 		if ( is_int($res) ) {
-			switch ($res) {
+			switch ( $res ) {
 				case Session::ERR_MISMATCH:
-					throw new framework\exceptions\ServiceException('Username and password mismatch.', $res);
+					throw new ServiceException('Username and password mismatch.', $res);
 					break;
+
 				case Session::ERR_EXISTS:
-					throw new framework\exceptions\ServiceException('Session already exists.', $res);
+					throw new ServiceException('Session already exists.', $res);
 					break;
 			}
 		}
@@ -26,15 +28,14 @@ class sessions implements framework\interfaces\IWebService {
 
 	function ensure($sid, $token = null) {
 		$res = Session::ensure($sid, $token);
-
-		if (is_int($res)) {
-			switch ($res) {
+		if ( is_int($res) ) {
+			switch ( $res ) {
 				case Session::ERR_INVALID:
-					throw new framework\exceptions\ServiceException('Specified session ID is not valid.', $res);
+					throw new ServiceException('Specified session ID is not valid.', $res);
 					break;
 
 				case Session::ERR_EXPIRED:
-					throw new framework\exceptions\ServiceException('Session has expired, restore it before making other calls.', $res);
+					throw new ServiceException('Session has expired, restore it before making other calls.', $res);
 					break;
 			}
 		}
@@ -43,18 +44,22 @@ class sessions implements framework\interfaces\IWebService {
 	}
 
 	function current() {
-		return (string) Session::current();
+		return Session::current();
 	}
 
-	function generateToken($sid) {
-		return (string) Session::generateToken($sid);
+	function generateToken() {
+		return Session::generateToken();
 	}
 
-	function restore($sid) {
+	function restore($sid = null) {
+		if ( $sid === null ) {
+			$sid = $this->request()->param('__sid');
+		}
+
 		return Session::restore($sid);
 	}
 
-	function invalidate($sid = NULL) {
+	function invalidate() {
 		return Session::invalidate($sid);
 	}
 }
