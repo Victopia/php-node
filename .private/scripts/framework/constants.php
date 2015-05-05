@@ -121,6 +121,9 @@ define('FRAMEWORK_NET_CURL_ERRORS', serialize(array(
 // For how long a cookie should be stored.
 define('FRAMEWORK_COOKIE_EXPIRE_TIME', strtotime('+ 1 week'));
 
+// How long a session is considered valid.
+define('FRAMEWORK_SESSION_EXPIRE_TIME', strtotime('+ 30 minute'));
+
 // Date format for framework outputs
 define('FRAMEWORK_DATE_FORMAT', 'd M, H:i');
 
