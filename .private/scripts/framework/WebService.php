@@ -57,27 +57,36 @@ abstract class WebService implements interfaces\IWebService {
 	 *
 	 * If no such method exists, a 501 Not Implemented response will be thrown.
 	 */
-	public function __invoke() {
-		$this->request()->header('Content-Type', 'application/json; charset=utf-8');
-
+	public function __invoke($method = null) {
 		$args = func_get_args();
-		$method = $this->request()->method();
-		switch ( $method ) {
-			case 'get':
-				if ( !$args ) {
-					$method = 'let';
-				}
-				else {
-					$method = 'get';
-				}
-				break;
-		}
 
+		$method = $this->resolveMethodName($args);
 		if ( method_exists($this, $method) ) {
+			$this->request()->header('Content-Type', 'application/json; charset=utf-8');
+
 			return call_user_func_array([$this, $method], $args);
 		}
 		else {
 			$this->response(501); // Not implemented
+		}
+	}
+
+	protected function resolveMethodName(&$args = array()) {
+		if ( isset($args[0]) && method_exists($this, $args[0]) ) {
+			return array_shift($args);
+		}
+
+		// Default method depending on request method
+		switch ( $this->request()->method() ) {
+			case 'get':
+			default:
+				if ( !$args ) {
+					return 'let';
+				}
+				return 'get';
+
+			case 'post':
+				return 'set';
 		}
 	}
 

@@ -7,25 +7,14 @@ abstract class AuthorizableWebService extends WebService implements interfaces\I
 
   abstract function authorizeMethod($name, $args = array());
 
-  public function __invoke() {
+  public function __invoke($method = null) {
     $args = func_get_args();
-    $method = $this->request()->method();
-    switch ( $method ) {
-      case 'get':
-        if ( !$args ) {
-          $method = 'let';
-        }
-        else {
-          $method = 'get';
-        }
-        break;
-    }
-
+    $method = $this->resolveMethodName($args);
     if ( !$this->authorizeMethod($method, $args) ) {
       $this->response()->status(401); // Forbidden
     }
     else {
-      return call_user_func_array('parent::__invoke', $args);
+      return call_user_func_array('parent::__invoke', func_get_args());
     }
   }
 
