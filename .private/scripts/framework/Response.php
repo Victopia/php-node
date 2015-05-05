@@ -188,6 +188,22 @@ class Response {
   }
 
   /**
+   * Sets cookies information.
+   *
+   * Takes the same parameters as setcookie(), but this updates current cookies immediately.
+   */
+  public function cookie($name, $value = null) {
+    call_user_func_array('setcookie', func_get_args());
+
+    if ( $value ) {
+      $_COOKIE[$name] = $value;
+    }
+    else {
+      unset($_COOKIE[$name]);
+    }
+  }
+
+  /**
    * HTTP request headers
    *
    * Subsequent updates to the same header will append to it, to remove a header,
@@ -280,6 +296,10 @@ class Response {
    * Sends headers to browser.
    */
   public function writeHeaders() {
+    if ( PHP_SAPI == 'cli' ) {
+      return;
+    }
+
     if ( function_exists('headers_sent') && headers_sent() ) {
       return;
     }

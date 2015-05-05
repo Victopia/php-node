@@ -202,6 +202,7 @@ class Request {
             , 'port' => @$_SERVER['REMOTE_PORT']
             , 'user' => @$_SERVER['REMOTE_USER']
             , 'referer' => @$_SERVER['HTTP_REFERER']
+            , 'forwarder' => @$_SERVER['HTTP_X_FORWARDED_FOR']
             , 'version' => @$_SERVER['SERVER_PROTOCOL']
             , 'userAgent' => @$_SERVER['HTTP_USER_AGENT']
             ), compose('not', 'is_null'));
@@ -220,7 +221,7 @@ class Request {
       }
 
       // Cookies
-      $this->paramCache['cookies'] = $_COOKIE;
+      $this->paramCache['cookies'] = &$_COOKIE;
 
       // File uploads
       if ( $this->method() == 'put' ) {
@@ -265,8 +266,8 @@ class Request {
       // Unified params ($_REQUEST mimic)
       $this->paramCache['request'] = array_merge(
         (array) $this->paramCache['cookies'],
-        (array) $this->paramCache['post'],
-        (array) $this->paramCache['get']);
+        (array) $this->paramCache['get'],
+        (array) $this->paramCache['post']);
 
       // Request timestamp
       $this->timestamp = (float) @$_SERVER['REQUEST_TIME_FLOAT'];
@@ -548,19 +549,6 @@ class Request {
    */
   public function cookie($name = null) {
     return $this->param($name, 'cookies');
-  }
-
-  /**
-   * Sets cookies information.
-   *
-   * Takes the same parameters as setcookie(), but this updates the cookies cache immediately.
-   */
-  public function setCookie($name, $value = null) {
-    call_user_func_array('setcookie', func_get_args());
-
-    if ( $value ) {
-      $this->paramCache['cookies'][$name] = $value;
-    }
   }
 
   /**
