@@ -78,7 +78,7 @@ class Node {
    *                                  2. Hashmap with fields as keys and boolean values
    *                                  with true interprets as ascending and false otherwise.
    *
-   * @returns Array of filtered data rows.
+   * @return Array of filtered data rows.
    */
   static /* Array */
   function get($filter, $fieldsRequired = true, $limits = null, $sorter = null) {
@@ -644,7 +644,7 @@ class Node {
    * @param $extendExists true means $contents can be partial update, fields not specified
    *        will have their old value retained instead of replacing the whole row.
    *
-   * @returns Array of Booleans, true on success of specific row, false otherwises.
+   * @return Array of Booleans, true on success of specific row, false otherwises.
    *
    * @throws CoreException thrown when $contents did not specify a collection.
    * @throws CoreException thrown when more than one row is selected with the provided keys,
@@ -770,7 +770,7 @@ class Node {
    *                        then delete all rows retrieved from within.
    * @param $fieldsRequired (bool) Same as get().
    *
-   * @returns The total number of affected rows.
+   * @return The total number of affected rows.
    */
   static /* int */
   function delete($filter = null, $fieldsRequired = false, $limit = null) {
@@ -866,7 +866,7 @@ class Node {
    * @param $fieldDesc Database specific column definition, should beware of data type and length.
    *                   This must exists when $fieldName is specified.
    *
-   * @returns true on success, false otherwise;
+   * @return true on success, false otherwise;
    *
    * @throws CoreException thrown when the call tries to make a virtual collection physical.
    * @throws CoreException thrown when target table is no virtual column field.
