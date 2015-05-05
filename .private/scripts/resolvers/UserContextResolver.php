@@ -38,7 +38,7 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
       $res = Session::ensure($sid, $req->param('__token'));
       if ( $res === false || $res === Session::ERR_EXPIRED ) {
         // Session doesn't exists, delete exsting cookie.
-        setcookie('__sid', '', time() - 3600);
+        $res->cookie('__sid', '', time() - 3600);
       }
       else if ( is_integer($res) ) {
         switch ( $res ) {
