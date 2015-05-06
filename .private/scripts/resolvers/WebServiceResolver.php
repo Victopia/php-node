@@ -85,7 +85,7 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
     // If the class is invokeable, it takes precedence.
     if ( is_callable($instance) ) {
       if ( $function ) {
-        @$matches[3] = "/$function/$matches[3]";
+        @$matches[3] = "/$function$matches[3]";
       }
 
       $function = '~';
@@ -121,49 +121,6 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
 
       return $value;
     }, $parameters);
-
-    // Allow constants and primitive values on $_GET parameters,
-    // map on both keys and values.
-
-    /*! Note by Eric @ 14 Feb, 2013
-     *  CAUTION: Should really prevent Node::FIELD_RAWQUERY, serious security problem!
-     *           These constant things are originally designed for an OR search upon
-     *           eBay items.
-     */
-    array_walk($_GET, function(&$value, $key) {
-      if ( is_array($value) ) {
-        return;
-      }
-
-      if ( preg_match('/^\:([\d\w+]+)$/', $value, $matches) ) {
-        if ( strcasecmp(@$matches[1], 'true') == 0 ) {
-          $value = true;
-        }
-        elseif ( strcasecmp(@$matches[1], 'false') == 0 ) {
-          $value = false;
-        }
-        elseif ( strcasecmp(@$matches[1], 'null') == 0 ) {
-          $value = null;
-        }
-        elseif ( !defined(@$matches[1]) ) {
-          throw new ResolverException('Error resolving web service parameters, undefined constant ' . $matches[1]);
-        }
-        else {
-          $value = constant(@$matches[1]);
-        }
-      }
-
-      if ( preg_match('/^\:([\d\w+]+)$/', $key, $matches) ) {
-        unset($_GET[$key]);
-
-        if ( !defined(@$matches[1]) ) {
-          throw new ResolverException('Error resolving web service parameters, undefined constant ' . $matches[1]);
-        }
-        else {
-          $_GET[constant(@$matches[1])] = $value;
-        }
-      }
-    });
 
     if ($request->client('type') != 'cli' &&
       $instance instanceof \framework\interfaces\IAuthorizableWebService &&
