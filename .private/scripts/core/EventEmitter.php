@@ -26,7 +26,7 @@ class EventEmitter implements interfaces\IEventEmitter {
   	$this->on($eventName, $onceHandler);
 	}
 
-	public function off($eventName, $listener = NULL) {
+	public function off($eventName, $listener = null) {
   	if ($listener) {
     	$this->removeEventListener($eventName, $listener);
   	}
@@ -52,13 +52,13 @@ class EventEmitter implements interfaces\IEventEmitter {
       return;
     }
 
-    while (FALSE !== ($index = array_search($listener, $this->listeners[$eventName]))) {
+    while (false !== ($index = array_search($listener, $this->listeners[$eventName]))) {
       array_splice($this->listeners[$eventName], $index, 1);
     }
   }
 
-  public function removeAllListeners($eventName = NULL) {
-    if ($eventName !== NULL) {
+  public function removeAllListeners($eventName = null) {
+    if ($eventName !== null) {
       unset($this->listeners[$eventName]);
     }
     else {
@@ -66,20 +66,11 @@ class EventEmitter implements interfaces\IEventEmitter {
     }
   }
 
-  public function off($eventName, $listener = NULL) {
-    if ($listener === NULL) {
-      $this->removeAllListeners($eventName);
-    }
-    else {
-      $this->removeEventListener($eventName, $listener);
-    }
-  }
-
   public function hasEventListener(&$eventName, &$listener) {
     return in_array($listener, $this->listeners[$eventName]);
   }
 
-  public function dispatchEvent($event, $parameters = NULL) {
+  public function dispatchEvent($event, $parameters = null) {
     if ($event instanceof Event) {
       $eventName = $event->getType();
     }
