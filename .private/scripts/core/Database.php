@@ -36,8 +36,7 @@ final class Database {
   //
   //----------------------------------------------------------------------------
 
-  public static /* null */
-  function setOptions($options) {
+  public static function setOptions($options) {
     if ( !($options instanceof DatabaseOptions) ) {
       throw new \PDOException('Options must be an instance of DatabaseOptions class.');
     }
@@ -48,8 +47,8 @@ final class Database {
     self::$preparedStatments = array();
   }
 
-  public static function
-  /* DatabaseOptions */ getOptions() {
+  public static /* DatabaseOptions */
+  function getOptions() {
     return self::$options;
   }
 
@@ -400,16 +399,15 @@ final class Database {
                    , $param = null
                    , $fetch_offset = 0
                    , $fetch_type = \PDO::FETCH_ASSOC ) {
-    /* Note by Vicary @ 8.Nov.2012
-       As of PHP 5.4.8, this shit is still not supported by SQLite and MySQL.
-
-    $res = self::query($query, $param, array(
-        \PDO::ATTR_CURSOR => \PDO::CURSOR_SCROLL
-      ));
-
-    $row = $res->fetch($fetch_type, \PDO::FETCH_ORI_ABS, $fetch_offset);
-    */
-
+    /*! Note by Vicary @ 8.Nov.2012
+     *  As of PHP 5.4.8, this shit is still not supported by SQLite and MySQL.
+     *
+     * $res = self::query($query, $param, array(
+     *   \PDO::ATTR_CURSOR => \PDO::CURSOR_SCROLL
+     * ));
+     *
+     * $row = $res->fetch($fetch_type, \PDO::FETCH_ORI_ABS, $fetch_offset);
+     */
     $res = self::query($query, $param);
 
     // fetch whatever I don't care.
@@ -612,7 +610,7 @@ final class Database {
    *                 Note that only real columns that is PRIMARY KEY or UNIQUE KEY is
    *                 applied to the statement, the rest will be discarded.
    *
-   * @returns The total number of affected rows.
+   * @return The total number of affected rows.
    */
   public static /* null */
   function delete($table, $keySets) {
