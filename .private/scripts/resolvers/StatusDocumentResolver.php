@@ -27,6 +27,10 @@ class StatusDocumentResolver implements \framework\interfaces\IRequestResolver {
 			$response->status(404);
 		}
 
+		if ( $response->getBody() ) {
+			return;
+		}
+
 		// Check if docment of target status and mime type exists.
 		switch ( $response->header('Content-Type') ) {
 			case 'application/xhtml+xml':
