@@ -8,7 +8,7 @@ namespace core;
  *
  * @author Vicary Archangel <vicary@victopia.org>
  */
-class Database {
+final class Database {
 
   private static $con;
 
@@ -24,6 +24,11 @@ class Database {
    * Store values specific to transactions.
    */
   private static $transactionStore = array();
+
+  /**
+   * Prevent instantiation
+   */
+  private function __constrict() {}
 
   //----------------------------------------------------------------------------
   //
