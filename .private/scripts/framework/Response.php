@@ -42,9 +42,7 @@ class Response {
       return;
     }
 
-    if ( $this->header('Location') ||
-         $this->status == 204 ||
-         ($this->status >= 300 && $this->status < 400) ) {
+    if ( $this->header('Location') ) {
       $this->writeHeaders();
       // No message body for redirections and mismatched conditional requests.
     }
@@ -79,7 +77,9 @@ class Response {
    *
    * Headers to be sent outwards after the resolve chain.
    */
-  protected $headers = array();
+  protected $headers = array(
+      'X-Powered-By' => ['Victopia/php-node']
+    );
 
   /**
    * @private
@@ -256,7 +256,11 @@ class Response {
   /**
    * Le mighty express.js send(), only difference is this one also do XML.
    */
-  public function send($value, $status = 200) {
+  public function send($value, $status = null) {
+    if ( !$this->status ) {
+      $status = 200;
+    }
+
     $this->status($status);
 
     if ( $this->status() >= 300 and $this->status() < 400 ) {
@@ -290,6 +294,10 @@ class Response {
    */
   public function clearBody() {
     $this->body = '';
+
+    if ( $this->useOutputBuffer ) {
+      ob_clean();
+    }
   }
 
   /**
@@ -304,53 +312,30 @@ class Response {
       return;
     }
 
+    header_remove();
+
     // Status code and headers
     if ( function_exists('http_response_code') ) {
       http_response_code($this->status());
     }
     else {
-      // FastCGI and CGI expects "Status:" instead of "HTTP/1.0" for status code.
-      $statusPrefix = false !== strpos(@$_SERVER['GATEWAY_INTERFACE'], 'CGI') ? 'Status:' : 'HTTP/1.0';
-      switch ( $this->status() ) {
-        case 200:
-          header("$statusPrefix 200 OK", true, 200);
+      $statusMessage = $this->getStatusMessage($this->status());
+      if ( $statusMessage ) {
+        // FastCGI and CGI expects "Status:" instead of "HTTP/1.0" for status code.
+        $statusMessage =
+          [ false !== strpos(@$_SERVER['GATEWAY_INTERFACE'], 'CGI') ? 'Status:' : 'HTTP/1.1'
+          , $this->status()
+          , $statusMessage
+          ];
+
+        header(implode(' ', $statusMessage), true, $this->status());
+
+        if ( $status > 299 ) {
           return;
-        case 301:
-          header("$statusPrefix 301 Moved Permanently", true, 301);
-          return;
-        case 304: // CAUTION: Do not create an errordoc for this code.
-          header("$statusPrefix 304 Not Modified", true, 304);
-          die;
-        case 400: // TODO: Use this when the URI is unrecognizable.
-          header("$statusPrefix 400 Bad Request", true, 400);
-          break;
-        case 401:
-          header("$statusPrefix 401 Unauthorized", true, 401);
-          break;
-        case 403:
-          header("$statusPrefix 403 Forbidden", true, 403);
-          break;
-        case 404: // TODO: Use this when file resolver can resolve the URI, but no file actually exists.
-          header("$statusPrefix 404 Not Found", true, 404);
-          break;
-        case 405:
-          header("$statusPrefix 405 Method Not Allowed", true, 405);
-          break;
-        case 412:
-          header("$statusPrefix 412 Precondition Failed", true, 412);
-          break;
-        case 500:
-          header("$statusPrefix 500 Internal Server Error", true, 500);
-          break;
-        case 501:
-          header("$statusPrefix 501 Not Implemented", true, 501);
-          break;
-        case 503:
-          header("$statusPrefix 503 Service Unavailable", true, 503);
-          break;
+        }
       }
 
-      unset($statusPrefix);
+      unset($statusMessage);
     }
 
     foreach ( $this->headers as $key => $values ) {
@@ -407,6 +392,89 @@ class Response {
   public function __($key) {
     if ( is_callable($this->resource) ) {
       return $this->resource($key);
+    }
+  }
+
+  protected function getStatusMessage($statusCode) {
+    switch ( $statusCode ) {
+      // 1xx
+      case 100: return 'Continue';
+      case 101: return 'Switching Protocols';
+      case 102: return 'Processing'; // WebDAV
+
+      // 2xx
+      case 200: return 'OK';
+      case 201: return 'Created';
+      case 202: return 'Accepted';
+      case 203: return 'Non-Authoritative Information';
+      case 204: $this->clearBody(); return 'No Content';
+      case 205: $this->clearBody(); return 'Reset Content';
+      case 206: return 'Partial Content';
+      case 207: return 'Multi-Status'; // WebDAV; RFC 4918
+      case 208: return 'Already Reported'; // WebDAV; RFC 5842
+      case 226: return 'IM Used'; // RFC 3229
+
+      // 3xx
+      case 300: return 'Multiple Choices';
+      case 301: $this->clearBody(); return 'Moved Permanently';
+      case 302: $this->clearBody(); return 'Found';
+      case 303: $this->clearBody(); return 'See Other';
+      case 304: $this->clearBody(); return 'Not Modified';
+      case 305: $this->clearBody(); return 'Use Proxy';
+      case 306: $this->clearBody(); return 'Switch Proxy';
+      case 307: $this->clearBody(); return 'Temporary Redirect'; // HTTP method persistant version of 302
+      case 308: $this->clearBody(); return 'Permenant Redirect'; // HTTP method persistant version of 301
+
+      // 4xx
+      case 400: return 'Bad Request';
+      case 401: return 'Unauthorized';
+      case 403: return 'Forbidden';
+      case 404: return 'Not Found';
+      case 405: return 'Method Not Allowed';
+      case 406: return 'Not Acceptable';
+      case 407: return 'Proxy Authentication Required';
+      case 408: return 'Request Timeout';
+      case 409: return 'Conflict';
+      case 410: return 'Gone'; // TODO: Make an error doc for this.
+      case 411: return 'Length Required';
+      case 412: return 'Precondition Failed';
+      case 413: return 'Request Entity Too Large'; // Note: Try to make use of this.
+      case 414: return 'Request-URI Too Long'; // Note: Try to make use of this.
+      case 415: return 'Unsupported Media Type';
+      case 416: return 'Requested Range Not Satisfiable';
+      case 417: return 'Expectation Failed';
+      case 418: return 'I\'m a teapot'; // Unused
+      case 419: return 'Authentication Timeout'; // Out of spec
+      // case 420: return 'Enhance Your Calm'; // Twitter API
+      case 421: return 'Misdirected Request';
+      case 426: return 'Upgrade Required';
+      case 428: return 'Precondition Required';
+      case 429: return 'Too Many Requests'; // Note: For rate limit use
+      case 431: return 'Request Header Fields Too Large';
+      case 444: return 'No Response'; // Nginx
+
+      // 5xx
+      case 500: return 'Internal Server Error';
+      case 501: return 'Not Implemented';
+      case 502: return 'Bad Gateway';
+      case 503: return 'Service Unavailable';
+      case 504: return 'Gateway Timeout';
+      case 505: return 'HTTP Version Not Supported';
+      // Transparent content negotiation for the request results in a circular reference. (RFC 2295)
+      case 506: return 'Variant Also Negotiates';
+      // The server is unable to store the representation needed to complete the request. (WebDAV; RFC 4918)
+      case 507: return 'Insufficient Storage';
+      // The server detected an infinite loop while processing the request (sent in lieu of 208 Already Reported). (WebDAV; RFC 5842)
+      case 508: return 'Loop Detected';
+      // This status code is not specified in any RFCs. Its use is unknown. (Apache bw/limited extension)
+      case 509: return 'Bandwidth Limit Exceeded';
+      // Further extensions to the request are required for the server to fulfil it. (RFC 2774)
+      case 510: return 'Not Extended';
+      // The client needs to authenticate to gain network access. Intended for use by intercepting proxies used to control access to the network (e.g., "captive portals" used to require agreement to Terms of Service before granting full Internet access via a Wi-Fi hotspot). (RFC 6585)
+      case 511: return 'Network Authentication Required';
+      // This status code is not specified in any RFCs, but is used by Microsoft HTTP proxies to signal a network read timeout behind the proxy to a client in front of the proxy. (Unknown)
+      case 598: return 'Network read timeout error';
+      case 599: return 'Network connect timeout error'; // Unknown
     }
   }
 
