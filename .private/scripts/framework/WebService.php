@@ -5,27 +5,11 @@ namespace framework;
 
 abstract class WebService implements interfaces\IWebService {
 
-	protected function request() {
-		return $this->request;
-	}
-
-	protected function response() {
-		return $this->response;
-	}
-
-	protected function userContext() {
-		return @$this->request()->user;
-	}
-
-	protected function userIsAdmin() {
-		$user = (array) $this->userContext();
-
-		return in_array('Administrators', (array) @$user['groups']);
-	}
-
-	protected function isLocal() {
-		return (bool) @$this->request()->isLocal;
-	}
+	//----------------------------------------------------------------------------
+	//
+	//  Properties
+	//
+	//----------------------------------------------------------------------------
 
 	/**
 	 * @private
@@ -34,12 +18,26 @@ abstract class WebService implements interfaces\IWebService {
 	 */
 	private $request;
 
+	protected function request() {
+		return $this->request;
+	}
+
 	/**
 	 * @private
 	 *
 	 * Response context, uses private on purpose to prevent subclasses from changing it.
 	 */
 	private $response;
+
+	protected function response() {
+		return $this->response;
+	}
+
+	//----------------------------------------------------------------------------
+	//
+	//  Methods
+	//
+	//----------------------------------------------------------------------------
 
 	/**
 	 * @constructor
@@ -79,7 +77,6 @@ abstract class WebService implements interfaces\IWebService {
 		// Default method depending on request method
 		switch ( $this->request()->method() ) {
 			case 'get':
-			default:
 				if ( !$args ) {
 					return 'let';
 				}
@@ -88,6 +85,22 @@ abstract class WebService implements interfaces\IWebService {
 			case 'post':
 				return 'set';
 		}
+
+		return $this->request()->method();
+	}
+
+	protected function userContext() {
+		return @$this->request()->user;
+	}
+
+	protected function userIsAdmin() {
+		$user = (array) $this->userContext();
+
+		return in_array('Administrators', (array) @$user['groups']);
+	}
+
+	protected function isLocal() {
+		return (bool) @$this->request()->isLocal;
 	}
 
 }
