@@ -168,19 +168,6 @@ class Process {
     // Push or updates target process.
     $res = Node::set($process);
 
-    /*! @Ivan
-     *  ProcessPool history.
-     */
-    Node::set(
-      [ Node::FIELD_COLLECTION => 'ProcessPool'
-      , 'command' => $command
-      , 'type' => $options['$type']
-      , 'weight' => $options['$weight']
-      , 'capacity' => $options['$capacity']
-      , 'ID' => $res
-      , 'start_timestamp' => date('Y-m-d H:i:s')
-      ] + array_filter(array_keys($options), compose('not', startsWith('$'))));
-
     if ( $res === false ) {
       throw new ProcessException('Unable to enqueue process.', self::ERR_ENQUE);
     }
@@ -391,8 +378,6 @@ class Process {
 
     // Clear data cache
     self::$_processData = null;
-
-    ProcessPool::SplitProcessCommmand($res);
 
     return $ret;
   }

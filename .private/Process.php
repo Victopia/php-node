@@ -1,7 +1,7 @@
 <?php
 /* Process.php | Daemon dequeues and executes processes from the database. */
 
-require_once('scripts/Initialize.php');
+require_once('.private/scripts/Initialize.php');
 
 use core\Database;
 use core\Log;
@@ -10,7 +10,6 @@ use core\Utility;
 
 use Cron\CronExpression;
 
-use framework\ProcessPool;
 use framework\Configuration;
 use framework\Process;
 
@@ -81,39 +80,7 @@ $opts = (new framework\Optimist)
     die;
   }
 
-// Forks then exits the parent.
-  // Use nohup if internal forking is not supported.
-  if ( !function_exists('pcntl_fork') ) {
-    $ret = shell_exec('nohup ' . Process::EXEC_PATH . ' --nohup >/dev/null 2>&1 & echo $!');
-
-    if ( !$ret ) {
-      Log::write('Process cannot be spawn, please review your configuration.', 'Error');
-    }
-
-    die;
-  }
-  elseif ( @$opts['n'] ) {
-    $pid = 0; // fork mimic
-  }
-  else {
-    $pid = pcntl_fork();
-  }
-
-  // parent: $forked == false
-  // child:  $forked == true
-  $forked = $pid == 0;
-
-  unset($pid);
-
-  // parent will die here
-  if ( !$forked ) {
-    exit(1);
-  }
-
-// Avoid forking connection crash, renew the connection.
-  Database::disconnect();
-
-// Logs for cron processes
+// Cron processes
   if ( @$opts['cron'] ) {
     Log::write('Cron started process.', 'Debug');
 
@@ -137,6 +104,7 @@ $opts = (new framework\Optimist)
           , 'start_time' => $nextTime
           , 'schedule_name' => $schedule['name']
           , '$type' => 'cron'
+          , '$spawn' => false
           ];
 
         Log::write('Scheduling new process', 'Debug', $schedule);
@@ -145,6 +113,43 @@ $opts = (new framework\Optimist)
       }
     });
   }
+
+// Avoid forking connection crash, renew the connection.
+  Database::disconnect();
+
+// Forks then exits the parent.
+  // Use nohup if internal forking is not supported.
+  if ( !function_exists('pcntl_fork') ) {
+    $ret = shell_exec('nohup ' . Process::EXEC_PATH . ' --nohup >/dev/null 2>&1 & echo $!');
+
+    if ( !$ret ) {
+      Log::write('Process cannot be spawn, please review your configuration.', 'Error');
+    }
+
+    die;
+  }
+  elseif ( @$opts['n'] ) {
+    $pid = 0; // fork mimic
+  }
+  else {
+    $pid = pcntl_fork();
+  }
+
+  // parent: $forked == false
+  // child:  $forked == true
+  $forked = $pid == 0;
+
+  // unset($pid);
+
+  // parent will die here
+  if ( !$forked ) {
+    pcntl_wait($status);
+    sleep(1);
+    exit(1);
+  }
+
+// Avoid forking connection crash, renew the connection.
+  Database::disconnect();
 
 // Get maximum allowed connections before table lock.
   $capLimit = (int) @Configuration::get('core.Net::maxConnections');
@@ -160,9 +165,9 @@ $opts = (new framework\Optimist)
     FRAMEWORK_COLLECTION_PROCESS . ' READ'
   ]);
 
-  $res = (int) Database::fetchField('SELECT IFNULL(SUM(`capacity`), 0) as capacity
+  $res = (int) Database::fetchField('SELECT IFNULL(SUM(`capacity`), 0) as occupation
     FROM `' . FRAMEWORK_COLLECTION_PROCESS . '`
-    WHERE `pid` IS NOT NULL');
+    WHERE `pid` IS NOT NULL AND `pid` > 0');
 
   Database::unlockTables(true);
 
@@ -221,7 +226,7 @@ $opts = (new framework\Optimist)
   Database::commit();
 
   if ( $res->rowCount() < 1 ) {
-    Log::write('Unable to update process pid, worker exits.');
+    Log::write('Unable to update process pid, worker exits.', 'Warning');
 
     die;
   }
@@ -236,7 +241,7 @@ $opts = (new framework\Optimist)
   }
 
 // More debug logs
-  Log::write("Executed process: $process[command]", 'Debug');
+  Log::write("Execute process: $process[command]", 'Debug');
 
 // Spawn process and retrieve the pid
   $proc = false;
@@ -293,8 +298,6 @@ $opts = (new framework\Optimist)
       $res = Node::delete($process);
 
       Log::write("Deleting finished process, affected rows: $res.", 'Debug', [$res, $process]);
-
-      ProcessPool::SplitProcessCommmand2($process['ID'], $process['pid']);
 
       break;
   }
