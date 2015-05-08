@@ -520,7 +520,17 @@ class Request {
     // TODO: Do form validation, take reference from form key of Magento.
 
     $result = $this->_param($type);
-    $result = array_filter_keys($result, compose('not', startsWith($this->paramPrefix)));
+
+    // remove meta keys and sensitive values
+    $result = array_filter_keys($result,
+      funcAnd(
+        notIn([ ini_get('session.name') ]),
+        compose(
+          'not',
+          startsWith($this->paramPrefix)
+        )
+      )
+    );
 
     if ( $name === null ) {
       return $result;
