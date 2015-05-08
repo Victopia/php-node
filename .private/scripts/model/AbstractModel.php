@@ -12,8 +12,7 @@ use framework\exceptions\FrameworkException;
 /**
  * Base class for all data models.
  */
-abstract class AbstractModel extends EventEmitter
-  implements \ArrayAccess, \IteratorAggregate, \Countable, \JsonSerializable {
+abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Countable, \JsonSerializable {
 
   //----------------------------------------------------------------------------
   //
@@ -24,7 +23,7 @@ abstract class AbstractModel extends EventEmitter
   /**
    * @private
    *
-   * Collection name of this data model.
+   * Collection name of this data model
    */
   protected $collectionName;
 
@@ -58,6 +57,18 @@ abstract class AbstractModel extends EventEmitter
    * The data content.
    */
   protected $data = array();
+
+  /**
+   * Retrieves or updates data of current model.
+   */
+  function data($data = null) {
+    if ( $data === null ) {
+      return $this->data;
+    }
+    else {
+      $this->data = array_filter_keys((array) $data, compose('not', startsWith('@')));
+    }
+  }
 
   //----------------------------------------------------------------------------
   //
@@ -130,18 +141,6 @@ abstract class AbstractModel extends EventEmitter
     if ( !$this->collectionName ) {
       $this->collectionName = explode('\\', get_called_class());
       $this->collectionName = end($this->collectionName);
-    }
-  }
-
-  /**
-   * Retrieves or updates data of current model.
-   */
-  function data($data = null) {
-    if ( $data === null ) {
-      return $this->data;
-    }
-    else {
-      $this->data = array_filter_keys((array) $data, compose('not', startsWith('@')));
     }
   }
 
