@@ -655,7 +655,6 @@ final class Database {
     // Execute queries and accumulate affected rows.
     return array_reduce($keySets, function($result, $keySet) use($table) {
       if ( $keySet ) {
-        // $keySet
         $res = sprintf('DELETE FROM %s WHERE ', $table) . implode(' AND ', array_keys($keySet));
 
         $res = self::query($res, array_values($keySet));
