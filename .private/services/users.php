@@ -22,23 +22,25 @@ class users extends \framework\AuthorizableWebService {
 
   public /* boolean */
   function authorizeMethod($name, $args = null) {
-    if ( Utility::isLocal() || Session::checkStatus(Session::USR_ADMINS) ) {
+    if ( $this->isLocal() || $this->userIsAdmin() ) {
       return true;
     }
 
+    $req = $this->request();
+
     switch ( $name ) {
       case 'get':
-        if ( strcasecmp(@$_SERVER['REQUEST_METHOD'], 'delete') === 0 ) {
-          return Session::currentUser('ID') == $args[0];
-        }
+      default:
         return true;
 
       // Only self is allowed, or it is super user.
       case 'set':
-        return @$_POST['ID'] == '~' || @$_POST['ID'] == Session::currentUser('ID');
+        return $req->param('ID') == '~' || $req->param('ID') == @$req->user['ID'];
 
-      default:
-        return true;
+      // Users are not allowed to be deleted normally
+      case 'delete':
+        // return @$req->user['ID'] == @$args[0];
+        return false;
     }
   }
 
@@ -54,7 +56,7 @@ class users extends \framework\AuthorizableWebService {
    */
   public /* array */
   function let() {
-    $res = (array) filter_input_array(INPUT_GET, array(
+    $res = (array) filter_var_array($this->request()->get(), array(
         'ID' => array(
             'filter' => FILTER_VALIDATE_INT
           , 'flags' => FILTER_REQUIRE_SCALAR
@@ -82,11 +84,11 @@ class users extends \framework\AuthorizableWebService {
    */
   public /* array */
   function get($userId = '~') {
-    $user = $this->request()->user;
+    $user = $this->userContext();
 
-    /* Allows null user context on local processes. */
+    // Allows null user context on local processes
     if ( $userId === '~' && $user === null ) {
-      if ( !Utility::isLocal() ) {
+      if ( !$this->isLocal() ) {
         throw new framework\exceptions\ServiceException('Please login or specify a username.', 1000);
       }
       else {
@@ -96,7 +98,7 @@ class users extends \framework\AuthorizableWebService {
 
     $filter = is_numeric($userId) ? 'ID' : 'username';
 
-    // User other than session user.
+    // User other than session user
     if ( $userId !== '~' && $userId !== @$user[$filter] ) {
       $user = (array) @Node::get(array(
           Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_USER
@@ -106,7 +108,7 @@ class users extends \framework\AuthorizableWebService {
       $user = Utility::unwrapAssoc($user);
     }
 
-    if ( !Utility::isLocal() ) {
+    if ( !$this->isLocal() && !$this->userIsAdmin() ) {
       unset($user['password']);
     }
 
@@ -125,7 +127,7 @@ class users extends \framework\AuthorizableWebService {
    */
   public /* bool */
   function set() {
-    $contents = (array) filter_input_array(INPUT_POST, array(
+    $contents = (array) filter_var_array($this->request()->post(), array(
         'ID' => array(
             'filter' => FILTER_SANITIZE_NUMBER_INT
           , 'flags' => FILTER_REQUIRE_SCALAR | FILTER_NULL_ON_FAILURE
@@ -193,7 +195,7 @@ class users extends \framework\AuthorizableWebService {
   }
 
   public function delete($userId) {
-    return Node::delete(array(
+    return @Node::delete(array(
         Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_USER
       , $user['ID']
       ));
