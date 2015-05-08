@@ -397,26 +397,35 @@ class Utility {
       );
 
     $recursion = function(&$input, $options) use(&$recursion) {
-      if ( !is_array($input) || (is_numeric(@$options['level']) && $options['level'] <= 1) ) {
+      if ( !$input || !is_array($input) || (is_numeric(@$options['level']) && --$options['level'] <= 1) ) {
         return $input;
+      }
+
+      // Traverse for array items.
+      foreach ( $input as &$value ) {
+        $value = $recursion($value, $options);
       }
 
       $result = array();
 
-      // Merge one level
+      // Finished traversion, append array keys.
       foreach ( $input as $key1 => $value1 ) {
-        if ( is_array($value1) && ( self::isAssoc($value1) || @$options['numeric'] ) ) {
-          foreach ( $value1 as $key2 => $value2 ) {
-            $result["$key1$options[delimiter]$key2"] = $value2;
+        if ( is_array($value1) ) {
+          if ( ( self::isAssoc($value1) || @$options['numeric'] ) ) {
+            foreach ( $value1 as $key2 => $value2 ) {
+              $result["$key1$options[delimiter]$key2"] = $value2;
+            }
           }
+          else {
+            @$result[$key1][$key2][] = $value2;
+          }
+        }
+        else {
+          $result[$key1] = $value1;
         }
       }
 
-      if ( is_numeric(@$options['level']) ) {
-        $options['level']--;
-      }
-
-      return $recursion($result, $options);
+      return $result;
     };
 
     return $recursion($input, $options);
