@@ -100,12 +100,14 @@ class Response {
    * The HTTP response status code.
    *
    * Whenever a code is out of range or invalid, it will be set to 500.
+   *
+   * @param {?int} $code Desired HTTP status code.
+   * @return Returns the current status code.
    */
-  public /* =int */ function status($code = null) {
-    if ( $code === null ) {
-      return $this->status;
-    }
-    else {
+  public function status($code = null) {
+    $status = $this->status;
+
+    if ( $code !== null ) {
       $code = (int) $code;
       if ( !$code || $code < 100 || $code > 599 ) {
         $code = 500;
@@ -114,7 +116,7 @@ class Response {
       $this->status = $code;
     }
 
-    return $this;
+    return $status;
   }
 
   /**
@@ -142,13 +144,14 @@ class Response {
    *
    * The main difference is that with the same url we still do redirection.
    *
-   * @param {string|array} $target The redirection target, can be either relative or absolute.
-   *                               If an array of URIs are given, the first truthy value will be used, this is handy
-   *                               for a list of fallback URI.
-   * @param {int}          $options['status'] The status code used for redirection, defaults to 302 Found.
-   * @param {boolean}      $options['secure'] Use secure connection when available.
+   * @param {string|array} $target The redirection target, can be either relative
+   *                               or absolute. If an array of URIs are given,
+   *                               the first truthy value will be used, this is
+   *                               handy for a list of fallback URI.
+   * @param {int}     $options['status'] The status code used for redirection, defaults to 302 Found.
+   * @param {boolean} $options['secure'] Use secure connection when available.
    */
-  public /* void */ function redirect($target, $options = array()) {
+  public function redirect($target, $options = array()) {
     // Default values
     $options+= array(
         'status' => 302
@@ -216,7 +219,7 @@ class Response {
    * @param {string} $key Either the whole header string, or the header key.
    * @param {?string} $value When value is specified, $key will be used as key.
    */
-  public /* =array */ function header($key = null, $value = null) {
+  public function header($key = null, $value = null) {
     if ( $key === null ) {
       return $this->headers;
     }
@@ -360,7 +363,7 @@ class Response {
       fpassthru($this->body);
     }
     else if ( is_string($this->body) && is_file($this->body) ) {
-      $path = realpath(System::getRoot() . $this->body);
+      $path = realpath(System::getRoot() . DS . $this->body);
 
       if ( $path && is_readable($path) ) {
         readfile($path);
