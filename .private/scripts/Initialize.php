@@ -51,11 +51,20 @@ framework\ExceptionsHandler::setHandlers();
 //
 //--------------------------------------------------
 
-/* Note by Vicary @ 24 Mar, 2013
-   Uncomment this section and enter database connection criteria.
+/*! TODO @ 8 May, 2015
+ *  DatabaseOptions will be replaced by IDatabaseAdapter interface, and
+ *  PdoMySQLAdapter will be made as default and sample class.
+ *
+ *  The new interface will abide to the pattern of the MongoDB API, like find(),
+ *  findOne() and so on.
+ *
+ *  Database class will act as a wrapper for the designated adapter.
+ */
+
+/*! Uncomment this section and config database connection.
 
 $options = new core\DatabaseOptions(
-  // 'mysql', '127.0.0.1', null, 'database', 'username', 'password'
+  'mysql', '127.0.0.1', null, 'database', 'username', 'password'
 );
 
 $options->driverOptions = Array(
