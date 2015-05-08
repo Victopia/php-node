@@ -1,17 +1,14 @@
 <?php
 /* constants.php | Define framework wide constants. */
 
-//--------------------------------------------------
-//
-//  Global system constants
-//
-//--------------------------------------------------
-
 // Epoach in seconds before 1970-01-01
 define('EPOACH', -62167246596);
 
-// Shorthand
+// Shorthand constants
 define('DS', DIRECTORY_SEPARATOR);
+
+// Added for frequent use, this is too common to delete.
+define('NODE_FIELD_COLLECTION', core\Node::FIELD_COLLECTION);
 
 // Path to maintenance template
 define('FRAMEWORK_PATH_MAINTENANCE_TEMPLATE', '/assets/templates/maintenance.html');
@@ -126,11 +123,3 @@ define('FRAMEWORK_SESSION_EXPIRE_TIME', strtotime('+ 30 minute'));
 
 // Date format for framework outputs
 define('FRAMEWORK_DATE_FORMAT', 'd M, H:i');
-
-/* Quoted by Eric @ 26 Nov, 2012
-    Unused
-// Intermadiate mime type for File collection, indicates file write in progress.
-define('FRAMEWORK_MIME_INTERMEDIATE', 'application/x-intermediate');
-// Locked mime type for File collection, indicates a locked file.
-define('FRAMEWORK_MIME_LOCKED', 'application/x-locked');
-*/
