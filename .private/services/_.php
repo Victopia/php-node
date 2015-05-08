@@ -108,7 +108,7 @@ class _ extends \framework\WebService {
    *  A problem is that it assumes the primary key is already named "ID", should
    *  tackle of this.
    */
-  function set() {
+  protected function set() {
     $data = (array) $this->request()->param();
     if ( $data ) {
       $this->modelClass->data($data);
@@ -189,7 +189,11 @@ class _ extends \framework\WebService {
    * Parse List-Range headers for collection retrieval.
    */
   private function listRange() {
-    $listRange = $this->request()->header('List-Range');
+    $listRange = $this->request()->get('@limit');
+    if ( !$listRange ) {
+      $listRange = $this->request()->header('List-Range');
+    }
+
     if ( preg_match('/\s*(\d+)(?:-(\d+))?\s*/', $listRange, $listRange) ) {
       $listRange = [(int) $listRange[1], (int) @$listRange[2]];
     }
