@@ -142,7 +142,12 @@ function has($needle, $strict = false) {
 
 function prop($name) {
   return function ($object) use($name) {
-    return @$object[$name];
+    if ( is_object($object) ) {
+      return $object->$name;
+    }
+    else {
+      return @$object[$name];
+    }
   };
 }
 

@@ -60,7 +60,7 @@ final class Optimist {
    *
    * Usage message to users when demanded options does not exists.
    */
-  private $usage = NULL;
+  private $usage = null;
 
   /**
    * @type array
@@ -69,16 +69,27 @@ final class Optimist {
    */
   private $argv = array();
 
-  //--------------------------------------------------
-  //
-  //  Constructor
-  //
-  //--------------------------------------------------
+  /**
+   * @private
+   *
+   * Prevent double processing of argv.
+   */
+  private $result = null;
 
-  function __construct() {
+  /**
+   * @constructor
+   *
+   * Keep a copy of the global $argv list to allow users make changes to the global one.
+   */
+  public function __construct(array $parameters = null) {
     global $argv;
 
-    $this->argv = $argv;
+    if ( $parameters === null ) {
+      $this->argv = $argv;
+    }
+    else {
+      $this->argv = $parameters;
+    }
   }
 
   //--------------------------------------------------
@@ -88,12 +99,8 @@ final class Optimist {
   //--------------------------------------------------
 
   public function __get($name) {
-    if ( $name == 'argv' ) {
-      //------------------------------
-      //  Parse argv
-      //------------------------------
-
-      $argv = (array) $this->argv;
+    if ( !$this->result ) {
+      $argv = $this->argv;
 
       // Remove until the script itself.
       if ( @$_SERVER['PHP_SELF'] && in_array($_SERVER['PHP_SELF'], $argv) ) {
@@ -163,17 +170,17 @@ final class Optimist {
       //  Alias
       //------------------------------
 
-      foreach ($this->alias as $name => $alias) {
+      foreach ($this->alias as $key => $alias) {
         // Alias: type
-        if ( isset($this->types[$name]) ) {
-          $this->types+= array_fill_keys($alias, $this->types[$name]);
+        if ( isset($this->types[$key]) ) {
+          $this->types+= array_fill_keys($alias, $this->types[$key]);
         }
 
         // Alias: defaults
-        if ( isset($this->defaults[$name]) ) {
-          $this->defaults+= array_fill_keys($alias, $this->defaults[$name]);
+        if ( isset($this->defaults[$key]) ) {
+          $this->defaults+= array_fill_keys($alias, $this->defaults[$key]);
         }
-      } unset($name, $alias);
+      } unset($key, $alias);
 
       // Alias: value
       foreach ($args as $option => $value) {
@@ -241,9 +248,16 @@ final class Optimist {
         }
       });
 
-      $args = $args + $this->defaults;
+      $args+= (array) $this->defaults;
 
-      return Utility::unflattenArray($args);
+      $this->result = Utility::unflattenArray($args);
+    }
+
+    if ( $name == 'argv' ) {
+      return $this->result;
+    }
+    else {
+      @$this->result[$name];
     }
   }
 
@@ -265,11 +279,14 @@ final class Optimist {
       $key = array($key => $alias);
     }
 
-    // Assign both ways.
+    // Assign both ways
     foreach ($key as $name => $alias) {
       @$this->alias[$name][] = $alias;
       @$this->alias[$alias][] = $name;
     }
+
+    // Reset the cache
+    $this->result = null;
 
     return $this; // chainable
   }
@@ -287,6 +304,9 @@ final class Optimist {
     }
 
     $this->defaults = $key;
+
+    // Reset the cache
+    $this->result = null;
 
     return $this; // chainable
   }
@@ -318,13 +338,16 @@ final class Optimist {
       }
 
       if ( is_string($key) ) {
-        $key = array($key => TRUE);
+        $key = array($key => true);
       }
 
       // $key = Utility::wrapAssoc($key);
 
       $this->demand = array_merge($this->demand, $key);
     }
+
+    // Reset the cache
+    $this->result = null;
 
     return $this; // chainable
   }
@@ -341,6 +364,28 @@ final class Optimist {
     foreach ($key as $_key) {
       $this->descriptions["$_key"] = $desc;
     }
+
+    // Reset the cache
+    $this->result = null;
+
+    return $this; // chainable
+  }
+
+  /**
+   * Cast key into $type. A generic method precedes
+   * boolean() and string().
+   */
+  public function type($key, $type) {
+    $key = Utility::wrapAssoc($key);
+
+    $type = $this->normalizeType($type);
+
+    foreach ($key as $_key) {
+      $this->types[$_key] = $type;
+    }
+
+    // Reset the cache
+    $this->result = null;
 
     return $this; // chainable
   }
@@ -397,7 +442,7 @@ final class Optimist {
       $ret = $e->getMessage();
     }
 
-    if ( $ret === FALSE || is_string($ret) ) {
+    if ( $ret === false || is_string($ret) ) {
       $this->showError($ret);
 
       die;
@@ -416,7 +461,7 @@ final class Optimist {
    * as booleans.
    */
   public function boolean($key) {
-    $this->type($key, 'boolean');
+    $this->type($key, version_compare(PHP_VERSION, '4.2.0', '<') ? 'boolean' : 'bool');
 
     return $this; // chainable
   }
@@ -436,17 +481,27 @@ final class Optimist {
   }
 
   /**
-   * Cast key into $type. A generic method precedes
-   * boolean() and string().
+   * Tell the parser logic to cast the options with
+   * specified keys as integer.
+   *
+   * If $key is an Array, interpret all the elements
+   * as integers.
    */
-  public function type($key, $type) {
-    $key = Utility::wrapAssoc($key);
+  public function integer($key) {
+    $this->type($key, version_compare(PHP_VERSION, '4.2.0', '<') ? 'integer' : 'int');
 
-    $type = $this->normalizeType($type);
+    return $this; // chainable
+  }
 
-    foreach ($key as $_key) {
-      $this->types[$_key] = $type;
-    }
+  /**
+   * Tells the parser logic to cast the options with
+   * specified keys as decimal numbers.
+   *
+   * If $key is an array, interpret all the elements
+   * as decimal numbers.
+   */
+  public function float($key) {
+    $this->type($key, version_compare(PHP_VERSION, '4.2.0', '<') ? 'double': 'float');
 
     return $this; // chainable
   }

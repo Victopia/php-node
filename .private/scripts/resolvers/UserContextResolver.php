@@ -27,38 +27,51 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
   }
 
   public function resolve(Request $req, Response $res) {
-    // Internally specified user context
-    if ( isset($req->user) ) {
-      return;
-    }
+    $req->user = new \model\Users();
 
-    // Session ID provided, validate it.
-    $sid = $req->param('__sid');
-    if ( $sid ) {
-      $res = Session::ensure($sid, $req->param('__token'));
-      if ( $res === false || $res === Session::ERR_EXPIRED ) {
-        // Session doesn't exists, delete exsting cookie.
-        $res->cookie('__sid', '', time() - 3600);
-      }
-      else if ( is_integer($res) ) {
-        switch ( $res ) {
-          // Treat as public user.
-          case Session::ERR_INVALID:
-            break;
+    // User from CLI
+    switch ( $req->client('type') ) {
+      case 'cli':
+        $req->cli()->options('u', array(
+            'alias' => 'user'
+          , 'type' => 'integer'
+          , 'describe' => 'Idenitfier of target context user.'
+          ));
+        if ( $req->param('user') ) {
+          $req->user->load($req->param('user'));
         }
-      }
-      else {
-        // Success, proceed.
-        $req->user = Session::currentUser();
-      }
-    }
-    // When no user is set, add a default user
-    else if ( $this->setupSession && !@\core\Node::get('User') ) {
-      $req->user =
-        [ 'ID' => 0
-        , 'groups' => ['Administrators']
-        , 'username' => 'default'
-        ];
+        break;
+
+      default:
+        // Session ID provided, validate it.
+        $sid = $req->param('__sid');
+        if ( $sid ) {
+          $res = Session::ensure($sid, $req->param('__token'));
+          if ( $res === false || $res === Session::ERR_EXPIRED ) {
+            // Session doesn't exists, delete exsting cookie.
+            $res->cookie('__sid', '', time() - 3600);
+          }
+          else if ( is_integer($res) ) {
+            switch ( $res ) {
+              // Treat as public user.
+              case Session::ERR_INVALID:
+                break;
+            }
+          }
+          else {
+            // Success, proceed.
+            $req->user->load(Session::current('UserID'));
+          }
+        }
+        // When no user is set, add a default user
+        else if ( $this->setupSession && !@\core\Node::get('User') ) {
+          $req->user->data(
+            [ 'ID' => 0
+            , 'groups' => ['Administrators']
+            , 'username' => 'default'
+            ]);
+        }
+        break;
     }
   }
 

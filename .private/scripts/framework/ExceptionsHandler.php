@@ -88,9 +88,15 @@ class ExceptionsHandler {
       $logType = 'Exception';
     }
 
+    $logString = sprintf('[Gateway] Uncaught %s#%d with message: "%s".', $exceptionType, $eN, $eS);
+
     // Current request context
-    $request = @Resolver::getActiveInstance()->request();
-    $response = @Resolver::getActiveInstance()->response();
+    $resolver = Resolver::getActiveInstance();
+    if ( $resolver ) {
+      $request = @Resolver::getActiveInstance()->request();
+      $response = @Resolver::getActiveInstance()->response();
+    }
+    unset($resolver);
 
     // Prevent recursive errors on logging when database fails to connect.
     if ( Database::isConnected() ) {
@@ -98,16 +104,14 @@ class ExceptionsHandler {
       @Database::unlockTables(false);
 
       $logContext = array('errorContext' => $eC);
-      if ( $request ) {
+      if ( isset($request) ) {
         $logContext+= $request->client();
       }
-
-      $logString = sprintf('[Gateway] Uncaught %s with message: "%s" #%d.', $exceptionType, $eS, $eN);
 
       // Log the error
       Log::write($logString, $logType, $logContext);
 
-      unset($logString, $logContext);
+      unset($logContext);
     }
 
     $output = array(
@@ -120,9 +124,40 @@ class ExceptionsHandler {
     }
 
     // Display error message
-    $response->clearHeaders();
-    $response->header('Content-Type', 'application/json; charset=utf-8');
-    $response->send($output, $e instanceof ErrorException ? 500 : 400);
+    if ( isset($response) && @$request->client('type') != 'cli' ) {
+      $response->clearHeaders();
+      $response->header('Content-Type', 'application/json; charset=utf-8');
+      $response->send($output, $e instanceof ErrorException ? 500 : 400);
+    }
+    else {
+      echo "$logString\n";
+
+      // Debug stack trace
+      if ( System::environment() == 'debug' ) {
+        echo "Trace:\n";
+        array_walk($eC, function($stack, $index) {
+          $trace = ($index + 1) . '.';
+
+          $function = implode('->', array_filter(array(
+            @$stack['class'], @$stack['function']
+          )));
+          if ( $function ) {
+            $trace.= " $function()";
+          }
+          unset($function);
+
+          if ( @$stack['file'] ) {
+            $trace.= " $stack[file]";
+
+            if ( @$stack['line'] ) {
+              $trace.= ":$stack[line]";
+            }
+          }
+
+          echo "$trace\n";
+        });
+      }
+    }
 
     // CLI exit code on Exceptions and Errors
     if ( in_array($logType, array('Exception', 'Error')) ) {

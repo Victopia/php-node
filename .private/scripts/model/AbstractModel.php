@@ -126,6 +126,28 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
 
   //----------------------------------------------------------------------------
   //
+  //  Overloading
+  //
+  //----------------------------------------------------------------------------
+
+  function __get($name) {
+    return $this->data[$name];
+  }
+
+  function __set($name, $value) {
+    $this->data[$name] = $value;
+  }
+
+  function __isset($name) {
+    return isset($this->data[$name]);
+  }
+
+  function __unset($name) {
+    unset($this->data[$name]);
+  }
+
+  //----------------------------------------------------------------------------
+  //
   //  Methods
   //
   //----------------------------------------------------------------------------
@@ -204,20 +226,18 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * Saves the current data into database.
    */
   function save(&$isCreated = false) {
-    if ( $this->beforeSave() === false ) {
-      return;
+    if ( $this->beforeSave() !== false ) {
+      $res = Node::set([Node::FIELD_COLLECTION => $this->collectionName] + $this->data);
+      if ( is_numeric($res) ) {
+        $isCreated = true;
+        $this->identity($res);
+      }
+
+      // Load again to reflect database level changes
+      $this->load($this->identity());
+
+      $this->afterSave();
     }
-
-    $res = Node::set([Node::FIELD_COLLECTION => $this->collectionName] + $this->data);
-    if ( is_numeric($res) ) {
-      $isCreated = true;
-      $this->identity($res);
-    }
-
-    // Load again to reflect database level changes
-    $this->load($this->identity());
-
-    $this->afterSave();
 
     return $this;
   }

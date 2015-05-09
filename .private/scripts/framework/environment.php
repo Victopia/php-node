@@ -3,6 +3,8 @@
 
 use core\Utility;
 
+use framework\System;
+
 //--------------------------------------------------
 //
 //  Environment definitions
@@ -26,6 +28,11 @@ if ( Utility::isCLI() ) {
 else {
   // Starts HTTP session for browsers.
   session_start();
+}
+
+// Make sure working directory is system root.
+if ( is_dir(System::getRoot()) ) {
+  chdir(System::getRoot());
 }
 
 //--------------------------------------------------

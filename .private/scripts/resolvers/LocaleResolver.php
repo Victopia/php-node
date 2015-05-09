@@ -3,6 +3,8 @@
 
 namespace resolvers;
 
+use Locale;
+
 use framework\Request;
 use framework\Response;
 use framework\Resource;
@@ -18,7 +20,13 @@ class LocaleResolver implements \framework\interfaces\IRequestResolver {
 
   public function __construct($options) {
     if ( !empty($options['default']) ) {
-      $this->defaultLocale = (string) $options['default'];
+      if ( is_string($options['default']) ) {
+        $locale = Locale::parseLocale($options['default']);
+      }
+
+      $locale = array_select($locale, ['language', 'region']);
+
+      $this->defaultLocale = implode('_', $locale);
     }
   }
 
@@ -29,8 +37,13 @@ class LocaleResolver implements \framework\interfaces\IRequestResolver {
     }
 
     // User preference
-    if ( $request->user ) {
+    if ( empty($request->user) ) {
       $locale = @$request->user['locale'];
+    }
+
+    // Accept from HTTP headers
+    if ( empty($locale) ) {
+      $locale = Locale::acceptFromHttp($request->header('Accept-Language'));
     }
 
     // Default locale

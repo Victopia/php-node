@@ -17,15 +17,33 @@ use framework\System;
 class LogResolver implements \framework\interfaces\IRequestResolver {
 
 	public function resolve(Request $request, Response $response) {
+		global $argv;
+
 		// Debug access log
 		if ( System::environment() == 'debug' ) {
-			$message = $request->client('version') . ' ' . strtoupper($request->method()) . ' ' . $request->uri('path');
+			switch ( $request->client('type') ) {
+				case 'cli':
+					$message = implode(' ', array(
+							$request->client('type'),
+							$request->uri(),
+						));
+					// @Log::write();
+					break;
 
-		  Log::write($message, 'Debug', array_filter(array(
-		      'origin' =>  $request->client('referer')
-		    , 'userAgent' => util::cascade(@$request->client('userAgent'), 'Unknown')
-		    , 'timeElapsed' => round(microtime(1) - $request->timestamp(), 4) . ' secs'
-		    )));
+				default:
+					$message = implode(' ', array(
+							$request->client('version'),
+							strtoupper($request->method()),
+							$request->uri('path'),
+						));
+
+				  @Log::write($message, 'Debug', array_filter(array(
+				      'origin' =>  $request->client('referer')
+				    , 'userAgent' => util::cascade(@$request->client('userAgent'), 'Unknown')
+				    , 'timeElapsed' => round(microtime(1) - $request->timestamp(), 4) . ' secs'
+				    )));
+					break;
+			}
 		}
 	}
 

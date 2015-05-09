@@ -3,6 +3,8 @@
 
 namespace framework;
 
+use Locale;
+
 use core\Net;
 use core\Utility as util;
 
@@ -84,9 +86,11 @@ class Request {
    * @param {?string} $options['locale'] Requesting locale, defaults to en_US.
    */
   public function __construct($options = array()) {
+    global $argv;
+
     if ( $options instanceof Resolver ) {
       $this->resolver = $options;
-      unset($options);
+      $options = array();
     }
 
     if ( @$options ) {
@@ -151,10 +155,104 @@ class Request {
       }
     }
     else {
-      // Request URI
+      // Request client
+      switch ( constant('PHP_SAPI') ) {
+        case 'cli':
+          $this->client = array(
+              'type' => 'cli'
+            , 'host' => gethostname()
+            , 'user' => get_current_user()
+            );
+          break;
+
+        default:
+          $this->client = array_filter(array(
+              'type' => 'http'
+            , 'secure' => @$_SERVER['HTTPS'] && strtolower($_SERVER['HTTPS']) != 'off'
+            , 'address' => @$_SERVER['REMOTE_ADDR']
+            , 'host' => @$_SERVER['REMOTE_HOST']
+            , 'port' => @$_SERVER['REMOTE_PORT']
+            , 'user' => @$_SERVER['REMOTE_USER']
+            , 'referer' => @$_SERVER['HTTP_REFERER']
+            , 'forwarder' => @$_SERVER['HTTP_X_FORWARDED_FOR']
+            , 'version' => @$_SERVER['SERVER_PROTOCOL']
+            , 'userAgent' => @$_SERVER['HTTP_USER_AGENT']
+            ), compose('not', 'is_null'));
+          break;
+      }
+
+      // Request method
       switch ( $this->client('type') ) {
-        case 'CLI':
-          return null;
+        case 'cli':
+          $this->method = 'cli';
+          break;
+
+        default:
+          $this->method = strtolower(@$_SERVER['REQUEST_METHOD']);
+          break;
+      }
+
+      // Request headers
+      switch ( $this->client('type') ) {
+        case 'cli':
+          break;
+
+        default:
+          $this->headers = getallheaders();
+          break;
+      }
+
+      // Request parameters
+      switch ( $this->client('type') ) {
+        case 'cli':
+          $this->paramCache['cli'] = new Optimist();
+          break;
+
+        default:
+          // Request parameters GET
+          $this->paramCache['get'] = $_GET;
+
+          // Request parameters POST
+          if ( preg_match('/^application\/json/', $this->header('Content-Type')) ) {
+            $this->paramCache['post'] = json_decode(file_get_contents('php://input'), true);
+          }
+          else {
+            $this->paramCache['post'] = $_POST;
+          }
+
+          // Cookies
+          $this->paramCache['cookies'] = &$_COOKIE;
+
+          // File uploads
+          if ( $this->method() == 'put' ) {
+            $this->paramCache['files'] = fopen('php://input', 'r');
+          }
+          else {
+            util::filesFix();
+            $this->paramCache['files'] = array_map(function($file) {
+              if ( is_array($file) ) {
+                return array_map(function($file) {
+                  return fopen($file['tmp_name']);
+                }, $file);
+              }
+              else {
+                return fopen($file['tmp_name']);
+              }
+            }, $_FILES);
+          }
+          break;
+      }
+
+      // Request URI
+      // CLI requires request parameters
+      switch ( $this->client('type') ) {
+        case 'cli':
+          /*! Note @ 9 May, 2015
+           *  Usage: node-cli [OPTIONS] COMMAND
+           *  Only one command is supported, simply shift it out.
+           */
+          $this->uri = $argv[1];
+          break;
 
         default:
           $this->uri = array(
@@ -174,76 +272,9 @@ class Request {
           break;
       }
 
-      // Request method
-      $this->method = strtolower(@$_SERVER['REQUEST_METHOD']);
-
-      // Request headers
-      if ( function_exists('getallheaders') ) {
-        $this->headers = getallheaders();
-      }
-
-      // Request client
-      switch ( constant('PHP_SAPI') ) {
-        case 'cli':
-        case 'cli-server':
-          $this->client = array(
-              'type' => 'CLI'
-            , 'host' => gethostname()
-            , 'user' => get_current_user()
-            );
-          break;
-
-        default:
-          $this->client = array_filter(array(
-              'type' => 'HTTP'
-            , 'secure' => @$_SERVER['HTTPS'] && strtolower($_SERVER['HTTPS']) != 'off'
-            , 'address' => @$_SERVER['REMOTE_ADDR']
-            , 'host' => @$_SERVER['REMOTE_HOST']
-            , 'port' => @$_SERVER['REMOTE_PORT']
-            , 'user' => @$_SERVER['REMOTE_USER']
-            , 'referer' => @$_SERVER['HTTP_REFERER']
-            , 'forwarder' => @$_SERVER['HTTP_X_FORWARDED_FOR']
-            , 'version' => @$_SERVER['SERVER_PROTOCOL']
-            , 'userAgent' => @$_SERVER['HTTP_USER_AGENT']
-            ), compose('not', 'is_null'));
-          break;
-      }
-
-      // Request parameters GET
-      $this->paramCache['get'] = $_GET;
-
-      // Request parameters POST
-      if ( preg_match('/^application\/json/', $this->header('Content-Type')) ) {
-        $this->paramCache['post'] = json_decode(file_get_contents('php://input'), true);
-      }
-      else {
-        $this->paramCache['post'] = $_POST;
-      }
-
-      // Cookies
-      $this->paramCache['cookies'] = &$_COOKIE;
-
-      // File uploads
-      if ( $this->method() == 'put' ) {
-        $this->paramCache['files'] = fopen('php://input', 'r');
-      }
-      else {
-        util::filesFix();
-        $this->paramCache['files'] = array_map(function($file) {
-          if ( is_array($file) ) {
-            return array_map(function($file) {
-              return fopen($file['tmp_name']);
-            }, $file);
-          }
-          else {
-            return fopen($file['tmp_name']);
-          }
-        }, $_FILES);
-      }
-
       // Parse special parameter values
       array_walk_recursive($this->paramCache, function(&$value) {
-        if ( strpos($value, $this->paramPrefix) === 0 ) {
+        if ( is_string($value) && strpos($value, $this->paramPrefix) === 0 ) {
           $_value = substr($value, strlen($this->paramPrefix));
           switch ( strtolower($_value) ) {
             case 'true':
@@ -264,17 +295,21 @@ class Request {
       });
 
       // Unified params ($_REQUEST mimic)
-      $this->paramCache['request'] = array_merge(
-        (array) $this->paramCache['cookies'],
-        (array) $this->paramCache['get'],
-        (array) $this->paramCache['post']);
+      switch ( $this->client('type') ) {
+        case 'cli':
+          $this->paramCache['request'] = $this->paramCache['cli'];
+          break;
+
+        default:
+          $this->paramCache['request'] = array_merge(
+            (array) @$this->paramCache['cookies'],
+            (array) @$this->paramCache['get'],
+            (array) @$this->paramCache['post']);
+          break;
+      }
 
       // Request timestamp
       $this->timestamp = (float) @$_SERVER['REQUEST_TIME_FLOAT'];
-
-      if ( $this->header('Accept-Language') ) {
-        $this->locale = $this->header('Accept-Language');
-      }
     }
 
     // Failover in case of request time not exists.
@@ -447,7 +482,13 @@ class Request {
    * @return {string} Returns the current locale.
    */
   public function locale($locale = null) {
-    return $this->locale;
+    $locale = $this->locale;
+
+    if ( $locale !== null ) {
+      $this->locale = $locale;
+    }
+
+    return $locale;
   }
 
   //-------------------------------------
@@ -468,13 +509,13 @@ class Request {
     switch ( strtolower($type) ) {
       case 'request':
       default:
-        return (array) @$this->paramCache['request'];
+        return @$this->paramCache['request'];
 
       case 'get':
       case 'post':
       case 'cookies':
       case 'files':
-        return (array) @$this->paramCache[$type];
+        return @$this->paramCache[$type];
     }
   }
 
@@ -521,22 +562,25 @@ class Request {
 
     $result = $this->_param($type);
 
-    // remove meta keys and sensitive values
-    $result = array_filter_keys($result,
-      funcAnd(
-        notIn([ ini_get('session.name') ]),
-        compose(
-          'not',
-          startsWith($this->paramPrefix)
+    if ( is_array($result) ) {
+      // remove meta keys and sensitive values
+      $result = array_filter_keys($result,
+        funcAnd(
+          notIn([ ini_get('session.name') ]),
+          compose(
+            'not',
+            startsWith($this->paramPrefix)
+          )
         )
-      )
-    );
+      );
+    }
 
     if ( $name === null ) {
       return $result;
     }
     else {
-      return @$result[$name];
+      $fx = prop($name);
+      return $fx($result);
     }
   }
 
@@ -579,6 +623,10 @@ class Request {
    */
   public function file($name = null) {
     return $this->param($name, 'files');
+  }
+
+  public function cli($name = null) {
+    return $this->param($name, 'cli');
   }
 
   //----------------------------------------------------------------------------

@@ -1,0 +1,45 @@
+#! /usr/bin/php
+<?php
+/*! node-cli | Route CLI commands as a gateway. */
+
+require_once('.private/scripts/Initialize.php');
+
+$opts = (new framework\Optimist)
+  ->usage(<<<CLI
+Usage: node-cli [ OPTIONS ] { COMMAND | help }
+where  COMMAND := scripts in the commands directory
+                  { csv-import | csv-export | test }
+CLI
+);
+
+// Just store back to itself
+if ( empty($opts->argv['_']) || @$opts->argv['_'][0] == 'help' ) {
+  $opts->showHelp();
+  die;
+}
+
+unset($opts);
+
+// Create the resolver
+$resolver = new framework\Resolver();
+
+// LocaleResolver
+$resolver->registerResolver(new resolvers\LocaleResolver(array(
+  'default' => Locale::getDefault()
+  )), 100);
+
+// UserContextResolver
+$resolver->registerResolver(new resolvers\UserContextResolver(), 80);
+
+/*! Note @ 9 May, 2015
+ *  Not much to do with routing authentications, AuthenticationResolver is not required.
+ */
+
+// CliRouter
+$resolver->registerResolver(new resolvers\CliRouter(), 10);
+
+// Logging
+$resolver->registerResolver(new resolvers\LogResolver(), 0);
+
+// CLI entry point
+$resolver->run();

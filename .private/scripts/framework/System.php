@@ -171,9 +171,14 @@ class System {
   public static function getRoot($type = '') {
     static $root;
     if ( !$root ) {
-      $trace = debug_backtrace();
-      $trace = array_pop($trace);
-      $root = dirname($trace['file']);
+      // Approach 1
+      $root = implode(DS, [__DIR__, '..', '..', '..']);
+      $root = realpath($root);
+
+      // Approach 2
+      // $root = debug_backtrace();
+      // $root = array_pop($root);
+      // $root = dirname($root['file']);
     }
 
     if ( $type ) {

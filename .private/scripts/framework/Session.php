@@ -275,55 +275,17 @@ class Session {
    *
    * This will only be set on first call of validate(), ensure() or restore().
    */
-  static function current($property = null) {
+  static function current($property = 'sid') {
+    $session = (array) @Node::getOne(array(
+        Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION
+      , 'sid' => static::$currentSession
+      ));
+
     if ( $property === null ) {
-      return static::$currentSession;
+      return $session;
     }
     else {
-      $res = Node::getOne(array(
-          Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION
-        , 'sid' => static::$currentSession
-        ));
-
-      return @$res[$property];
-    }
-  }
-
-  /**
-   *  Shortcut function for getting user information.
-   */
-  static function currentUser($property = null) {
-    $user = &static::$currentUser;
-
-    if ( !$user ) {
-      $sid = static::$currentSession;
-
-      if ( $sid ) {
-        $res = 'SELECT `UserID` FROM `'.FRAMEWORK_COLLECTION_SESSION.'` WHERE `sid` = ?;';
-        $res = Database::fetchField($res, array($sid));
-        if ( $res ) {
-          $res = array(
-              Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_USER
-            , 'ID' => $res
-            );
-
-          $res = Node::get($res);
-          if ( $res ) {
-            $user = $res[0];
-          }
-        }
-
-        unset($res);
-      }
-
-      unset($sid);
-    }
-
-    if ( $property !== null ) {
-      return @$user[$property];
-    }
-    else {
-      return $user;
+      return @$session[$property];
     }
   }
 

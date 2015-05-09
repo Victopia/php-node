@@ -21,6 +21,7 @@ use framework\renderers\IncludeRenderer;
 use framework\renderers\StaticFileRenderer;
 
 class FileResolver implements \framework\interfaces\IRequestResolver {
+
   //--------------------------------------------------
   //
   //  Properties
@@ -35,24 +36,21 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
   private $currentPath;
 
   //------------------------------
-  //  defaultPath
+  //  baseUrl
   //------------------------------
-  private $defaultPath;
+  protected $baseUrl;
 
   /**
    * Target path to serve.
    */
-  public function defaultPath($value = null) {
-    if ( $value === null ) {
-      return $this->defaultPath;
+  public function baseUrl($value = null) {
+    $baseUrl = $this->baseUrl;
+
+    if ( $value !== null ) {
+      $this->baseUrl = str_replace('/', DS, $value);
     }
 
-    if ( $value ) {
-      $value = str_replace('/', DIRECTORY_SEPARATOR, $value);
-      $value = preg_replace('/\\' . DIRECTORY_SEPARATOR . '$/', '', $value);
-    }
-
-    $this->defaultPath = $value;
+    return $baseUrl;
   }
 
   //------------------------------
@@ -64,15 +62,14 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
    * Emulate DirectoryIndex chain
    */
   public function directoryIndex($value = null) {
-    if ( $value === null ) {
-      return $this->directoryIndex;
+    $directoryIndex = $this->directoryIndex;
+
+    if ( $value !== null ) {
+      $value = explode(' ', (string) $value);
+      $this->directoryIndex = $value;
     }
 
-    if ( is_string($value) ) {
-      $value = explode(' ', $value);
-    }
-
-    $this->directoryIndex = $value;
+    return $directoryIndex;
   }
 
   //------------------------------
@@ -93,15 +90,14 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
    * 2. If-None-Match
    */
   public function cacheExclusions($value = null) {
-    if ( $value === null ) {
-      return $this->cacheExclusions;
+    $cacheExclusions = $this->cacheExclusions;
+
+    if ( $value !== null ) {
+      $value = explode(' ', (string) $value);
+      $this->cacheExclusions = $value;
     }
 
-    if ( is_string($value) ) {
-      $value = explode(' ', $value);
-    }
-
-    $this->cacheExclusions = $value;
+    return $cacheExclusions;
   }
 
   //--------------------------------------------------
@@ -110,21 +106,9 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
   //
   //--------------------------------------------------
 
-  public function __construct($defaultPath = '.') {
-    // Calculate current working path.
-    $path = getcwd();
-    $root = System::getRoot();
-
-    if ( strpos(realpath($path), realpath($root)) !== 0 ) {
-      throw new ResolverException('Document root does not align with current working directory.');
-    }
-
-    $path = substr($path, strlen($root));
-
-    $this->currentPath = $path;
-
+  public function __construct($baseUrl = '/') {
     // Apply serving directory.
-    $this->defaultPath($defaultPath);
+    $this->baseUrl($baseUrl);
   }
 
   //--------------------------------------------------
@@ -141,40 +125,27 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
     $path = $request->uri('path');
 
-    $res = str_replace('/', DIRECTORY_SEPARATOR, $path);
-    if ( strpos($res, $this->currentPath) === 0 ) {
-      $res = substr($res, strlen($this->currentPath));
+    if ( stripos($path, $this->baseUrl) === 0 ) {
+      $path = substr($path, strlen($this->baseUrl));
     }
 
-    if ( stripos($res, $this->defaultPath) !== 0 ) {
-      if ( $res[0] != DIRECTORY_SEPARATOR ) {
-        $res = DIRECTORY_SEPARATOR . $res;
-      }
-
-      $res = $this->defaultPath . $res;
+    if ( strpos($path, '?') !== false ) {
+      $path = strstr($path, '?', true);
     }
 
-    $res = explode('?', $res, 2);
+    $path = urldecode($path);
 
-    // Note: Query string is not used in this resolver.
-    // $queryString = isset($res[1]) ? $res[1] : '';
-
-    if ( @$res[0][0] == DIRECTORY_SEPARATOR ) {
-      $res = ".$res[0]";
+    if ( !$path ) {
+      $path = '.' . DS;
     }
-    else {
-      $res = $res[0];
-    }
-
-    $res = urldecode($res);
 
     //------------------------------
     //  Emulate DirectoryIndex
     //------------------------------
-    if ( is_dir($res) ) {
-      if ( !is_file($res) ) {
+    if ( is_dir($path) ) {
+      if ( !is_file($path) ) {
         foreach ( $this->directoryIndex() as $file ) {
-          $request->setUri(preg_replace('/^\.\//', '', $res) . $file);
+          $request->setUri(preg_replace('/^\.\//', '', $path) . $file);
           // Exit whenever an index is handled successfully, this will exit.
           if ( $this->resolve($request, $response) ) {
             return;
@@ -182,17 +153,17 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
         }
 
         // Nothing works, going down.
-        $request->setUri($res);
+        $request->setUri($path);
       }
     }
 
     //------------------------------
     //  Virtual file handling
     //------------------------------
-    $this->createVirtualFile($res);
-    if ( is_file($res) ) {
+    $this->createVirtualFile($path);
+    if ( is_file($path) ) {
       try {
-        $this->handle($res, $request, $response);
+        $this->handle($path, $request, $response);
       }
       catch (ResolverException $e) {
         $response->status($e->statusCode());
@@ -236,6 +207,9 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
       );
 
     $mime = Utility::getInfo($path, FILEINFO_MIME_TYPE);
+    if ( strpos($mime, ';') !== false ) {
+      $mime = substr($mime, 0, strpos($mime, ';'));
+    }
     switch ( $mime ) {
       // mime-types that we output directly.
       case 'application/pdf':
