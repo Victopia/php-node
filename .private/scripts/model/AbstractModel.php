@@ -205,12 +205,22 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
 
   /**
    * Loads data into current intance with specified $entityId from collection.
+   *
+   * @param {array|string|number} $filter Scalar types will be treated as identity,
+   *                                      array types will be used as is.
    */
   function load($identity) {
     $filter = array(
         Node::FIELD_COLLECTION => $this->collectionName
       , $this->primaryKey => $identity
       );
+
+    if ( is_scalar($identity) ) {
+      $filter[$this->primaryKey] = $identity;
+    }
+    else if ( is_array($identity)) {
+      $filter+= $identity;
+    }
 
     $filter = $this->beforeLoad($filter);
     if ( $filter !== false ) {
