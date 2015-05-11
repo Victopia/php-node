@@ -86,15 +86,6 @@ $resolver->registerResolver($fileResolver, 10);
 unset($fileResolver);
 
 /*! Note @ 24 Apr, 2015
- *  Till now we cannot think of a way to use this resource resolver, resources
- *  are supposed to be used internally.
- *
- *  Reserve this for future client-side translation.
- *
- *  $resolver->registerResolver(new resolvers\ResourceResolver('/resource/'), 0);
- */
-
-/*! Note @ 24 Apr, 2015
  *  Cache resolver is now disabled because it handles way more than expected,
  *  such as conditional request and etag.
  *
