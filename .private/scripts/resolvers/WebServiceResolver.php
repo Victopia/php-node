@@ -31,7 +31,7 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
 
   public function __construct($pathPrefix) {
     if ( !$pathPrefix ) {
-      throw new ResolverException('Please provide a proper path prefix for ResourceResolver.');
+      throw new ResolverException('Please provide a proper path prefix.');
     }
 
     $this->pathPrefix = $pathPrefix;
