@@ -771,7 +771,7 @@ class Utility {
    * Fix weird array format in $_FILES.
    */
   static function filesFix() {
-    if ( @$_FILES && !@$_FILES['__fixed'] ) {
+    if ( @$_FILES && !@$_FILES['@fixed'] ) {
       foreach ( $_FILES as &$file ) {
         $output = array();
 
@@ -793,7 +793,7 @@ class Utility {
         $file = $output;
       }
 
-      $_FILES['__fixed'] = true;
+      $_FILES['@fixed'] = true;
     }
   }
 
