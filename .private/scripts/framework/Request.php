@@ -229,16 +229,33 @@ class Request {
           }
           else {
             util::filesFix();
-            $this->paramCache['files'] = array_map(function($file) {
-              if ( is_array($file) ) {
-                return array_map(function($file) {
-                  return fopen($file['tmp_name']);
-                }, $file);
+
+            $parseFile = function($file) use(&$parseFile) {
+              if ( !is_array($file) ) {
+                return $file;
+              }
+
+              if ( util::isAssoc($file) ) {
+                switch ( $file['error'] ) {
+                  case UPLOAD_ERR_OK:
+                    return fopen($file['tmp_name'], 'r');
+
+                  case UPLOAD_ERR_NO_FILE:
+                    // Skip it.
+                    break;
+
+                  default:
+                    return $file['error'];
+                }
               }
               else {
-                return fopen($file['tmp_name']);
+                return array_mapdef($parseFile, $file);
               }
-            }, $_FILES);
+            };
+
+            $this->paramCache['files'] = array_mapdef(array_filter_keys($_FILES, compose('not', startsWith('@'))), $parseFile);
+
+            unset($parseFile);
           }
           break;
       }
@@ -251,7 +268,10 @@ class Request {
            *  Usage: node-cli [OPTIONS] COMMAND
            *  Only one command is supported, simply shift it out.
            */
-          $this->uri = $argv[1];
+          $this->uri = @$this->paramCache['cli']['_'][0];
+          if ( !$this->uri ) {
+            $this->uri = $argv[1];
+          }
           break;
 
         default:
@@ -606,13 +626,6 @@ class Request {
   }
 
   /**
-   * @private
-   *
-   * Files cache.
-   */
-  protected $files;
-
-  /**
    * Returns a opened file streams.
    *
    * @param {?string} $postName Returns the file(s) under specified post name,
@@ -625,6 +638,12 @@ class Request {
     return $this->param($name, 'files');
   }
 
+  /**
+   * CLI parameters, the array accessible Optimist object.
+   *
+   * @param {?string} $name Name of target comment argument.
+   * @return If $name is omitted, the Optimist object will the returned.
+   */
   public function cli($name = null) {
     return $this->param($name, 'cli');
   }
