@@ -1,5 +1,5 @@
 <?php
-/*! GeneralException.php | Base exception classes of the framework. */
+/*! GeneralException.php | Exception thrown to front end, takes care of i18n. */
 
 namespace framework\exceptions;
 

@@ -7,7 +7,7 @@ use Locale;
 
 use framework\Request;
 use framework\Response;
-use framework\Resource;
+use framework\Translation;
 
 class LocaleResolver implements \framework\interfaces\IRequestResolver {
 
@@ -56,7 +56,7 @@ class LocaleResolver implements \framework\interfaces\IRequestResolver {
         setcookie('locale', $locale, FRAMEWORK_COOKIE_EXPIRE_TIME, '/');
       }
 
-      $response->resource(new Resource($locale));
+      $response->translation(new Translation($locale));
     }
   }
 

@@ -5,10 +5,6 @@ namespace framework;
 
 use core\Utility as util;
 
-use framework\Resolver;
-use framework\Resource;
-use framework\System;
-
 use framework\exceptions\ResolverException;
 
 /**
@@ -122,12 +118,18 @@ class Response {
   /**
    * @private
    *
-   * Resource class for translation
+   * Translation class for translation
    */
-  protected $resource;
+  protected $translation;
 
-  public function resource(Resource $resource) {
-    $this->resource = $resource;
+  public function translation(Translation $value) {
+    $translation = $this->translation;
+
+    if ( $value ) {
+      $this->translation = $value;
+    }
+
+    return $translation;
   }
 
   //----------------------------------------------------------------------------
@@ -393,8 +395,9 @@ class Response {
   }
 
   public function __($key) {
-    if ( is_callable($this->resource) ) {
-      return $this->resource($key);
+    $translation = $this->translation;
+    if ( is_callable($translation) ) {
+      return $translation($key);
     }
   }
 

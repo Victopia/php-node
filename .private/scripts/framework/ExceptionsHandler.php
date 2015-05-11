@@ -12,6 +12,9 @@ use core\Utility;
 use framework\Resolver;
 use framework\System;
 
+use framework\exceptions\GeneralException;
+use framework\exceptions\FrameworkException;
+
 class ExceptionsHandler {
   public static function setHandlers() {
         set_error_handler('framework\ExceptionsHandler::handleError', error_reporting());
@@ -38,15 +41,6 @@ class ExceptionsHandler {
 
     // Put current context into stack trace
     array_unshift($eC, array('file' => $e->getFile(), 'line' => $e->getLine()));
-
-    if ( $e instanceof exceptions\GeneralException ) {
-      $r = (string) (new Resource)->$eS;
-      if ( $r ) {
-        $eS = $r;
-      }
-
-      unset($r);
-    }
 
     if ( $e instanceof ErrorException ) {
       switch ( $e->getSeverity() ) {
@@ -125,6 +119,14 @@ class ExceptionsHandler {
 
     // Display error message
     if ( isset($response) && @$request->client('type') != 'cli' ) {
+      // Do i18n when repsonse context is available
+      if ( $e instanceof GeneralException ) {
+        $errorMessage = $response->__($eS, $logType);
+        if ( $errorMessage ) {
+          $output['error'] = $errorMessage;
+        }
+      }
+
       $response->clearHeaders();
       $response->header('Content-Type', 'application/json; charset=utf-8');
       $response->send($output, $e instanceof ErrorException ? 500 : 400);

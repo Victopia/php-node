@@ -30,7 +30,7 @@ define('FRAMEWORK_COLLECTION_SESSION', 'Sessions');
 // Collection of user files, basic file system implementation.
 define('FRAMEWORK_COLLECTION_FILE', 'Files');
 // Collection of locale resources.
-define('FRAMEWORK_COLLECTION_RESOURCES', 'Resources');
+define('FRAMEWORK_COLLECTION_TRANSLATION', 'Translations');
 
 // Predefined error messages in libcurl.
 define('FRAMEWORK_NET_CURL_ERRORS', serialize(array(

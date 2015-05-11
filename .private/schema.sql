@@ -119,6 +119,19 @@ CREATE TABLE `Sessions` (
 ) ENGINE=MEMORY DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
+-- Table structure for table `Translations`
+--
+
+CREATE TABLE `Translations` (
+  `identifier` varchar(32) NOT NULL DEFAULT '' COMMENT 'MD5 hash of target string',
+  `key` varchar(255) NOT NULL DEFAULT 'default' COMMENT 'Version key of the same identifier',
+  `value` text NOT NULL COMMENT 'Translation content',
+  `locale` varchar(255) NOT NULL DEFAULT '' COMMENT 'Locale of target translation',
+  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`identifier`,`key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+--
 -- Table structure for table `Users`
 --
 

@@ -25,11 +25,11 @@ class MustacheResource {
    * @param $path Stored path to target resources.
    */
   public function __construct($locale_resource = 'en_US', $path = '') {
-    if ( $locale_resource instanceof Resource ) {
+    if ( $locale_resource instanceof Translation ) {
       $this->resourceInstance = $locale_resource;
     }
     else {
-      $this->resourceInstance = new Resource($locale_resource);
+      $this->resourceInstance = new Translation($locale_resource);
     }
 
     $this->path = $path;
