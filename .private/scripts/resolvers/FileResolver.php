@@ -72,34 +72,6 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     return $directoryIndex;
   }
 
-  //------------------------------
-  //  cacheExclusions
-  //------------------------------
-  private $cacheExclusions = array('php');
-
-  /**
-   * Conditional request is disregarded when
-   * requested file contains these extensions.
-   *
-   * Related HTTP server headers are:
-   * 1. Last Modified
-   * 2. ETag
-   *
-   * Related HTTP client headers are:
-   * 1. If-Modified-Since
-   * 2. If-None-Match
-   */
-  public function cacheExclusions($value = null) {
-    $cacheExclusions = $this->cacheExclusions;
-
-    if ( $value !== null ) {
-      $value = explode(' ', (string) $value);
-      $this->cacheExclusions = $value;
-    }
-
-    return $cacheExclusions;
-  }
-
   //--------------------------------------------------
   //
   //  Constructor
