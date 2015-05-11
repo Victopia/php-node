@@ -5,7 +5,7 @@ namespace framework;
 
 use core\Utility;
 
-final class Optimist {
+final class Optimist implements \ArrayAccess {
 
   //--------------------------------------------------
   //
@@ -81,7 +81,7 @@ final class Optimist {
    *
    * Keep a copy of the global $argv list to allow users make changes to the global one.
    */
-  public function __construct(array $parameters = null) {
+  function __construct(array $parameters = null) {
     global $argv;
 
     if ( $parameters === null ) {
@@ -98,168 +98,40 @@ final class Optimist {
   //
   //--------------------------------------------------
 
-  public function __get($name) {
-    if ( !$this->result ) {
-      $argv = $this->argv;
-
-      // Remove until the script itself.
-      if ( @$_SERVER['PHP_SELF'] && in_array($_SERVER['PHP_SELF'], $argv) ) {
-        $argv = array_slice($argv, array_search($_SERVER['PHP_SELF'], $argv) + 1);
-      }
-
-      $args = array();
-
-      $currentNode = &$args['_'];
-
-      foreach ($argv as $value) {
-        // Match flag style, then assign initial value.
-        if ( preg_match('/^\-\-?([\w\.]+)(?:=(.*))?$/', $value, $matches) ) {
-          $nodePath = explode('.', $matches[1]);
-
-          $currentNode = &$args[array_shift($nodePath)];
-
-          while ($nodePath) {
-            $currentNode = &$currentNode[array_shift($nodePath)];
-          }
-
-          $value = isset($matches[3]) ? $matches[3] : TRUE;
-
-          // Value exists
-          if ( $currentNode ) {
-            if ( !is_array($currentNode) ) {
-              $currentNode = array($currentNode);
-            }
-
-            $currentNode[] = $value;
-          }
-          else {
-            $currentNode = $value;
-          }
-
-          unset($matches, $nodePath);
-        }
-
-        // Not -- style flags, see if a previous flag exists.
-        // If so, assign to it, otherwise goes to _.
-        else {
-          if ( isset($currentNode) ) {
-            if ( $currentNode === TRUE ) {
-              $currentNode = $value;
-            }
-
-            // Replace last TRUE in array.
-            else {
-              array_pop($currentNode);
-
-              $currentNode[] = $value;
-            }
-          }
-          else {
-            @$args['_'][] = $value;
-          }
-
-          unset($currentNode);
-        }
-      } unset($value);
-
-      if ( !$args['_'] ) {
-        unset($args['_']);
-      }
-
-      //------------------------------
-      //  Alias
-      //------------------------------
-
-      foreach ($this->alias as $key => $alias) {
-        // Alias: type
-        if ( isset($this->types[$key]) ) {
-          $this->types+= array_fill_keys($alias, $this->types[$key]);
-        }
-
-        // Alias: defaults
-        if ( isset($this->defaults[$key]) ) {
-          $this->defaults+= array_fill_keys($alias, $this->defaults[$key]);
-        }
-      } unset($key, $alias);
-
-      // Alias: value
-      foreach ($args as $option => $value) {
-        $target = (array) @$this->alias[$option];
-
-        foreach ($target as $alias) {
-          $args[$alias] = $value;
-        } unset($alias);
-      } unset($option, $value, $target);
-
-      if ( @$args['_'] ) {
-        foreach($args['_'] as $value) {
-          $target = (array) @$this->alias[$value];
-
-          foreach ($target as $alias) {
-            $args['_'][] = $alias;
-          } unset($alias);
-        }
-
-        $args['_'] = array_unique($args['_']);
-      } unset($value, $target);
-
-      //------------------------------
-      //  Demands
-      //------------------------------
-
-      if ( is_numeric($this->demand) ) {
-        if ( count((array) @$args['_']) < $this->demand ) {
-          $this->showError("It requires at least $this->demand args to run.");
-
-          die;
-        }
-      }
-      else {
-        $missingKeys = array();
-
-        foreach ($this->demand as $key => $value) {
-          if ( !isset($args[$key]) ) {
-            $missingKeys[] = $key;
-          }
-        }
-
-        if ( $missingKeys ) {
-          $this->showError("Missing required options: " . implode(', ', $missingKeys));
-
-          die;
-        }
-      }
-
-      //------------------------------
-      //  Type-casting
-      //------------------------------
-      $args = Utility::flattenArray($args);
-
-      array_walk($args, function(&$value, $key) {
-        if ( isset($this->types[$key]) ) {
-          if ( !settype($value, $this->types[$key]) ) {
-            $this->showError("Unable to cast $key into type $type.");
-
-            die;
-          }
-        }
-        elseif ( is_numeric($value) ) {
-          $value = doubleval($value);
-        }
-      });
-
-      $args+= (array) $this->defaults;
-
-      $this->result = Utility::unflattenArray($args);
-    }
+  function __get($name) {
+    $this->processArgs();
 
     if ( $name == 'argv' ) {
       return $this->result;
     }
     else {
-      @$this->result[$name];
+      return @$this->result[$name];
     }
   }
+
+  function __isset($name) {
+    $this->processArgs();
+
+    return isset($this->result[$name]);
+  }
+
+  //--------------------------------------------------
+  //
+  //  Methods : ArrayAccess
+  //
+  //--------------------------------------------------
+
+  function offsetGet($name) {
+    return $this->$name;
+  }
+
+  function offsetSet($name, $value) { /* noop */ }
+
+  function offsetExists($name) {
+    return isset($this->$name);
+  }
+
+  function offsetUnset($name) { /* noop */ }
 
   //--------------------------------------------------
   //
@@ -447,6 +319,8 @@ final class Optimist {
 
       die;
     }
+
+    return $this; // chainable
   }
 
   /**
@@ -527,10 +401,19 @@ final class Optimist {
    */
   public function showHelp($func = 'error_log') {
     $func($this->help());
+
+    return $this; // chainable
   }
 
-  public function parse($args) {
+  /**
+   * Process a new set of arguments with the same options.
+   *
+   * @param {array} $args Array of command line argument format.
+   */
+  public function parse(array $args) {
     $this->argv = $args;
+
+    $this->result = null;
 
     return $this; // chainable
   }
@@ -620,6 +503,164 @@ final class Optimist {
     }
 
     echo "\n\n";
+  }
+
+  private function processArgs() {
+    if ( $this->result ) {
+      return;
+    }
+
+    $argv = $this->argv;
+
+    // Remove until the script itself.
+    if ( @$_SERVER['PHP_SELF'] && in_array($_SERVER['PHP_SELF'], $argv) ) {
+      $argv = array_slice($argv, array_search($_SERVER['PHP_SELF'], $argv) + 1);
+    }
+
+    $args = array();
+
+    $currentNode = &$args['_'];
+
+    foreach ($argv as $value) {
+      // Match flag style, then assign initial value.
+      if ( preg_match('/^\-\-?([\w\.]+)(?:=(.*))?$/', $value, $matches) ) {
+        $nodePath = explode('.', $matches[1]);
+
+        $currentNode = &$args[array_shift($nodePath)];
+
+        while ($nodePath) {
+          $currentNode = &$currentNode[array_shift($nodePath)];
+        }
+
+        $value = isset($matches[3]) ? $matches[3] : TRUE;
+
+        // Value exists
+        if ( $currentNode ) {
+          if ( !is_array($currentNode) ) {
+            $currentNode = array($currentNode);
+          }
+
+          $currentNode[] = $value;
+        }
+        else {
+          $currentNode = $value;
+        }
+
+        unset($matches, $nodePath);
+      }
+
+      // Not -- style flags, see if a previous flag exists.
+      // If so, assign to it, otherwise goes to _.
+      else {
+        if ( isset($currentNode) ) {
+          if ( $currentNode === TRUE ) {
+            $currentNode = $value;
+          }
+
+          // Replace last TRUE in array.
+          else {
+            array_pop($currentNode);
+
+            $currentNode[] = $value;
+          }
+        }
+        else {
+          @$args['_'][] = $value;
+        }
+
+        unset($currentNode);
+      }
+    } unset($value);
+
+    if ( !$args['_'] ) {
+      unset($args['_']);
+    }
+
+    //------------------------------
+    //  Alias
+    //------------------------------
+
+    foreach ($this->alias as $key => $alias) {
+      // Alias: type
+      if ( isset($this->types[$key]) ) {
+        $this->types+= array_fill_keys($alias, $this->types[$key]);
+      }
+
+      // Alias: defaults
+      if ( isset($this->defaults[$key]) ) {
+        $this->defaults+= array_fill_keys($alias, $this->defaults[$key]);
+      }
+    } unset($key, $alias);
+
+    // Alias: value
+    foreach ($args as $option => $value) {
+      $target = (array) @$this->alias[$option];
+
+      foreach ($target as $alias) {
+        $args[$alias] = $value;
+      } unset($alias);
+    } unset($option, $value, $target);
+
+    if ( @$args['_'] ) {
+      foreach($args['_'] as $value) {
+        $target = (array) @$this->alias[$value];
+
+        foreach ($target as $alias) {
+          $args['_'][] = $alias;
+        } unset($alias);
+      }
+
+      $args['_'] = array_unique($args['_']);
+    } unset($value, $target);
+
+    //------------------------------
+    //  Demands
+    //------------------------------
+
+    if ( is_numeric($this->demand) ) {
+      if ( count((array) @$args['_']) < $this->demand ) {
+        $this->showError("It requires at least $this->demand args to run.");
+
+        die;
+      }
+    }
+    else {
+      $missingKeys = array();
+
+      foreach ($this->demand as $key => $value) {
+        if ( !isset($args[$key]) ) {
+          $missingKeys[] = $key;
+        }
+      }
+
+      if ( $missingKeys ) {
+        $this->showError("Missing required options: " . implode(', ', $missingKeys));
+
+        die;
+      }
+    }
+
+    //------------------------------
+    //  Type-casting
+    //------------------------------
+    $args = Utility::flattenArray($args);
+
+    array_walk($args, function(&$value, $key) {
+      if ( isset($this->types[$key]) ) {
+        if ( !settype($value, $this->types[$key]) ) {
+          $this->showError("Unable to cast $key into type $type.");
+
+          die;
+        }
+      }
+      elseif ( is_numeric($value) ) {
+        $value = doubleval($value);
+      }
+    });
+
+    $args+= (array) $this->defaults;
+
+    return $this->result = Utility::unflattenArray($args);
   }
 
 }
