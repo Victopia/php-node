@@ -167,9 +167,6 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
   /**
    * Primary task when including PHP is that we need
    * to change $_SERVER variables to match target file.
-   *
-   * Q: Possible to make an internal request through Apache?
-   * A: Not realistic, too much configuration.
    */
   private function handle($path, $request, $response) {
     $context = array(
