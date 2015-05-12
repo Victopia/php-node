@@ -5,6 +5,7 @@ namespace resolvers;
 
 use framework\Request;
 use framework\Response;
+use framework\Process;
 
 /**
  * Assigns a user context to the request object when a user is authenticated
@@ -32,14 +33,23 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
     // User from CLI
     switch ( $req->client('type') ) {
       case 'cli':
-        $req->cli()->options('u', array(
-            'alias' => 'user'
-          , 'type' => 'integer'
-          , 'describe' => 'Idenitfier of target context user.'
-          ));
-        if ( $req->param('user') ) {
-          $req->user->load($req->param('user'));
+        // Retrieve user context from process data, then CLI argument.
+        $userId = (int) Process::get('userId');
+        if ( !$userId ) {
+          $req->cli()->options('u', array(
+              'alias' => 'user'
+            , 'type' => 'integer'
+            , 'describe' => 'Idenitfier of target context user.'
+            ));
+
+          $userId = (int) $req->param('user');
         }
+
+        if ( $userId ) {
+          $req->user->load($userId);
+        }
+
+        unset($userId);
         break;
 
       default:
