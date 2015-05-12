@@ -6,6 +6,8 @@ namespace resolvers;
 use framework\Request;
 use framework\Response;
 
+use framework\renderers\IncludeRenderer;
+
 class StatusDocumentResolver implements \framework\interfaces\IRequestResolver {
 
 	/**
@@ -54,7 +56,13 @@ class StatusDocumentResolver implements \framework\interfaces\IRequestResolver {
 		}
 		// Fall back to PHP
 		else if ( file_exists("$basename.php") ) {
-			include("$basename.php");
+			$context = array(
+					'path' => "$basename.php"
+				, 'request' => $request
+				, 'response' => $response
+				);
+
+			(new IncludeRenderer($context))->render();
 		}
 		// Fall back to HTML
 		else if ( file_exists("$basename.html") ) {
