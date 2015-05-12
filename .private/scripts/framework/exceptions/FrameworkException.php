@@ -3,6 +3,8 @@
 
 namespace framework\exceptions;
 
+use framework\Resolver;
+
 /**
  * Framework thrown exceptions, messages are interfaced with front end.
  *
@@ -16,9 +18,9 @@ class FrameworkException extends \Exception {
 
     // Resolve message from database, with the exception code.
     if ( $res && $code ) {
-      $res = $resolver->response();
+      $res = $res->response();
       if ( $res ) {
-        $res = $repsonse->__("exception.$code", 'Exception');
+        $res = $res->__("exception.$code", 'Exception');
         if ( $res ) {
           if ( is_array($message) ) {
             $message = call_user_func_array('sprintf', $message);
