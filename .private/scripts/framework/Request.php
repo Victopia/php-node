@@ -225,7 +225,7 @@ class Request {
 
           // File uploads
           if ( $this->method() == 'put' ) {
-            $this->paramCache['files'] = fopen('php://input', 'r');
+            $this->paramCache['files'] = new RequestPutFile($this->header('Content-Type'));
           }
           else {
             util::filesFix();
@@ -238,7 +238,7 @@ class Request {
               if ( util::isAssoc($file) ) {
                 switch ( $file['error'] ) {
                   case UPLOAD_ERR_OK:
-                    return fopen($file['tmp_name'], 'r');
+                    return new RequestPostFile($file);
 
                   case UPLOAD_ERR_NO_FILE:
                     // Skip it.
