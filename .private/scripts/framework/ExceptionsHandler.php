@@ -87,8 +87,11 @@ class ExceptionsHandler {
     // Current request context
     $resolver = Resolver::getActiveInstance();
     if ( $resolver ) {
-      $request = @Resolver::getActiveInstance()->request();
-      $response = @Resolver::getActiveInstance()->response();
+      if ( $resolver->request() ) {
+        $client = $resolver->request()->client();
+      }
+
+      $response = $resolver->response();
     }
     unset($resolver);
 
@@ -96,18 +99,19 @@ class ExceptionsHandler {
     if ( Database::isConnected() ) {
       // Release table locks of current session.
       @Database::unlockTables(false);
-
-      $logContext = array('errorContext' => $eC);
-      if ( isset($request) ) {
-        $logContext+= $request->client();
-      }
-
-      // Log the error
-      Log::write($logString, $logType, $logContext);
-
-      unset($logContext);
     }
 
+    $logContext = array_filter(array(
+        'errorContext' => $eC
+      , 'client' => @$client
+      ));
+
+    // Log the error
+    Log::write($logString, $logType, $logContext);
+
+    unset($logContext);
+
+    // Send the error to output
     $output = array(
         'error' => $eS
       , 'code' => $eN
@@ -118,7 +122,7 @@ class ExceptionsHandler {
     }
 
     // Display error message
-    if ( isset($response) && @$request->client('type') != 'cli' ) {
+    if ( isset($response) && @$client['type'] != 'cli' ) {
       // Do i18n when repsonse context is available
       if ( $e instanceof GeneralException ) {
         $errorMessage = $response->__($eS, $logType);

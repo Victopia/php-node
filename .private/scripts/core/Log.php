@@ -14,16 +14,7 @@ class Log {
       return;
     }
 
-    switch ( $type ) {
-      case 'Access':
-      case 'Information':
-      case 'Notice':
-      case 'Debug':
-        $message = array('remarks' => $message);
-        break;
-      default:
-        $message = array('reason' => $message);
-    }
+    $message = array('message' => $message);
 
     // Try to backtrace the callee, performance impact at this point.
     $backtrace = Utility::getCallee(3);
@@ -35,27 +26,38 @@ class Log {
     $backtrace['file'] = str_replace(getcwd(), '', basename($backtrace['file'], '.php'));
 
     if ( Session::current() ) {
-      $message['subject'] = 'User#' . (int) Session::currentUser('ID');
+      $message['subject'] = 'User#' . (int) Session::current('UserID');
     }
-    else if ( is_numeric(Process::get('type')) ) {
+    else if ( is_numeric(@Process::get('type')) ) {
       $message['subject'] = 'User@#' . (int) Process::get('type');
     }
     else {
       $message['subject'] = 'Process#' . getmypid();
     }
 
-    $message['subject'] = "[$message[subject]@$backtrace[file]:$backtrace[line]]";
+    $message['subject'] = "$message[subject]@$backtrace[file]:$backtrace[line]";
     $message['action'] = @"$backtrace[class]$backtrace[type]$backtrace[function]";
-
-    if ( $context !== null ) {
-      $message['context'] = $context;
-    }
 
     $message['type'] = $type;
 
-    $message[Node::FIELD_COLLECTION] = FRAMEWORK_COLLECTION_LOG;
+    if ( Database::isConnected() ) {
+      if ( $context !== null ) {
+        $message['context'] = $context;
+      }
 
-    return @Node::set($message);
+      $message[Node::FIELD_COLLECTION] = FRAMEWORK_COLLECTION_LOG;
+
+      return @Node::set($message);
+    }
+    else {
+      $logContent = $message['message'];
+
+      if ( @$message['context'] ) {
+        $logContent.= "\n" . json_encode($message['context']);
+      }
+
+      return error_log($logContent, 4);
+    }
   }
 
   /**
