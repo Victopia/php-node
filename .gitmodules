@@ -10,3 +10,6 @@
 [submodule ".private/scripts/lib/Cron"]
 	path = .private/scripts/lib/Cron
 	url = https://github.com/mtdowling/cron-expression
+[submodule ".private/scripts/lib/parsedown"]
+	path = .private/scripts/lib/parsedown
+	url = https://github.com/erusev/parsedown

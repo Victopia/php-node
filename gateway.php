@@ -53,6 +53,9 @@ $resolver->registerResolver(new resolvers\LocaleResolver(array(
 // Web Services
 $resolver->registerResolver(new resolvers\WebServiceResolver('/service/'), 60);
 
+// Markdown handling
+$resolver->registerResolver(new resolvers\MarkdownResolver(), 50);
+
 // Template resolver
 // $templateResolver = new resolvers\TemplateResolver(array(
 //     'render' => function($path) {
