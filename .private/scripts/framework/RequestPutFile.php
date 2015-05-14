@@ -188,9 +188,13 @@ class RequestPutFile extends \SplFileObject {
    * @return {boolean} True on success, false otherwise.
    */
   public function save($path, $append = false) {
-    // $this->
+    if ( is_dir($path) ) {
+      $path = preg_replace('/\\' . preg_quote(DS) . '?$/', '$1' . DS . $this->getFilename(), $path);
+    }
+
     $target = new \SplFileObject($path, $append ? 'a' : 'w');
 
+    $this->rewind();
     while ( !$this->eof() ) {
       $target->fwrite(
         $this->fread(4096)
