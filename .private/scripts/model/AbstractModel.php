@@ -70,6 +70,22 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     }
   }
 
+  /**
+   * @private
+   *
+   * Indicates whether this model is in the middle of creation, this is set to
+   * true when saving a model without an identity value or with an identity of
+   * inexistance.
+   */
+  private $isCreate = false;
+
+  /**
+   * (read-only) Check if the model is now in the middle of creation save.
+   */
+  protected function isCreate() {
+    return $this->isCreate;
+  }
+
   //----------------------------------------------------------------------------
   //
   //  Methods : ArrayAccess
@@ -236,6 +252,8 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * Saves the current data into database.
    */
   function save(&$isCreated = false) {
+    $this->isCreate = !$this->identity() && !$this->get($this->identity());
+
     if ( $this->beforeSave() !== false ) {
       $res = Node::set([Node::FIELD_COLLECTION => $this->collectionName] + $this->data);
       if ( is_numeric($res) ) {
@@ -248,6 +266,8 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
 
       $this->afterSave();
     }
+
+    $this->isCreate = false;
 
     return $this;
   }
