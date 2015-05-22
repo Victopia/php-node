@@ -249,7 +249,7 @@ class Request {
                 }
               }
               else {
-                return array_mapdef($parseFile, $file);
+                return array_mapdef($file, $parseFile);
               }
             };
 
