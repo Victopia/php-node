@@ -80,8 +80,7 @@ class Node {
    *
    * @return Array of filtered data rows.
    */
-  static /* Array */
-  function get($filter, $fieldsRequired = true, $limits = null, $sorter = null) {
+  static /* array */ function get($filter, $fieldsRequired = true, $limits = null, $sorter = null) {
     if ( $limits !== null && (!$limits || !is_int($limits) && !is_array($limits)) ) {
       return array();
     }
@@ -142,15 +141,169 @@ class Node {
     return $data;
   }
 
-  /**
-   * New cursor approach, invokes $dataCallback the moment we found a matching row.
-   */
-  static /* void */
-  function getAsync($filter, $dataCallback) {
+  static function getCount($filter) {
     if ( !self::ensureConnection() ) {
       return false;
     }
 
+    $context = self::composeQuery($filter);
+    if ( !$context ) {
+      return 0;
+    }
+
+    $count = 0;
+
+    if ( !$context['filter'] ) {
+      if ( $context['limits'] ) {
+        $context['query'].= ' LIMIT ' . implode(', ', $context['limits']);
+      }
+
+      if ( is_array($context['indexHints']) && array_key_exists($context['table'], $context['indexHints']) ) {
+        $context['indexHints'] = $context['indexHints'][$context['table']];
+      }
+
+      $count = (int) Database::fetchField(
+        "SELECT COUNT(*) FROM `$context[table]` $context[indexHints] $context[query]",
+        $context['params']);
+    }
+    else {
+      self::getAsync($filter, function() use(&$count) {
+        $count++;
+      });
+    }
+
+    return $count;
+  }
+
+  /**
+   * New cursor approach, invokes $dataCallback the moment we found a matching row.
+   */
+  static /* void */ function getAsync($filter, $dataCallback) {
+    if ( !self::ensureConnection() ) {
+      return false;
+    }
+
+    $context = self::composeQuery($filter);
+    if ( !$context ) {
+      return false;
+    }
+
+    // Simple SQL statment when all filtering fields are real column.
+    if ( !$context['filter'] ) {
+      if ( $context['limits'] ) {
+        $context['query'].= ' LIMIT ' . implode(', ', $context['limits']);
+      }
+
+      if ( is_array($context['indexHints']) && array_key_exists($context['table'], $context['indexHints']) ) {
+        $context['indexHints'] = $context['indexHints'][$context['table']];
+      }
+
+      $res = "SELECT $context[select] FROM `$context[table]` $context[indexHints] $context[query]";
+
+      $res = Database::query($res, $context['params']);
+
+      $res->setFetchMode(\PDO::FETCH_ASSOC);
+
+      $decodesContent = function(&$row) use($context) {
+        if ( isset($row[self::FIELD_VIRTUAL]) ) {
+          $contents = (array) json_decode($row[self::FIELD_VIRTUAL], true);
+
+          unset($row[self::FIELD_VIRTUAL]);
+
+          if ( is_array($contents) ) {
+            $row = $contents + $row;
+          }
+
+          unset($contents);
+        }
+
+        $row[self::FIELD_COLLECTION] = $context['table'];
+
+        return $row;
+      };
+
+      foreach ( $res as $row ) {
+        if ( $dataCallback($decodesContent($row)) === false ) {
+          break;
+        }
+      }
+
+      unset($res, $row, $decodesContent);
+    }
+
+    // otherwise goes vritual route with at least one virtual field.
+    else {
+      // Fetch until the fetched size is less than expected fetch size.
+      if ( $context['limits'] === null ) {
+        $context['limits'] = array(0, PHP_INT_MAX);
+      }
+
+      $fetchOffset = 0; // Always starts with zero as we are calculating virtual fields.
+      $fetchLength = self::$fetchSize; // Node fetch size, or the target size if smaller.
+
+      // Row decoding function.
+      $decodesContent = function(&$row) use($context) {
+        if ( isset($row[self::FIELD_VIRTUAL]) ) {
+          $contents = (array) json_decode($row[self::FIELD_VIRTUAL], true);
+
+          unset($row[self::FIELD_VIRTUAL]);
+
+          $row+= $contents;
+
+          unset($contents);
+        }
+
+        // Calculates if the row qualifies the $contentFilter or not.
+        foreach ( $context['filter'] as $field => $expr ) {
+          // Reuse $expr as it's own result here, do not confuse with the name.
+          $expr = self::filterWalker($expr, array(
+              'row' => $row,
+              'field' => $field,
+              'required' => $context['required']
+            ));
+
+          if ( !$expr ) {
+            return false;
+          }
+        }
+
+        return true;
+      };
+
+      if ( is_string($context['indexHints']) ) {
+        $context['table'].= " $context[indexHints]";
+      }
+      else if ( is_array($context['indexHints']) && array_key_exists($context['indexHints'], $context['table']) ) {
+        $context['table'] = "`$context[table]` {$context['indexHints']['$tableName']}";
+      }
+
+      while ( $res = Database::select($context['table'], $context['select'], "$conetxt[query] LIMIT $fetchOffset, $fetchLength", $context['params']) ) {
+        $fetchOffset+= count($res);
+
+        while ( $row = array_shift($res) ) {
+          if ( $decodesContent($row) ) {
+            if ( $context['limits'][0] ) {
+              $context['limits'][0]--;
+            }
+            else {
+              if ( $context['table'] !== self::BASE_COLLECTION ) {
+                $row[self::FIELD_COLLECTION] = $context['table'];
+              }
+
+              $dataCallback($row);
+
+              // Result size is less than specified size, it means end of data.
+              if ( !--$context['limits'][1] ) {
+                break;
+              }
+            }
+          }
+        }
+      } unset($fetchOffset, $fetchLength, $res);
+    }
+  }
+
+  private static function composeQuery($filter) {
     // Defaults string to collections.
     if ( is_string($filter) ) {
       $filter = array(
@@ -163,7 +316,7 @@ class Node {
     $sorter = @$filter['@sorter'];
 
     if ( $limits !== null && (!$limits || !is_int($limits) && !is_array($limits)) ) {
-      return;
+      return false;
     }
 
     // Defaults numbers to ID
@@ -203,8 +356,6 @@ class Node {
 
     /* Merge $filter into SQL statements. */
     $columns = Database::getFields($tableName);
-    // $columns = Database::query("SHOW COLUMNS FROM $tableName;");
-    // $columns = $columns->fetchAll(\PDO::FETCH_COLUMN, 0);
 
     if ( isset($filter[self::FIELD_RAWQUERY]) ) {
       $rawQuery = (array) $filter[self::FIELD_RAWQUERY];
@@ -416,126 +567,21 @@ class Node {
 
     $filter = array_select($filter, array_filter(array_keys($filter), compose('not', startsWith('@'))));
 
-    // Simple SQL statment when all filtering fields are real column.
-    if ( !$filter ) {
-      if ( $limits ) {
-        $queryString.= " LIMIT $limits[0], $limits[1]";
-      }
-
-      if ( is_array($indexHints) && array_key_exists($tableName, $indexHints) ) {
-        $indexHints = " $indexHints[$tableName] ";
-      }
-
-      $res = "SELECT $selectField FROM `$tableName` $indexHints $queryString";
-
-      unset($limits);
-
-      $res = Database::query($res, $params);
-
-      $res->setFetchMode(\PDO::FETCH_ASSOC);
-
-      $decodesContent = function(&$row) use($tableName) {
-        if ( isset($row[self::FIELD_VIRTUAL]) ) {
-          $contents = (array) json_decode($row[self::FIELD_VIRTUAL], true);
-
-          unset($row[self::FIELD_VIRTUAL]);
-
-          if ( is_array($contents) ) {
-            $row = $contents + $row;
-          }
-
-          unset($contents);
-        }
-
-        $row[self::FIELD_COLLECTION] = $tableName;
-
-        return $row;
-      };
-
-      foreach ( $res as $row ) {
-        if ( $dataCallback($decodesContent($row)) === false ) {
-          break;
-        }
-      }
-
-      unset($res, $row, $decodesContent);
-    }
-
-    // otherwise goes vritual route with at least one virtual field.
-    else {
-      // Fetch until the fetched size is less than expected fetch size.
-      if ( $limits === null ) {
-        $limits = array(0, PHP_INT_MAX);
-      }
-
-      $fetchOffset = 0; // Always starts with zero as we are calculating virtual fields.
-      $fetchLength = self::$fetchSize; // Node fetch size, or the target size if smaller.
-
-      // Row decoding function.
-      $decodesContent = function(&$row) use($filter, $fieldsRequired) {
-        if ( isset($row[self::FIELD_VIRTUAL]) ) {
-          $contents = (array) json_decode($row[self::FIELD_VIRTUAL], true);
-
-          unset($row[self::FIELD_VIRTUAL]);
-
-          $row+= $contents;
-
-          unset($contents);
-        }
-
-        // Calculates if the row qualifies the $contentFilter or not.
-        foreach ( $filter as $field => $expr ) {
-          // Reuse $expr as it's own result here, do not confuse with the name.
-          $expr = self::filterWalker($expr, array(
-              'row' => $row,
-              'field' => $field,
-              'fieldsRequired' => $fieldsRequired
-            ));
-
-          if ( !$expr ) {
-            return false;
-          }
-        }
-
-        return true;
-      };
-
-      if ( is_string($indexHints) ) {
-        $tableName.= " $indexHints";
-      }
-      else if ( is_array($indexHints) && array_key_exists($indexHints, $tableName) ) {
-        $tableName = "`$tableName` $indexHints[$tableName]";
-      }
-
-      while ( $res = Database::select($tableName, $selectField, "$queryString LIMIT $fetchOffset, $fetchLength", $params) ) {
-        $fetchOffset+= count($res);
-
-        while ( $row = array_shift($res) ) {
-          if ( $decodesContent($row) ) {
-            if ( $limits[0] ) {
-              $limits[0]--;
-            }
-            else {
-              if ( $tableName !== self::BASE_COLLECTION ) {
-                $row[self::FIELD_COLLECTION] = $tableName;
-              }
-
-              $dataCallback($row);
-
-              // Result size is less than specified size, it means end of data.
-              if ( !--$limits[1] ) {
-                break;
-              }
-            }
-          }
-        }
-      } unset($fetchOffset, $fetchLength, $res);
-    }
+    return array(
+        'filter' => $filter,
+        'select' => $selectField,
+        'indexHints' => $indexHints,
+        'table' => $tableName,
+        'query' => $queryString,
+        'limits' => $limits,
+        'params' => $params,
+        'required' => $fieldsRequired
+      );
   }
 
   private static function filterWalker($content, $data) {
     $field = $data['field'];
-    $required = $data['fieldsRequired'];
+    $required = $data['required'];
 
     // Just skip the field on optional matcher.
     // Return TURE to include those fields, false to drop them.
