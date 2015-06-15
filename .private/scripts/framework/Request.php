@@ -314,22 +314,22 @@ class Request {
         }
       });
 
-      // Unified params ($_REQUEST mimic)
-      switch ( $this->client('type') ) {
-        case 'cli':
-          $this->paramCache['request'] = $this->paramCache['cli'];
-          break;
-
-        default:
-          $this->paramCache['request'] = array_merge(
-            (array) @$this->paramCache['cookies'],
-            (array) @$this->paramCache['get'],
-            (array) @$this->paramCache['post']);
-          break;
-      }
-
       // Request timestamp
       $this->timestamp = (float) @$_SERVER['REQUEST_TIME_FLOAT'];
+    }
+
+    // Unified params ($_REQUEST mimic)
+    switch ( $this->client('type') ) {
+      case 'cli':
+        $this->paramCache['request'] = $this->paramCache['cli'];
+        break;
+
+      default:
+        $this->paramCache['request'] = array_merge(
+          (array) @$this->paramCache['cookies'],
+          (array) @$this->paramCache['get'],
+          (array) @$this->paramCache['post']);
+        break;
     }
 
     // Failover in case of request time not exists.
@@ -684,7 +684,7 @@ class Request {
     // Creates a CURL request upon current request context.
     Net::httpRequest(array(
         'url' => http_build_url($this->uri()),
-        'data' => array_replace_recursive($this->param(), $this->files()),
+        'data' => array_replace_recursive((array) $this->param(), (array) $this->file()),
         'type' => $this->method(),
         'headers' => $this->header(),
             'success' => function($responseText, $options) use(&$response) {
