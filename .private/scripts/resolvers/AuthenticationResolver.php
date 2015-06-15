@@ -9,6 +9,8 @@ use framework\Configuration as conf;
 use framework\Request;
 use framework\Response;
 
+use framework\exceptions\FrameworkException;
+
 /**
  * Perform authentication according to Configuration table settings.
  *
@@ -29,43 +31,75 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
    *  }
    */
   public function resolve(Request $req, Response $res) {
-    $conf = (array) @conf::get(self::CONFIG_IDENTIFIER);
+    $auth = @conf::get(self::CONFIG_IDENTIFIER)->getContents();
 
-    foreach ( explode('/', $req->uri('path')) as $pathNode ) {
-      if ( isset($conf[$pathNode]) ) {
-        $conf = $conf[$pathNode];
+    // Defaults to allow everything
+    if ( !$auth ) {
+      $auth = [ '*' => true ];
+    }
+
+    $pathNodes = trim($req->uri('path'), '/');
+    if ( $pathNodes ) {
+      $pathNodes = explode('/', $pathNodes);
+    }
+    else {
+      $pathNodes = [ '/' ];
+    }
+
+    foreach ( $pathNodes as $pathNode ) {
+      if ( isset($auth[$pathNode]) ) {
+        $auth = $auth[$pathNode];
       }
-      else if ( isset($conf['*']) ) {
-        $conf = $conf['*'];
+      else if ( isset($auth['*']) ) {
+        $auth = $auth['*'];
+        break; // break out on wildcards
       }
-      else {
-        $conf = (array) $conf;
-        if ( !util::isAssoc($conf) ) {
-          $auth = array_reduce($conf, function($result, $auth) {
-            if ( !$result ) {
-              return $result;
-            }
+    }
+    unset($pathNodes);
 
-            if ( is_callable($auth) ) {
-              $auth = $auth($path);
-            }
+    // Type checking to make sure something has been picked from the foreach loop.
+    if ( !is_bool($auth) && (!is_array($auth) || util::isAssoc($auth)) ) {
+      throw new FrameworkException('Invalid authentication format, must be ' .
+        'boolean or array of authenticators.');
+    }
 
-            return $result && $auth;
-          }, true);
-
-          if ( !$auth ) {
-            return;
-          }
+    // Numeric array
+    if ( is_array($auth) && !util::isAssoc($auth) ) {
+      $auth = array_reduce($auth, function($result, $auth) use($req) {
+        if ( !$result ) {
+          return $result;
         }
 
-        break;
-      }
+        if ( is_callable($auth) ) {
+          $auth = $auth($req);
+        }
+        else if ( is_string($auth) ) {
+          if ( strpos($auth, '/') === false ) {
+            $auth = "authenticators\\$auth";
+          }
+
+          if ( is_a($auth, 'framework\interfaces\IAuthenticator', true) ) {
+            $result = $result && $auth::authenticate($req);
+          }
+          else {
+            throw new FrameworkException('Unknown authenticator type, must be ' .
+              'instance of IAuthenticator or callable.');
+          }
+        }
+        else {
+          throw new FrameworkException('Unknown authenticator type, must be ' .
+            'instance of IAuthenticator or callable.');
+        }
+
+        return $result && $auth;
+      }, true);
     }
 
-    // Defaults to only allow users with admin rights
-    if ( !isset($req->user) || !in_array('Administrators', $req->user['groups']) ) {
+    // Boolean
+    if ( is_bool($auth) && !$auth ) {
       $res->status(401);
     }
+
     // TODO: Mark allowed or denied according to the new resolver mechanism.
   }
 
