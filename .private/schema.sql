@@ -59,6 +59,19 @@ CREATE TABLE `Nodes` (
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='Data nodes';
 
 --
+-- Table structure for table `NodeRelations`
+--
+
+DROP TABLE IF EXISTS `NodeRelations`;
+CREATE TABLE `NodeRelations` (
+  `@collection` varchar(255) NOT NULL,
+  `Subject` varchar(40) NOT NULL,
+  `Object` varchar(40) NOT NULL,
+  PRIMARY KEY (`@collection`,`Subject`,`Object`),
+  KEY `key_collection_object` (`@collection`,`Object`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
+
+--
 -- Table structure for table `Processes`
 --
 
@@ -92,19 +105,6 @@ CREATE TABLE `ProcessSchedules` (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 --
--- Table structure for table `NodeRelations`
---
-
-DROP TABLE IF EXISTS `NodeRelations`;
-CREATE TABLE `NodeRelations` (
-  `@collection` varchar(255) NOT NULL,
-  `Subject` varchar(40) NOT NULL,
-  `Object` varchar(40) NOT NULL,
-  PRIMARY KEY (`@collection`,`Subject`,`Object`),
-  KEY `key_collection_object` (`@collection`,`Object`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
---
 -- Table structure for table `Sessions`
 --
 
@@ -122,6 +122,7 @@ CREATE TABLE `Sessions` (
 -- Table structure for table `Translations`
 --
 
+DROP TABLE IF EXISTS `Translations`;
 CREATE TABLE `Translations` (
   `identifier` varchar(32) NOT NULL DEFAULT '' COMMENT 'MD5 hash of target string',
   `key` varchar(255) NOT NULL DEFAULT 'default' COMMENT 'Version key of the same identifier',
