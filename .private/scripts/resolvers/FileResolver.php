@@ -116,6 +116,8 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     //------------------------------
     if ( is_dir($path) ) {
       if ( !is_file($path) ) {
+        $request->__directoryIndex = true;
+
         foreach ( $this->directoryIndex() as $file ) {
           $request->setUri(preg_replace('/^\.\//', '', $path) . $file);
           // Exit whenever an index is handled successfully, this will exit.
@@ -124,9 +126,28 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
           }
         }
 
+        unset($request->__directoryIndex);
+
         // Nothing works, going down.
         $request->setUri($path);
       }
+    }
+    // Redirects a directory index path to the parent directory.
+    else if ( empty($request->__directoryIndex) ) {
+      $dirname = dirname($path);
+      if ( $dirname == '.' ) {
+        $dirname = '/';
+      }
+
+      if ( in_array(pathinfo($path, PATHINFO_FILENAME), $this->directoryIndex()) ) {
+        // extension-less
+        if ( !pathinfo($path, PATHINFO_EXTENSION) || is_file($path) ) {
+          $response->redirect($dirname);
+          return true;
+        }
+      }
+
+      unset($dirname);
     }
 
     //------------------------------
