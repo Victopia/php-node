@@ -208,7 +208,7 @@ class Configuration implements \Iterator, \ArrayAccess {
 	//--------------------------------------------------
 
 	function current() {
-		return current($this->contents);
+		return @current($this->contents);
 	}
 
 	function key() {
