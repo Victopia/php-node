@@ -484,4 +484,11 @@ class Response {
     }
   }
 
+  /**
+   * Cast body as string.
+   */
+  public function __toString() {
+    return $this->getBody();
+  }
+
 }
