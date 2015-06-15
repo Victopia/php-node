@@ -107,7 +107,7 @@ class ExceptionsHandler {
       ));
 
     // Log the error
-    Log::write($logString, $logType, $logContext);
+    @Log::write($logString, $logType, $logContext);
 
     unset($logContext);
 
