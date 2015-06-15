@@ -1,5 +1,5 @@
 <?php
-/*! Gateway.php | Starting point of all URI access. */
+/*! gateway.php | Starting point of all URI access. */
 
 /***********************************************************************\
 **                                                                     **
@@ -24,6 +24,7 @@
 //  Initialization
 //
 //--------------------------------------------------
+
 require_once('.private/scripts/Initialize.php');
 
 //--------------------------------------------------
