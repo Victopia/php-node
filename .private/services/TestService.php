@@ -1,6 +1,8 @@
 <?php
 /*! TestService.php | Sample web service. */
 
+namespace services;
+
 /**
  * This class act as a sample service, further demonstrates how to write RESTful functions.
  *

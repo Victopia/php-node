@@ -3,7 +3,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8"/>
-		<title>405 Method Not Allowed | <?php echo @$_SERVER['HTTP_HOST']; ?></title>
+		<title>405 Method Not Allowed | <?php echo framework\System::getHostname() ?></title>
 	</head>
 
 	<body>

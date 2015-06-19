@@ -5,6 +5,8 @@ namespace framework;
 
 use core\Utility as util;
 
+use framework\Configuration as conf;
+
 use framework\exceptions\ResolverException;
 
 /**
@@ -29,7 +31,7 @@ class Response {
   public function __construct($useOutputBuffer = false) {
     $this->useOutputBuffer = $useOutputBuffer;
     if ( $useOutputBuffer ) {
-      ob_start(null, 1024);
+      ob_start(null, conf::get('http.response::bufferSize', 1024));
     }
   }
 
@@ -365,7 +367,7 @@ class Response {
       fpassthru($this->body);
     }
     else if ( is_string($this->body) && is_file($this->body) ) {
-      $path = realpath(System::getRoot() . DS . $this->body);
+      $path = realpath(System::getPathname() . '/' . $this->body);
 
       if ( $path && is_readable($path) ) {
         readfile($path);

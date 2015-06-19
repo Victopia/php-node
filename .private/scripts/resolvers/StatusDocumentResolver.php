@@ -8,20 +8,51 @@ use framework\Response;
 
 use framework\renderers\IncludeRenderer;
 
+use framework\exceptions\ResolverException;
+
 class StatusDocumentResolver implements \framework\interfaces\IRequestResolver {
 
 	/**
-	 * @private
- 	 */
-	protected $basepath;
-
-	public function __construct($path) {
-		if ( !is_readable($path) || !is_dir($path) ) {
+	 * @constructor
+	 */
+	public function __construct($options) {
+		if ( empty($options['prefix']) || !is_readable($options['prefix']) || !is_dir($options['prefix']) ) {
 			throw new ResolverException('Error document path must be a readable directory.');
 		}
-
-		$this->basepath = $path;
+		else {
+			$this->pathPrefix($options['prefix']);
+		}
 	}
+
+  //----------------------------------------------------------------------------
+  //
+  //  Properties
+  //
+  //----------------------------------------------------------------------------
+
+  //------------------------------
+  //  pathPrefix
+  //------------------------------
+  protected $pathPrefix = '/';
+
+  /**
+   * Target path to serve.
+   */
+  public function pathPrefix($value = null) {
+    $pathPrefix = $this->pathPrefix;
+
+    if ( $value !== null ) {
+      $this->pathPrefix = './' . trim(trim($value), '/');
+    }
+
+    return $pathPrefix;
+  }
+
+  //----------------------------------------------------------------------------
+  //
+  //  Methods
+  //
+  //----------------------------------------------------------------------------
 
 	public function resolve(Request $request, Response $response) {
 		// No more successful resolve should occur at this point.
@@ -50,7 +81,7 @@ class StatusDocumentResolver implements \framework\interfaces\IRequestResolver {
 				break;
 		}
 
-		$basename = $this->basepath . DIRECTORY_SEPARATOR . $response->status();
+		$basename = $this->pathPrefix() . '/' . $response->status();
 		if ( isset($ext) && file_exists("$basename.$ext") ) {
 			readfile("$basename.$ext");
 		}

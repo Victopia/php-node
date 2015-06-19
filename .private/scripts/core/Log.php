@@ -8,9 +8,10 @@ use framework\Session;
 use framework\System;
 
 class Log {
+
   static function write($message, $type = 'Notice', $context = null) {
     // Skip debug logs on production environment.
-    if ( System::environment() != 'debug' && $type == 'Debug' ) {
+    if ( System::environment() == System::ENV_PRODUCTION && $type == 'Debug' ) {
       return;
     }
 
@@ -84,4 +85,5 @@ class Log {
       , 'remarks' => $remarks
       ));
   }
+
 }

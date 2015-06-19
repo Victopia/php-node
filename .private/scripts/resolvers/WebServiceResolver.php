@@ -15,26 +15,41 @@ use framework\exceptions\ResolverException;
 
 class WebServiceResolver implements \framework\interfaces\IRequestResolver {
 
+  /**
+   * @constructor
+   */
+  public function __construct($options) {
+    if ( empty($options['prefix']) ) {
+      throw new ResolverException('Please provide a proper path prefix.');
+    }
+    else {
+      // Routes must start from root
+      $this->pathPrefix($options['prefix']);
+    }
+  }
+
   //--------------------------------------------------
   //
   //  Properties
   //
   //--------------------------------------------------
 
-  private $pathPrefix;
+  //------------------------------
+  //  pathPrefix
+  //------------------------------
+  protected $pathPrefix = '/';
 
-  //--------------------------------------------------
-  //
-  //  Constructor
-  //
-  //--------------------------------------------------
+  /**
+   * Target path to serve.
+   */
+  public function pathPrefix($value = null) {
+    $pathPrefix = $this->pathPrefix;
 
-  public function __construct($pathPrefix) {
-    if ( !$pathPrefix ) {
-      throw new ResolverException('Please provide a proper path prefix.');
+    if ( $value !== null ) {
+      $this->pathPrefix = '/' . trim(trim($value), '/');
     }
 
-    $this->pathPrefix = $pathPrefix;
+    return $pathPrefix;
   }
 
   //--------------------------------------------------
@@ -53,6 +68,7 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
     }
 
     $res = substr($path, strlen($this->pathPrefix));
+    $res = trim($res, '/');
     $res = urldecode($res);
 
     // Resolve target service and apply appropiate parameters
@@ -63,10 +79,9 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
       return;
     }
 
-    $classname = '\\' . $matches[1];
+    $classname = '\\services\\' . $matches[1];
     $function = @$matches[2];
 
-    Service::requireService($classname);
     if ( !class_exists($classname) ) {
       return;
     }

@@ -1,5 +1,5 @@
 <?php
-/* FileResolver.php \ IRequestResolver | Physical file resolver, creating minified versions on demand. */
+/*! FileResolver.php \ IRequestResolver | Physical file resolver, creating minified versions on demand. */
 
 namespace resolvers;
 
@@ -22,35 +22,41 @@ use framework\renderers\StaticFileRenderer;
 
 class FileResolver implements \framework\interfaces\IRequestResolver {
 
-  //--------------------------------------------------
+  /**
+   * @constructor
+   */
+  public function __construct($options) {
+    if ( !empty($options['prefix']) ) {
+      $this->pathPrefix($options['prefix']);
+    }
+
+    if ( !empty($options['directoryIndex']) ) {
+      $this->directoryIndex($options['directoryIndex']);
+    }
+  }
+
+  //----------------------------------------------------------------------------
   //
   //  Properties
   //
-  //--------------------------------------------------
-
-  /**
-   * @private
-   *
-   * Current working path this script resides, calculated on instantiate.
-   */
-  private $currentPath;
+  //----------------------------------------------------------------------------
 
   //------------------------------
-  //  baseUrl
+  //  pathPrefix
   //------------------------------
-  protected $baseUrl;
+  protected $pathPrefix = '/';
 
   /**
    * Target path to serve.
    */
-  public function baseUrl($value = null) {
-    $baseUrl = $this->baseUrl;
+  public function pathPrefix($value = null) {
+    $pathPrefix = $this->pathPrefix;
 
     if ( $value !== null ) {
-      $this->baseUrl = str_replace('/', DS, $value);
+      $this->pathPrefix = '/' . trim(trim($value), '/');
     }
 
-    return $baseUrl;
+    return $pathPrefix;
   }
 
   //------------------------------
@@ -72,22 +78,11 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     return $directoryIndex;
   }
 
-  //--------------------------------------------------
-  //
-  //  Constructor
-  //
-  //--------------------------------------------------
-
-  public function __construct($baseUrl = '/') {
-    // Apply serving directory.
-    $this->baseUrl($baseUrl);
-  }
-
-  //--------------------------------------------------
+  //----------------------------------------------------------------------------
   //
   //  Methods: IPathResolver
   //
-  //--------------------------------------------------
+  //----------------------------------------------------------------------------
 
   public function resolve(Request $request, Response $response) {
     // Stop processing when previous resolvers has done something and given a response status code.
@@ -97,8 +92,8 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
     $path = $request->uri('path');
 
-    if ( stripos($path, $this->baseUrl) === 0 ) {
-      $path = substr($path, strlen($this->baseUrl));
+    if ( stripos($path, $this->pathPrefix) === 0 ) {
+      $path = substr($path, strlen($this->pathPrefix));
     }
 
     if ( strpos($path, '?') !== false ) {
@@ -108,7 +103,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     $path = urldecode($path);
 
     if ( !$path ) {
-      $path = '.' . DS;
+      $path = './';
     }
 
     //------------------------------

@@ -19,6 +19,9 @@
 **                                                                     **
 \************************************************************************/
 
+use framework\Configuration as conf;
+use framework\System;
+
 //--------------------------------------------------
 //
 //  Initialization
@@ -36,23 +39,32 @@ require_once('.private/scripts/Initialize.php');
 $resolver = new framework\Resolver();
 
 // Maintenance resolver
-$resolver->registerResolver(new resolvers\MaintenanceResolver(FRAMEWORK_PATH_MAINTENANCE_TEMPLATE), 999);
+// Note: Simply don't put it into chain when disabled.
+if ( conf::get('system::maintenance.enable') ) {
+  $resolver->registerResolver(new resolvers\MaintenanceResolver(array(
+      'templatePath' => conf::get('system::maintenance.template_path'),
+      'whitelist' => (array) conf::get('system::maintenance.whitelist')
+    )), 999);
+}
 
 // Session authentication
 $resolver->registerResolver(new resolvers\UserContextResolver(array(
-    'setup' => true // This enables the "startup" super user when no user in database.
+    // This enables the "startup" super user when no user in database.
+    'setup' => System::environment() != System::ENV_PRODUCTION
   )), 100);
 
-// AuthententicationResolver
+// Access rules and policy
 $resolver->registerResolver(new resolvers\AuthenticationResolver(), 80);
 
 // Locale
 $resolver->registerResolver(new resolvers\LocaleResolver(array(
-  'default' => framework\Configuration::get('core.i18n::localeChain')
+    'default' => conf::get('system::i18n.localeDefault', 'en_US')
   )), 70);
 
 // Web Services
-$resolver->registerResolver(new resolvers\WebServiceResolver('/service/'), 60);
+$resolver->registerResolver(new resolvers\WebServiceResolver(array(
+    'prefix' => conf::get('web::resolvers.service.prefix', '/service')
+  )), 60);
 
 // Markdown handling
 $resolver->registerResolver(new resolvers\MarkdownResolver(), 50);
@@ -82,8 +94,9 @@ $resolver->registerResolver(new resolvers\MarkdownResolver(), 50);
 // $resolver->registerResolver(new resolvers\ExternalResolver(), 30);
 
 // Physical file handling
-$fileResolver = new resolvers\FileResolver();
-$fileResolver->directoryIndex('Home index');
+$fileResolver = new resolvers\FileResolver(array(
+    'directoryIndex' => conf::get('web::resolvers.file.indexes', 'Home index')
+  ));
 
 $resolver->registerResolver($fileResolver, 10);
 
@@ -96,8 +109,10 @@ unset($fileResolver);
  *  $resolver->registerResolver(new resolvers\CacheResolver('/cache/'), 0);
  */
 
-// Error status in HTML or JSON
-$resolver->registerResolver(new resolvers\StatusDocumentResolver('assets/errordocs'), 5);
+// HTTP error pages in HTML or JSON
+$resolver->registerResolver(new resolvers\StatusDocumentResolver(array(
+    'prefix' => conf::get('web::resolvers.errordocs.directory')
+  )), 5);
 
 // Logging
 $resolver->registerResolver(new resolvers\LogResolver(), 0);

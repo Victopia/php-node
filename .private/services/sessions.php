@@ -1,6 +1,8 @@
 <?php
 /*! sessions.php | Service to manage login sessions. */
 
+namespace services;
+
 use framework\Session;
 
 use framework\exceptions\ServiceException;
@@ -8,7 +10,7 @@ use framework\exceptions\ServiceException;
 /**
  * This class act as a sample service, further demonstrates how to write RESTful functions.
  */
-class sessions implements framework\interfaces\IWebService {
+class sessions implements \framework\interfaces\IWebService {
 	function validate($username, $password, $overrideExists = false) {
 		$res = Session::validate($username, $password, $overrideExists);
 		if ( is_int($res) ) {

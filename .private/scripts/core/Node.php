@@ -277,7 +277,7 @@ class Node {
         $context['table'] = "`$context[table]` {$context['indexHints']['$tableName']}";
       }
 
-      while ( $res = Database::select($context['table'], $context['select'], "$conetxt[query] LIMIT $fetchOffset, $fetchLength", $context['params']) ) {
+      while ( $res = Database::select($context['table'], $context['select'], "$context[query] LIMIT $fetchOffset, $fetchLength", $context['params']) ) {
         $fetchOffset+= count($res);
 
         while ( $row = array_shift($res) ) {

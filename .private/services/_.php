@@ -1,6 +1,8 @@
 <?php
 /*! _.php | Basic data service, manipulate data with specified model class. */
 
+namespace services;
+
 use core\Node;
 
 use framework\exceptions\ServiceException;

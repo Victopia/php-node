@@ -3,7 +3,7 @@
 <html lang="en">
 	<head>
 		<meta charset="utf-8"/>
-		<title>403 Forbidden | <?php echo @$_SERVER['HTTP_HOST']; ?></title>
+		<title>403 Forbidden | <?php echo framework\System::getHostname() ?></title>
 	</head>
 
 	<body>

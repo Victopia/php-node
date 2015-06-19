@@ -23,7 +23,7 @@ class CliRouter implements \framework\interfaces\IRequestResolver {
   }
 
   public function resolve(Request $request, Response $response) {
-    $commandPath = $this->basePath . DS . $request->uri();
+    $commandPath = $this->basePath . '/' . $request->uri();
     if ( !is_file($commandPath) ) {
       throw new FrameworkException('Target command does not exist.');
     }

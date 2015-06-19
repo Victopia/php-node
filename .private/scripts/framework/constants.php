@@ -10,9 +10,6 @@ define('DS', DIRECTORY_SEPARATOR);
 // Added for frequent use, this is too common to delete.
 define('NODE_FIELD_COLLECTION', core\Node::FIELD_COLLECTION);
 
-// Path to maintenance template
-define('FRAMEWORK_PATH_MAINTENANCE_TEMPLATE', '/assets/templates/maintenance.html');
-
 // Collection of system configurations
 define('FRAMEWORK_COLLECTION_CONFIGURATION', 'Configurations');
 // Collection of Node hirarchy relations

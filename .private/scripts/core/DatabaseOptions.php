@@ -11,42 +11,56 @@ namespace core;
  * @author Vicary Archangel <vicary@victopia.org>
  */
 final class DatabaseOptions {
-  public function __construct($driver = null,
-                              $host = null,
-                              $port = null,
-                              $schema = null,
-                              $username = null,
-                              $password = null) {
-    if (!is_null($driver))
-      $this->driver = $driver;
 
-    if (!is_null($host))
-      $this->host = $host;
-
-    if (!is_null($port))
-      $this->port = $port;
-
-    if (!is_null($schema))
-      $this->schema = $schema;
-
-    if (!is_null($username))
-      $this->username = $username;
-
-    if (!is_null($password))
-      $this->password = $password;
+  function __construct($driver = 'mysql',
+                       $host = 'localhost',
+                       $port = 3306,
+                       $schema = null,
+                       $username = null,
+                       $password = null,
+                       $driverOptions = array()) {
+    $this->driver = $driver;
+    $this->host = $host;
+    $this->port = $port;
+    $this->schema = $schema;
+    $this->username = $username;
+    $this->password = $password;
+    $this->driverOptions = $driverOptions;
   }
 
-  public $driver = 'mysql';
+  /**
+   * PDO DSN prefix, such as "mysql", "oci" or "odbc". Do not add colon.
+   */
+  public $driver;
 
-  public $host = 'localhost';
+  /**
+   * PDO Driver options.
+   */
+  public $driverOptions = array();
 
-  public $port = 3306;
+  /**
+   * Database connection hostname.
+   */
+  public $host;
 
+  /**
+   * Database connection port.
+   */
+  public $port;
+
+  /**
+   * The database name.
+   */
   public $schema;
 
+  /**
+   * Login username.
+   */
   public $username;
 
+  /**
+   * Login password.
+   */
   public $password;
 
-  public $driverOptions;
 }

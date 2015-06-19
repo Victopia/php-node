@@ -22,10 +22,10 @@ class BasicSetupIntegrityTest extends UnitTestCase {
   //--------------------------------------------------
 
   function testCreateDummyFile() {
-    $this->assertTrue(is_writable(System::getRoot()),
+    $this->assertTrue(is_writable(System::getPathname()),
       'PHP does not have the permission to write to gateway directory, please ensure corresponding permissions.');
 
-    $this->dummyFile = tempnam(System::getRoot(), 'TEST_');
+    $this->dummyFile = tempnam(System::getPathname(), 'TEST_');
 
     $this->assertTrue(file_exists($this->dummyFile),
       'Dummy file cannot be created, please make sure PHP can write files in the gateway directory.');

@@ -3,6 +3,7 @@
 
 use core\Utility;
 
+use framework\Configuration as conf;
 use framework\System;
 
 //--------------------------------------------------
@@ -16,9 +17,12 @@ if ( !constant('CRYPT_SHA512') ) {
   throw new Exception('CRYPT_SHA512 method is not supported, please enable it on your system.');
 }
 
-/*! Note @ 29 Apr, 2015
- *  Allow more nesting for functional programming.
- */
+// Sets default Timezone, defaults to development locale (Hong Kong).
+date_default_timezone_set(
+  conf::get('system.locale::timezone', 'Asia/Hong_Kong')
+  );
+
+// Allow more nesting for functional programming.
 ini_set('xdebug.max_nesting_level', 1000);
 
 if ( Utility::isCLI() ) {
@@ -28,11 +32,6 @@ if ( Utility::isCLI() ) {
 else {
   // Starts HTTP session for browsers.
   session_start();
-}
-
-// Make sure working directory is system root.
-if ( is_dir(System::getRoot()) ) {
-  chdir(System::getRoot());
 }
 
 //--------------------------------------------------

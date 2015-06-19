@@ -193,7 +193,7 @@ class RequestPostFile extends \SplFileObject {
   public function save($path) {
     // Append filename when saving to directory
     if ( is_dir($path) ) {
-      $path = preg_replace('/\\' . preg_quote(DS) . '?$/', '$1' . DS . $this->getFilename(), $path);
+      $path = preg_replace('/\\' . preg_quote(DS) . '?$/', '$1/' . $this->getFilename(), $path);
     }
 
     if ( move_uploaded_file($this->getRealPath(), $path) ) {

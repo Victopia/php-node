@@ -3,6 +3,10 @@
 
 namespace framework;
 
+use framework\Configuration as conf;
+
+use framework\exceptions\FrameworkException;
+
 class System {
 
   //----------------------------------------------------------------------------
@@ -11,11 +15,12 @@ class System {
   //
   //----------------------------------------------------------------------------
 
+  const ENV_DEVELOPMENT = 'development';
+  const ENV_TESTING = 'testing';
+  const ENV_QUALITY_ASSURANCE = 'quality_assurance';
+  const ENV_STAGING = 'staging';
   const ENV_PRODUCTION = 'production';
-
   const ENV_DEBUG = 'debug';
-
-  const DEFAULT_SERVICE_PATH = '.private/services';
 
   //----------------------------------------------------------------------------
   //
@@ -24,28 +29,44 @@ class System {
   //----------------------------------------------------------------------------
 
   /**
+   * @protected
+   *
+   * Paths used when autoloading.
+   *
+   * Intialized with default lookup path.
+   */
+  protected static $pathPrefixes = array( '*' => '.private/scripts' );
+
+  /**
    * Accessor to the current environment, defaults to debug.
    *
    * @param {?string} $value The new environment value.
    * @return {?string} When $value is omitted, it returns the current value.
    */
-  public static function environment($value = null) {
-    static $environment = self::ENV_DEBUG;
+  public static function environment($validate = true) {
+    static $isValid = null;
 
-    if ( $value === null ) {
-      return $environment;
+    $value = conf::get('system::environment');
+
+    if ( $validate ) {
+      if ( $isValid === null ) {
+        $isValid = in_array($value, array(
+          self::ENV_DEVELOPMENT,
+          self::ENV_TESTING,
+          self::ENV_QUALITY_ASSURANCE,
+          self::ENV_STAGING,
+          self::ENV_PRODUCTION,
+          self::ENV_DEBUG,
+          ));
+      }
+
+      if ( !$isValid ) {
+        throw new FrameworkException('Invalid deployment stage "' . $value .
+          '", please revise system configuration.');
+      }
     }
 
-    $enum = array(
-        self::ENV_PRODUCTION
-      , self::ENV_DEBUG
-      );
-
-    if ( !in_array($value, $enum) ) {
-      return false;
-    }
-
-    $environment = $value;
+    return $value;
   }
 
   //----------------------------------------------------------------------------
@@ -64,24 +85,59 @@ class System {
     if ( !$domain ) {
       switch ( strtolower($type) ) {
         case 'secure':
-          $domain = Configuration::get('system.domains::hostname_secure');
+          $domain = conf::get('system.domains::secure');
           break;
 
         case 'service':
-          $domain = Configuration::get('system.domains::hostname_service');
+          $domain = conf::get('system.domains::service');
           break;
 
         case 'local':
-          $domain = Configuration::get('system.domains::hostname_local', 'localhost');
+          $domain = conf::get('system.domains::local', 'localhost');
           break;
 
         default:
-          $domain = Configuration::get('system.domains::hostname', gethostname());
+          $domain = conf::get('system.domains::default', gethostname());
           break;
       }
     }
 
     return $domain;
+  }
+
+  /**
+   * Get the system root path.
+   *
+   * Approach 1: Based on relative directory of this script file.
+   *
+   * Approach 2: The last element of debug_backtrace(), may consume more memories
+   *             so cache it with static.
+   *
+   * @param {string} $type Configuration path to the base path relative to system root.
+   */
+  public static function getPathname($type = '') {
+    static $root;
+    if ( !$root ) {
+      // Approach 1
+      $root = str_replace(DS, '/', realpath('.'));
+
+      // Approach 2
+      // $root = debug_backtrace();
+      // $root = array_pop($root);
+      // $root = dirname($root['file']);
+    }
+
+    if ( $type ) {
+      $type = (string) conf::get("system.paths::$type");
+      if ( $type ) {
+        return "$root/" . str_replace(DS, '/', $type);
+      }
+    }
+
+    return $root;
+
+    // $path = implode(DIRECTORY_SEPARATOR, [__DIR__, '..', '..', '..']);
+    // return realpath($path);
   }
 
   /**
@@ -159,40 +215,86 @@ class System {
   }
 
   /**
-   * Get the system root path.
-   *
-   * Approach 1: Based on relative directory of this script file.
-   *
-   * Approach 2: The last element of debug_backtrace(), may consume more memories
-   *             so cache it with static.
-   *
-   * @param {string} $type Configuration path to the base path relative to system root.
+   * Autoload PHP classes
    */
-  public static function getRoot($type = '') {
-    static $root;
-    if ( !$root ) {
-      // Approach 1
-      $root = implode(DS, [__DIR__, '..', '..', '..']);
-      $root = realpath($root);
+  public static function __autoload($name) {
+    // Namespace path fix
+    $name = str_replace('\\', '/', ltrim($name, '\\'));
 
-      // Approach 2
-      // $root = debug_backtrace();
-      // $root = array_pop($root);
-      // $root = dirname($root['file']);
+    // Classname path fix
+    // Note: Partially abide to PSR-0, ignoring starting and trailing underscores.
+    $name = dirname($name) . '/' . preg_replace('/(\w+)_(\w+)/', '$1/$2', basename($name));
+
+    // Current directory fix
+    /*! Note: This is due to an old bug when destructors are called, the working
+     *  directory will change to the drive root.
+     */
+    if ( getcwd() != System::getPathname() ) {
+      chdir(System::getPathname());
     }
 
-    if ( $type ) {
-      $type = (string) Configuration::get($type);
-      if ( !$type ) {
-        $type = self::DEFAULT_SERVICE_PATH;
+    // Look up current folder
+    if ( file_exists("./$name.php") ) {
+      require_once("./$name.php");
+    }
+
+    // Loop up script folder by namespace prefixes
+    else {
+      $lookupPaths = (array) self::$pathPrefixes;
+
+      // Assumption: wildcards are always shorter than exact matches because "*" only has one character.
+      $prefix = array_reduce(
+        array_keys($lookupPaths),
+        function($result, $prefix) use(&$name) {
+          // Wildcards
+          if ( strpos($prefix, '*') !== false ) {
+            if ( !preg_match('/^' . preg_replace('/\\\\\*/', '.*', preg_quote($prefix)) . '/', $name) ) {
+              unset($prefix);
+            }
+          }
+          else if ( strpos($name, $prefix) === false ) {
+            unset($prefix);
+          }
+
+          if ( isset($prefix) && strlen($result) < strlen($prefix) ) {
+            $result = $prefix;
+          }
+
+          return $result;
+        });
+
+      if ( !$prefix ) {
+        return;
       }
-      return $root . DS . $type;
+
+      // Exact matches should remove prefix portion (PSR-4)
+      if ( strpos($prefix, '*') === false ) {
+        $name = trim(substr($name, strlen($prefix)), '/');
+      }
+
+      $lookupPaths = (array) @$lookupPaths[$prefix];
+
+      foreach ( $lookupPaths as $lookupPath ) {
+        $lookupPath = "$lookupPath/$name.php";
+        if ( file_exists($lookupPath) ) {
+          require_once($lookupPath);
+        }
+      }
+    }
+  }
+
+  /**
+   * Bootstrap system autoloading.
+   */
+  public static function bootstrap() {
+    if ( function_exists('spl_autoload_register') ) {
+      spl_autoload_register(array(__CLASS__, '__autoload'));
     }
 
-    return $root;
-
-    // $path = implode(DIRECTORY_SEPARATOR, [__DIR__, '..', '..', '..']);
-    // return realpath($path);
+    $prefixes = (array) @conf::get('modules::prefix');
+    if ( $prefixes ) {
+      self::$pathPrefixes = $prefixes;
+    }
   }
 
 }

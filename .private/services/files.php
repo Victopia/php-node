@@ -1,6 +1,8 @@
 <?php
 /*! files.php | A service to give HTTP interface to files in database. */
 
+namespace services;
+
 use core\Database;
 use core\Node;
 use core\Utility;
@@ -11,7 +13,7 @@ use framework\Service;
 /**
  * This class act as a sample service, further demonstrates how to write RESTful functions.
  */
-class files implements framework\interfaces\IAuthorizableWebService {
+class files implements \framework\interfaces\IAuthorizableWebService {
 
   //--------------------------------------------------
   //

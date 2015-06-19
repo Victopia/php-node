@@ -30,7 +30,10 @@ class Service {
    * Use the new resolving mechanism to call for local services.
    */
   static function call($service, $method, $parameters = array(), $options = array()) {
-    self::requireService($service);
+    $hostname = System::getHostname('service');
+    if ( !$hostname ) {
+      throw new ServiceException('Service hostname undefined.');
+    }
 
     if ( is_string($options) ) {
       $options = array( 'type' => $options );
@@ -40,7 +43,7 @@ class Service {
 
     $options['uri'] = array(
         'scheme' => (bool) @$options['secure']? 'https': 'http'
-      , 'host' => System::getHostname()
+      , 'host' => $hostname
       , 'path' => "/service/$service/$method/" . implode('/', array_map('urlencode', (array) $parameters))
       );
 
@@ -69,32 +72,4 @@ class Service {
     return $serviceRequest->send($serviceResolver, $serviceResponse);
   }
 
-  /**
-   * Independent service path resolve mechanism for web services.
-   *
-   * This is currently isolated from the __autoLoad() method resides in
-   * scripts/Initialize.php, this is to avoid (or possibly allows) name
-   * conflicts with internal classes.
-   *
-   * While it is best to avoid using identical names between services and
-   * internal classes, it still allows so, but only when used with care.
-   *
-   * @param {string} $service FQCL of target service class.
-   */
-  static function requireService($service) {
-    $service = array_merge(
-      explode(DS, System::getRoot('service')),
-      array_filter(explode('\\', "$service.php")));
-
-    $service = implode(DS, $service);
-
-    // $servicePath = DIRECTORY_SEPARATOR . str_replace('\\', DIRECTORY_SEPARATOR, $service) . '.php';
-    // $servicePath = realpath(FRAMEWORK_PATH_ROOT . FRAMEWORK_PATH_SERVICES . $servicePath);
-
-    if ( !file_exists($service) ) {
-      throw new ServiceException('Target service file not found.');
-    }
-
-    require_once($service);
-  }
 }

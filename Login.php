@@ -42,7 +42,7 @@ unset($req, $res);
 <html lang="en">
   <head>
     <meta charset="utf-8"/>
-    <title></title>
+    <title>Login | <?php echo $this->__('system.title') ?></title>
 
     <!-- jQuery -->
     <script src="//code.jquery.com/jquery.min.js"></script>

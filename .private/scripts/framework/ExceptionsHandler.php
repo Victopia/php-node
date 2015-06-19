@@ -107,7 +107,10 @@ class ExceptionsHandler {
       ));
 
     // Log the error
-    @Log::write($logString, $logType, $logContext);
+    try {
+      @Log::write($logString, $logType, $logContext);
+    }
+    catch (\Exception $e) { }
 
     unset($logContext);
 
@@ -117,7 +120,7 @@ class ExceptionsHandler {
       , 'code' => $eN
       );
 
-    if ( System::environment() == 'debug' ) {
+    if ( System::environment(false) != System::ENV_PRODUCTION ) {
       $output['trace'] = $eC;
     }
 
@@ -136,10 +139,12 @@ class ExceptionsHandler {
       $response->send($output, $e instanceof ErrorException ? 500 : 400);
     }
     else {
+      header('Content-Type: text/plain', true, 500);
+
       echo "$logString\n";
 
       // Debug stack trace
-      if ( System::environment() == 'debug' ) {
+      if ( System::environment(false) != System::ENV_PRODUCTION ) {
         echo "Trace:\n";
         array_walk($eC, function($stack, $index) {
           $trace = ($index + 1) . '.';

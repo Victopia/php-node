@@ -189,7 +189,7 @@ class RequestPutFile extends \SplFileObject {
    */
   public function save($path, $append = false) {
     if ( is_dir($path) ) {
-      $path = preg_replace('/\\' . preg_quote(DS) . '?$/', '$1' . DS . $this->getFilename(), $path);
+      $path = preg_replace('/\\' . preg_quote(DS) . '?$/', '$1/' . $this->getFilename(), $path);
     }
 
     $target = new \SplFileObject($path, $append ? 'a' : 'w');

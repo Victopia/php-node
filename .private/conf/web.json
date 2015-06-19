@@ -1,0 +1,13 @@
+{
+  "resolvers": {
+    "file": {
+      "indexes": "Home index"
+    },
+    "service": {
+      "prefix": "/service"
+    },
+    "errordocs": {
+      "directory": ".private/templates/errordocs"
+    }
+  }
+}

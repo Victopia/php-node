@@ -1,0 +1,20 @@
+{
+  "environment": "development",
+
+  "database": {
+    "driver": "mysql",
+    "host": "127.0.0.1",
+    "schema": "php-node",
+    "user": "root"
+  },
+
+  "i18n": {
+    "localeDefault": "en_US"
+  },
+
+  "maintenance": {
+    "enable": false,
+    "template_path": "/assets/templates/maintenance.html",
+    "whitelist": []
+  }
+}

@@ -4,6 +4,8 @@
 namespace framework;
 
 use core\Node;
+use core\Database;
+use core\Utility as util;
 
 /* Usage:
 
@@ -38,11 +40,22 @@ use core\Node;
 
 class Configuration implements \Iterator, \ArrayAccess {
 
-	//--------------------------------------------------
+	//----------------------------------------------------------------------------
+	//
+	//  Constants
+	//
+	//----------------------------------------------------------------------------
+
+	/**
+	 * Path to store config JSON files when no database is available.
+	 */
+	const FALLBACK_DIRECTORY = '.private/conf';
+
+	//----------------------------------------------------------------------------
 	//
 	//  Properties
 	//
-	//--------------------------------------------------
+	//----------------------------------------------------------------------------
 
 	private $parentObject = NULL;
 
@@ -70,11 +83,11 @@ class Configuration implements \Iterator, \ArrayAccess {
 		return $this->contents;
 	}
 
-	//--------------------------------------------------
+	//----------------------------------------------------------------------------
 	//
 	//  Constructor
 	//
-	//--------------------------------------------------
+	//----------------------------------------------------------------------------
 
 	function __construct($key, Configuration $parentObject = NULL) {
 	  $this->key = &$key;
@@ -83,11 +96,11 @@ class Configuration implements \Iterator, \ArrayAccess {
 		$this->update();
 	}
 
-	//--------------------------------------------------
+	//----------------------------------------------------------------------------
 	//
 	//  Methods
 	//
-	//--------------------------------------------------
+	//----------------------------------------------------------------------------
 
 	// Shorthand accessor
 	static function get($key, $defaultValue = null) {
@@ -96,8 +109,14 @@ class Configuration implements \Iterator, \ArrayAccess {
 
 			$key = new Configuration($key);
 
-			if ( isset($key[$property]) ) {
-				return $key[$property];
+			$property = explode('.', $property);
+
+			while ( $property ) {
+				$key = @$key[array_shift($property)];
+			}
+
+			if ( $key ) {
+				return $key;
 			}
 			else {
 				return $defaultValue;
@@ -115,18 +134,48 @@ class Configuration implements \Iterator, \ArrayAccess {
   function update() {
     // Root objects will get value from database upon creation
 		if ( $this->parentObject === null ) {
-			$confObj = array(
-				Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_CONFIGURATION
-			, '@key' => $this->key
-			);
+			$confObj = array();
 
-			$res = (array) @Node::get($confObj);
+			// Database support
+			if ( Database::isConnected() ) {
+				$res = (array) @Node::getOne(array(
+					Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_CONFIGURATION
+				, '@key' => $this->key
+				));
 
-			if ( isset($res) ) {
-				$confObj = @$res[0];
+				unset($res['@key'], $res[Node::FIELD_COLLECTION]);
+
+				$confObj+= $res;
+
+				unset($res);
 			}
 
-			unset($res, $confObj['@key'], $confObj[Node::FIELD_COLLECTION]);
+			// JSON support
+			if ( function_exists('json_decode') ) {
+				$res = self::FALLBACK_DIRECTORY . "/$this->key.json";
+				if ( is_readable($res) ) {
+					$res = (array) @json_decode(file_get_contents($res), 1);
+					if ( $res ) {
+						$confObj+= $res;
+					}
+				}
+
+				unset($res);
+			}
+
+			// YAML support
+			if ( function_exists('yaml_parse_file') ) {
+				$res = self::FALLBACK_DIRECTORY . "/$this->key.yaml";
+				if ( is_readable($res) ) {
+					$res = yaml_parse_file($res);
+					// Sorry mate, at least an array.
+					if ( is_array($res) ) {
+						$confObj+= $res;
+					}
+				}
+
+				unset($res);
+			}
 		}
 		else {
 			$confObj = &$this->parentObject->__valueOf();
@@ -201,11 +250,11 @@ class Configuration implements \Iterator, \ArrayAccess {
 		}
 	}
 
-	//--------------------------------------------------
+	//----------------------------------------------------------------------------
 	//
 	//  Methods : Iterator
 	//
-	//--------------------------------------------------
+	//----------------------------------------------------------------------------
 
 	function current() {
 		return @current($this->contents);
@@ -227,11 +276,11 @@ class Configuration implements \Iterator, \ArrayAccess {
 		return isset($this->contents[$this->key()]);
 	}
 
-	//--------------------------------------------------
+	//----------------------------------------------------------------------------
 	//
 	//  Methods: ArrayAccess
 	//
-	//--------------------------------------------------
+	//----------------------------------------------------------------------------
 
 	function offsetExists($offset) {
 		return isset($this->contents[$offset]);

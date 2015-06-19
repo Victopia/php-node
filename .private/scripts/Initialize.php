@@ -3,53 +3,47 @@
 
 use core\Node;
 
+use framework\Configuration as conf;
 use framework\Resolver;
 use framework\Session;
 use framework\Service;
 use framework\System;
 
-// Global system constants
-require_once(__DIR__ . '/framework/constants.php');
+//------------------------------------------------------------------------------
+//
+//  Bootstrapping
+//
+//------------------------------------------------------------------------------
 
-// Sets default Timezone
-date_default_timezone_set('Asia/Hong_Kong');
+require_once(__DIR__ . '/framework/System.php');
 
-// Setup class autoloading on-demand.
-function __autoload($name) {
-  // Namespace path fix
-  $name = str_replace('\\', DS, ltrim($name, '\\'));
-
-  // Classname path fix
-  $name = dirname($name) . DS . str_replace('_', DS, basename($name));
-
-  // Look up current folder
-  if ( file_exists("./$name.php") ) {
-    require_once("./$name.php");
-  }
-
-  // Loop up script folder
-  else {
-    $lookupPaths = array(
-        __DIR__ // Script files, meant to be included on initialize.
-      );
-
-    foreach ( $lookupPaths as $lookupPath ) {
-      $lookupPath = "$lookupPath/$name.php";
-      if ( file_exists($lookupPath) ) {
-        require_once($lookupPath);
-      }
-    }
+// Backward compatible autoloading
+if ( !function_exists('spl_autoload_register') ) {
+  function __autoload($name) {
+    System::__autoload($name);
   }
 }
+
+// Autoloaders and module prefixes are setup here.
+System::bootstrap();
 
 // Error & Exception handling.
 framework\ExceptionsHandler::setHandlers();
 
-//--------------------------------------------------
+// Call this one to check if enviroment is valid.
+System::environment();
+
+// Global system constants
+require_once(__DIR__ . '/framework/constants.php');
+
+// Functional programming
+require_once(__DIR__ . '/framework/functions.php');
+
+//------------------------------------------------------------------------------
 //
 //  Database initialization
 //
-//--------------------------------------------------
+//------------------------------------------------------------------------------
 
 /*! TODO @ 8 May, 2015
  *  DatabaseOptions will be replaced by IDatabaseAdapter interface, and
@@ -61,29 +55,41 @@ framework\ExceptionsHandler::setHandlers();
  *  Database class will act as a wrapper for the designated adapter.
  */
 
-/*! Uncomment this section and config database connection.
+$dbOptions = conf::get('system::database');
 
-$options = new core\DatabaseOptions(
-  'mysql', '127.0.0.1', null, 'database', 'username', 'password'
-);
+if ( $dbOptions ) {
+  // Driver options
+  if ( @$dbOptions['options'] ) {
+    $driverOptions = array();
 
-$options->driverOptions = Array(
-    PDO::MYSQL_ATTR_USE_BUFFERED_QUERY => true
-  , PDO::MYSQL_ATTR_INIT_COMMAND => 'SET NAMES utf8;'
-  );
+    foreach ( (array) @$dbOptions['options'] as $key => $value ) {
+      if ( is_string($key) && defined("PDO::$key") ) {
+        $driverOptions[constant("PDO::$key")] = $value;
+      }
+    } unset($key, $value);
 
-core\Database::setOptions($options);
+    if ( $driverOptions ) {
+      $dbOptions['options'] = $driverOptions;
+    }
 
-unset($options);
-*/
+    unset($driverOptions);
+  }
 
-// Ensure basic functionalities
+  $dbOptions = new core\DatabaseOptions(
+    $dbOptions['driver'], @$dbOptions['host'], @$dbOptions['port'],
+    @$dbOptions['schema'], $dbOptions['user'], @$dbOptions['password'],
+    (array) @$dbOptions['options']
+    );
+
+  core\Database::setOptions($dbOptions);
+}
+
+unset($dbOptions);
+
+//------------------------------------------------------------------------------
+//
+//  System shims
+//
+//------------------------------------------------------------------------------
+
 require_once(__DIR__ . '/framework/environment.php');
-
-//------------------------------------------------------------------------------
-//
-//  Functional programming
-//
-//------------------------------------------------------------------------------
-
-require_once(__DIR__ . '/framework/functions.php');
