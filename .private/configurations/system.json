@@ -1,6 +1,18 @@
 {
   "environment": "development",
 
+  "bootstrap": {
+    "requires": [
+      ".private/scripts/vendor/autoload.php"
+    ]
+  },
+
+  "http": {
+    "response": {
+      "bufferSize": 1024
+    }
+  },
+
   "database": {
     "driver": "mysql",
     "host": "127.0.0.1",

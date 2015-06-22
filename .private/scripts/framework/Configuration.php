@@ -49,7 +49,7 @@ class Configuration implements \Iterator, \ArrayAccess {
 	/**
 	 * Path to store config JSON files when no database is available.
 	 */
-	const FALLBACK_DIRECTORY = '.private/conf';
+	const FALLBACK_DIRECTORY = '.private/configurations';
 
 	//----------------------------------------------------------------------------
 	//

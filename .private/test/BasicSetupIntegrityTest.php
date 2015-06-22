@@ -1,8 +1,6 @@
 <?php
 /* test/BasicSetupIntegrityTest.php | Test against basic system setups. */
 
-require_once('.private/test/simpletest/unit_tester.php');
-
 use framework\System;
 
 class BasicSetupIntegrityTest extends UnitTestCase {

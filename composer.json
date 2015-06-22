@@ -1,0 +1,25 @@
+{
+  "name": "victopia/php-node",
+  "description": "PHP data framework with API support.",
+  "type": "project",
+  "require": {
+    "leafo/lessphp": "~0.5",
+    "mustache/mustache": "~2.8",
+    "mtdowling/cron-expression": "~1",
+    "erusev/parsedown": "~1.5"
+  },
+  "require-dev": {
+    "simpletest/simpletest": "dev-master"
+  },
+  "license": "WTFPL",
+  "authors": [
+    {
+      "name": "Vicary Archangel",
+      "email": "vicary@yahoo.com"
+    }
+  ],
+  "minimum-stability": "dev",
+  "config": {
+    "vendor-dir": ".private/scripts/vendor/"
+  }
+}

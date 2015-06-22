@@ -31,7 +31,7 @@ class Response {
   public function __construct($useOutputBuffer = false) {
     $this->useOutputBuffer = $useOutputBuffer;
     if ( $useOutputBuffer ) {
-      ob_start(null, conf::get('http.response::bufferSize', 1024));
+      ob_start(null, conf::get('system::http.response.bufferSize', 1024));
     }
   }
 

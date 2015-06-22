@@ -295,6 +295,15 @@ class System {
     if ( $prefixes ) {
       self::$pathPrefixes = $prefixes;
     }
+
+    // additional files
+    foreach ( (array) @conf::get('system::bootstrap.requires') as $file ) {
+      require_once($file);
+    }
+
+    foreach ( (array) @conf::get('system::bootstrap.includes') as $file ) {
+      include_once($file);
+    }
   }
 
 }

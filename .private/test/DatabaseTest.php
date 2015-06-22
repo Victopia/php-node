@@ -1,8 +1,6 @@
 <?php
 /* test/DatabaseTest.php | Test against database connections and tables setup. */
 
-require_once('.private/test/simpletest/unit_tester.php');
-
 class DatabaseTest extends UnitTestCase {
 
   //--------------------------------------------------
