@@ -27,7 +27,7 @@ class Process {
   const ERR_CEXPR = 5;
 
   // Assume gateway redirection, pwd should always at DOCUMENT_ROOT
-  const EXEC_PATH = 'php .private/Process.php';
+  const EXEC_PATH = 'php .private/scripts/Process.php';
 
   /**
    * Maximum server capacity.

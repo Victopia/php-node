@@ -10,7 +10,7 @@ use framework\exceptions\FrameworkException;
 
 class CliRouter implements \framework\interfaces\IRequestResolver {
 
-  protected $basePath = '.private/commands';
+  protected $basePath = '.private/scripts/commands';
 
   public function __construct($options = array()) {
     if ( is_dir(@$options['path']) ) {
