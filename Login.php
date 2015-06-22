@@ -5,14 +5,13 @@ use framework\Session;
 
 $req = $this->request;
 $res = $this->response;
-if ( $req->user ) {
+if ( @$req->user ) {
   $res->redirect($req->client('referer'));
   die;
 }
 
 if ( $req->post('uid') && $req->post('pwd') ) {
-  $ret = @Session::validate($req->post('uid'), $req->post('pwd'), @$req->post('override'));
-
+  $ret = @Session::validate($req->post('uid'), $req->post('pwd'), $req->post('override'));
   if ( is_string($ret) ) {
     setcookie('sid', $ret);
 

@@ -1,9 +1,6 @@
 {
   "prefix": {
     "services": ".private/services",
-    "*": [
-      ".private/scripts",
-      ".private/vendor/parsedown"
-    ]
+    "*": ".private/scripts"
   }
 }

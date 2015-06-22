@@ -1,9 +1,7 @@
 <?php
 /*! Logout.php | Invalidate and remove user session. */
 
-use framework\Session;
-
-Session::invalidate() &&
+framework\Session::invalidate() &&
   setcookie('sid', '', time() - 3600);
 
 $req = $this->reqeust;
