@@ -4,8 +4,8 @@
 framework\Session::invalidate() &&
   setcookie('sid', '', time() - 3600);
 
-$req = $this->reqeust;
-$res = $this->response;
+$req = $this->request();
+$res = $this->response();
 
 $target = $req->param('returnUrl');
 if ( !$target ) {

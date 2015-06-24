@@ -3,8 +3,8 @@
 
 use framework\Session;
 
-$req = $this->request;
-$res = $this->response;
+$req = $this->request();
+$res = $this->response();
 if ( @$req->user ) {
   $res->redirect($req->client('referer'));
   die;
