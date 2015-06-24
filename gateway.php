@@ -43,7 +43,7 @@ require_once('.private/scripts/Initialize.php');
     // Simply don't put it into chain when disabled.
     if ( conf::get('system::maintenance.enable') ) {
       $resolver->registerResolver(new resolvers\MaintenanceResolver(array(
-          'templatePath' => conf::get('system::maintenance.template_path'),
+          'templatePath' => conf::get('system::maintenance.templatePath'),
           'whitelist' => (array) conf::get('system::maintenance.whitelist')
         )), 999);
     }

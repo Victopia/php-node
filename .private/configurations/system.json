@@ -20,7 +20,7 @@
 
   "maintenance": {
     "enable": false,
-    "template_path": "/assets/templates/maintenance.html",
+    "templatePath": "/assets/templates/maintenance.html",
     "whitelist": []
   }
 }
