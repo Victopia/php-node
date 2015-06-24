@@ -227,12 +227,13 @@ class Configuration implements \Iterator, \ArrayAccess {
 	//------------------------------
 
 	private function setContents() {
-		// TODO: Trace upwards until root for the object.
-
 		$cObj = $this;
 
+		// Trace upwards until root for the object.
 		while ($pObj = $cObj->getParentObject())
 			$cObj = $pObj;
+
+		unset($pObj);
 
 		$confObj = $cObj->getContents();
 		$confKey = $cObj->getKey();

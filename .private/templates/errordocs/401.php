@@ -9,7 +9,7 @@
 	<body>
 		<h1>401 Unauthorized</h1>
 
-		<p>Requested resource <?php echo $this->request->uri('path') ?> is not authorized, you may need to signin with appropriate identity before access.</p>
+		<p>Requested resource <?php echo $this->request()->uri('path') ?> is not authorized, you may need to signin with appropriate identity before access.</p>
 
 		<hr />
 

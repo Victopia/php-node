@@ -35,6 +35,10 @@ class ExceptionsHandler {
       return;
     }
 
+    while ( ob_get_level() > 0 ) {
+      ob_end_clean();
+    }
+
     $eS = $e->getMessage();
     $eN = $e->getCode();
     $eC = $e->getTrace();

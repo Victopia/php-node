@@ -121,9 +121,17 @@ class _ extends \framework\WebService {
         return $errors;
       }
 
-      $this->modelClass->save($isCreated);
-      if ( $isCreated ) {
-        $this->response()->status(201); // Created
+      $this->modelClass->save($result);
+      switch ( @$result['action'] ) {
+        case 'insert':
+          $this->response()->status(201); // Created
+          break;
+
+        case 'update':
+          break;
+
+        default:
+          return $result; // $result['errors']
       }
 
       return $this->modelClass;
@@ -167,6 +175,27 @@ class _ extends \framework\WebService {
    *  we can make use of it and returns the designated model structure.
    */
   protected function option() { }
+
+  //----------------------------------------------------------------------------
+  //
+  //  Angular Schema Form Methods
+  //
+  //----------------------------------------------------------------------------
+
+  /**
+   * JSON Schema definition.
+   */
+  protected function schema($type = 'data') {
+    switch ( $this->request()->method() ) {
+      case 'get':
+        return $this->modelClass->schema($type);
+
+      case 'post':
+        // TODO: Perform meta-schema validation
+        // TODO: Save this schema to target configuration key
+        break;
+    }
+  }
 
   //----------------------------------------------------------------------------
   //

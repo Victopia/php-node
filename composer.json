@@ -6,7 +6,8 @@
     "leafo/lessphp": "~0.5",
     "mustache/mustache": "~2.8",
     "mtdowling/cron-expression": "~1",
-    "erusev/parsedown": "~1.5"
+    "erusev/parsedown": "~1.5",
+    "justinrainbow/json-schema": "~1.4"
   },
   "require-dev": {
     "simpletest/simpletest": "dev-master"

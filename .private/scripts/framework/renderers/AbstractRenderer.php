@@ -45,7 +45,7 @@ abstract class AbstractRenderer implements IFileRenderer {
    *
    * The request context.
    */
-  protected $request;
+  private $request;
 
   public function request(Request $value = null) {
     if ( $value === null ) {
@@ -61,7 +61,7 @@ abstract class AbstractRenderer implements IFileRenderer {
    *
    * The response context.
    */
-  protected $response;
+  private $response;
 
   public function response(Response $value = null) {
     if ( $value === null ) {

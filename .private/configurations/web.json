@@ -1,4 +1,13 @@
 {
+  "http": {
+    "output": {
+      "buffer": {
+        "enabled": true,
+        "size": 1024
+      }
+    }
+  },
+
   "resolvers": {
     "file": {
       "indexes": "Home index"

@@ -91,7 +91,7 @@ final class Database {
       }
       catch(\PDOException $e) {
         if ( error_reporting() ) {
-          throw new exceptions\CoreException("Unable to connect to database, error: " . $e->getMessage(), 0);
+          throw new \PDOException("Unable to connect to database, error: " . $e->getMessage(), 0);
         }
 
         self::$con = null;
@@ -621,7 +621,7 @@ final class Database {
     // Build queries from key sets.
     array_walk($keySets, function(&$keySet) use($table, $columns) {
       if ( !Utility::isAssoc($keySet) ) {
-        throw exceptions\CoreException('Key set for deletion must be associative array(s).');
+        throw new \PDOException('Key set for deletion must be associative array(s).');
       }
 
       $filter = array();

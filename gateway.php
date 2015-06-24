@@ -36,86 +36,107 @@ require_once('.private/scripts/Initialize.php');
 //
 //--------------------------------------------------
 
-$resolver = new framework\Resolver();
+// Resolver chain
+  $resolver = new framework\Resolver();
 
-// Maintenance resolver
-// Note: Simply don't put it into chain when disabled.
-if ( conf::get('system::maintenance.enable') ) {
-  $resolver->registerResolver(new resolvers\MaintenanceResolver(array(
-      'templatePath' => conf::get('system::maintenance.template_path'),
-      'whitelist' => (array) conf::get('system::maintenance.whitelist')
-    )), 999);
-}
+  // Maintenance resolver
+    /*! Note: Simply don't put it into chain when disabled. */
+    if ( conf::get('system::maintenance.enable') ) {
+      $resolver->registerResolver(new resolvers\MaintenanceResolver(array(
+          'templatePath' => conf::get('system::maintenance.template_path'),
+          'whitelist' => (array) conf::get('system::maintenance.whitelist')
+        )), 999);
+    }
 
-// Session authentication
-$resolver->registerResolver(new resolvers\UserContextResolver(array(
-    // This enables the "startup" super user when no user in database.
-    'setup' => System::environment() != System::ENV_PRODUCTION
-  )), 100);
+  // Session authentication
+    $resolver->registerResolver(new resolvers\UserContextResolver(array(
+        // This enables the "startup" super user when no user in database.
+        'setup' => System::environment() != System::ENV_PRODUCTION
+      )), 100);
 
-// Access rules and policy
-$resolver->registerResolver(new resolvers\AuthenticationResolver(), 80);
+  // Access rules and policy
+    $resolver->registerResolver(new resolvers\AuthenticationResolver(array(
+        'paths' => conf::get('web::auth.paths', array('*' => true))
+      )), 80);
 
-// Locale
-$resolver->registerResolver(new resolvers\LocaleResolver(array(
-    'default' => conf::get('system::i18n.localeDefault', 'en_US')
-  )), 70);
+  // Locale
+    $resolver->registerResolver(new resolvers\LocaleResolver(array(
+        'default' => conf::get('system::i18n.localeDefault', 'en_US')
+      )), 70);
 
-// Web Services
-$resolver->registerResolver(new resolvers\WebServiceResolver(array(
-    'prefix' => conf::get('web::resolvers.service.prefix', '/service')
-  )), 60);
+  // Web Services
+    $resolver->registerResolver(new resolvers\WebServiceResolver(array(
+        'prefix' => conf::get('web::resolvers.service.prefix', '/service')
+      )), 60);
 
-// Markdown handling
-$resolver->registerResolver(new resolvers\MarkdownResolver(), 50);
+  // Markdown handling
+    $resolver->registerResolver(new resolvers\MarkdownResolver(), 50);
 
-// Template resolver
-// $templateResolver = new resolvers\TemplateResolver(array(
-//     'render' => function($path) {
-//         static $mustache;
-//         if ( !$mustache ) {
-//           $mustache = new Mustache_Engine();
-//         }
+  // Template resolver
+    // $templateResolver = new resolvers\TemplateResolver(array(
+    //     'render' => function($path) {
+    //         static $mustache;
+    //         if ( !$mustache ) {
+    //           $mustache = new Mustache_Engine();
+    //         }
 
-//         $resource = util::getResourceContext();
+    //         $resource = util::getResourceContext();
 
-//         return $mustache->render(file_get_contents($path), $resource);
-//       }
-//   , 'extensions' => 'mustache html'
-//   ));
+    //         return $mustache->render(file_get_contents($path), $resource);
+    //       }
+    //   , 'extensions' => 'mustache html'
+    //   ));
 
-// $templateResolver->directoryIndex('Home index');
+    // $templateResolver->directoryIndex('Home index');
 
-// $resolver->registerResolver($templateResolver, 50);
+    // $resolver->registerResolver($templateResolver, 50);
 
-// unset($templateResolver);
+    // unset($templateResolver);
 
-// External URL
-// $resolver->registerResolver(new resolvers\ExternalResolver(), 30);
+  // External URL
+    // $resolver->registerResolver(new resolvers\ExternalResolver(), 30);
 
-// Physical file handling
-$fileResolver = new resolvers\FileResolver(array(
-    'directoryIndex' => conf::get('web::resolvers.file.indexes', 'Home index')
-  ));
+  // Physical file handling
+    $fileResolver = array(
+        'directoryIndex' => conf::get('web::resolvers.file.indexes', 'Home index')
+      );
 
-$resolver->registerResolver($fileResolver, 10);
+    if ( conf::get('web::http.output.buffer.enabled') ) {
+      $fileResolver['outputBuffer']['size'] = conf::get('web::http.output.buffer.size', 1024);
+    }
 
-unset($fileResolver);
+    $fileResolver = new resolvers\FileResolver($fileResolver);
 
-/*! Note @ 24 Apr, 2015
- *  Cache resolver is now disabled because it handles way more than expected,
- *  such as conditional request and etag.
- *
- *  $resolver->registerResolver(new resolvers\CacheResolver('/cache/'), 0);
- */
+    $resolver->registerResolver($fileResolver, 10);
 
-// HTTP error pages in HTML or JSON
-$resolver->registerResolver(new resolvers\StatusDocumentResolver(array(
-    'prefix' => conf::get('web::resolvers.errordocs.directory')
-  )), 5);
+    unset($fileResolver);
 
-// Logging
-$resolver->registerResolver(new resolvers\LogResolver(), 0);
+  /*! Note @ 24 Apr, 2015
+   *  Cache resolver is now disabled because it handles way more than expected,
+   *  such as conditional request and etag.
+   *
+   *  $resolver->registerResolver(new resolvers\CacheResolver('/cache/'), 0);
+   */
+
+  // HTTP error pages in HTML or JSON
+    $resolver->registerResolver(new resolvers\StatusDocumentResolver(array(
+        'prefix' => conf::get('web::resolvers.errordocs.directory')
+      )), 5);
+
+  // Logging
+    $resolver->registerResolver(new resolvers\LogResolver(), 0);
+
+// Request context
+  // We have no request context options currently, use defaults.
+
+// Response context
+  if ( conf::get('web::http.output.buffer.enabled') ) {
+    $response = new framework\Response(array(
+        'outputBuffer' => array(
+          'size' => conf::get('web::http.output.buffer.size', 1024)
+        )
+      ));
+  }
 
 // Start the application
-$resolver->run();
+  $resolver->run(@$request, @$response);

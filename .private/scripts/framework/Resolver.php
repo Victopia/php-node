@@ -14,13 +14,13 @@ class Resolver {
   /**
    * @private
    */
-  protected static $activeInstance = array();
+  protected static $activeInstances = array();
 
   /**
    * Retrieve the resolver instance currently active from calling run().
    */
   public static function getActiveInstance() {
-    return end(self::$activeInstance);
+    return end(self::$activeInstances);
   }
 
   /**
@@ -58,14 +58,14 @@ class Resolver {
 
     $this->response = &$response;
     if ( $response === null ) {
-      $response = new Response(true);
+      $response = new Response();
     }
 
-    self::$activeInstance[] = $this;
+    array_push(self::$activeInstances, $this);
 
     $this->resolve();
 
-    array_pop(self::$activeInstance);
+    array_pop(self::$activeInstances);
   }
 
   /**

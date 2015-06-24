@@ -3,7 +3,7 @@
 
 namespace model;
 
-class Users extends AbstractModel {
+class Users extends abstraction\JsonSchemaModel {
 
   function validate() {
     return true;

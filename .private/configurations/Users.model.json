@@ -1,0 +1,59 @@
+{
+  "data": {
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "id": "http://yourdomain.com/serivce/schemas/Users.json",
+    "type": "object",
+    "title": "User",
+    "description": "Users for the Jockey platform",
+    "properties": {
+      "id": {
+        "description": "User identity key",
+        "type": "integer"
+      },
+      "username": {
+        "description": "Unique identifier for the user acconut",
+        "type": "string",
+        "minLength": 4,
+        "maxLength": 254,
+        "uniqueItems": true
+      },
+      "password": {
+        "description": "Unencrypted password.",
+        "type": "string",
+        "minLength": 8,
+        "maxLength": 255
+      },
+      "password_hash": {
+        "description": "Password crypt using CRYPT_SHA512",
+        "type": "string",
+        "minLength": 119,
+        "maxLength": 119
+      },
+      "first_name": {
+        "description": "First name of the user",
+        "type": "string"
+      },
+      "middle_names": {
+        "description": "Middle names of the user, multiple middle names supported",
+        "type": "array",
+        "minItems": 1,
+        "items": {
+          "type": "string"
+        }
+      },
+      "last_name": {
+        "description": "Last name of the user",
+        "type": "string"
+      },
+      "birthdayaaa": {
+        "description": "Date, or possibly time, of the birth of the user.",
+        "type": "string",
+        "format": "date-time"
+      }
+    },
+    "oneOf": [
+      { "required": ["username", "password"] },
+      { "required": ["username", "password_hash"] }
+    ]
+  }
+}

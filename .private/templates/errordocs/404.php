@@ -9,7 +9,7 @@
 	<body>
 		<h1>404 Not Found</h1>
 
-		<p>Requested resource <?php echo $this->request->uri('path') ?> cannot be located on the server.</p>
+		<p>Requested resource <?php echo $this->request()->uri('path') ?> cannot be located on the server.</p>
 
 		<hr />
 

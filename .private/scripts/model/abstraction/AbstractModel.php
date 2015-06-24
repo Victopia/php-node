@@ -1,13 +1,11 @@
 <?php
 /*! AbstractModel.php | Abstraction the data model structure. */
 
-namespace model;
+namespace model\abstraction;
 
 use core\EventEmitter;
 use core\Node;
 use core\Utility as util;
-
-use framework\exceptions\FrameworkException;
 
 /**
  * Base class for all data models.
@@ -240,31 +238,50 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
 
     $filter = $this->beforeLoad($filter);
     if ( $filter !== false ) {
-      $this->data((array) @Node::getOne($filter));
+      $data = (array) @Node::getOne($filter);
+      if ( !$data ) {
+        return false;
+      }
+
+      $this->data($data);
 
       $this->afterLoad();
     }
 
-    return $this;
+    return true;
   }
 
   /**
    * Saves the current data into database.
+   *
+   * @param {&array} $result[errors] Array of validation errors.
+   *                 $result[success] True on succeed, otherwise not set.
    */
-  function save(&$isCreated = false) {
+  function save(&$result = array()) {
     $this->isCreate = !$this->identity() && !$this->get($this->identity());
 
-    if ( $this->beforeSave() !== false ) {
+    $errors = $this->beforeSave();
+    if ( $errors ) {
+      if ( is_array($errors) ) {
+        $result['errors'] = $errors;
+      }
+    }
+    else {
       $res = Node::set([Node::FIELD_COLLECTION => $this->collectionName] + $this->data);
       if ( is_numeric($res) ) {
-        $isCreated = true;
+        $result['action'] = 'insert';
         $this->identity($res);
+      }
+      else if ( $res ) {
+        $result['action'] = 'update';
       }
 
       // Load again to reflect database level changes
       $this->load($this->identity());
 
       $this->afterSave();
+
+      $result['success'] = true;
     }
 
     $this->isCreate = false;
@@ -312,12 +329,10 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * Called before the model is being saved, performing last chance modifications
    * before passing down to Node::set().
    *
-   * @return {?bool} Explicitly return false to prevent the save action.
+   * @return {?array} Return anything to prevent save action.
    */
   protected function beforeSave() {
-    if ( $this->validate() !== true ) {
-      return false;
-    }
+    return (array) $this->validate();
   }
 
   /**

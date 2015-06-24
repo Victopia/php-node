@@ -7,6 +7,7 @@ use core\Utility as util;
 
 use framework\Configuration as conf;
 
+use framework\exceptions\FrameworkException;
 use framework\exceptions\ResolverException;
 
 /**
@@ -22,40 +23,18 @@ use framework\exceptions\ResolverException;
  */
 class Response {
 
-  //----------------------------------------------------------------------------
-  //
-  //  Constructor
-  //
-  //----------------------------------------------------------------------------
+  /**
+   * @constructor
+   */
+  public function __construct(array $options = array()) {
+    if ( !empty($options['outputBuffer']) ) {
+      $this->useOutputBuffer = true;
 
-  public function __construct($useOutputBuffer = false) {
-    $this->useOutputBuffer = $useOutputBuffer;
-    if ( $useOutputBuffer ) {
-      ob_start(null, conf::get('system::http.response.bufferSize', 1024));
-    }
-  }
+      $this->outputBufferOptions = (array) $options['outputBuffer'];
 
-  public function __destruct() {
-    if ( !$this->useOutputBuffer ) {
-      return;
-    }
-
-    if ( $this->header('Location') ) {
-      $this->writeHeaders();
-      // No message body for redirections and mismatched conditional requests.
-    }
-    else {
-      // Push the headers to output buffer
-      $this->writeHeaders();
-
-      // Send the body to output buffer
-      $this->writeBody();
-
-      // Flush the PHP output buffer
-      ob_end_flush();
-
-      // Flush the system output buffer
-      flush();
+      if ( !empty($options['outputBuffer']['size']) ) {
+        ob_start(null, (int) $options['outputBuffer']['size']);
+      }
     }
   }
 
@@ -66,9 +45,32 @@ class Response {
   //----------------------------------------------------------------------------
 
   /**
-   * Use output buffer as output target.
+   * @protected
    */
   protected $useOutputBuffer = false;
+
+  /**
+   * Indicates whether the response object should make use of output buffer when
+   * capturing outputs.
+   *
+   * If false, all script outputs will be sent directly to the ISAPI output
+   * instead, header modification is not allowed after the first output.
+   */
+  public function useOutputBuffer() {
+    return $this->useOutputBuffer;
+  }
+
+  /**
+   * @protected
+   */
+  protected $outputBufferOptions = array();
+
+  /**
+   * Output buffer options to use when it is enabled.
+   */
+  public function outputBufferOptions() {
+    return $this->outputBufferOptions;
+  }
 
   /**
    * @private
@@ -262,6 +264,8 @@ class Response {
 
   /**
    * Le mighty express.js send(), only difference is this one also do XML.
+   *
+   * Function name inspired by express.js
    */
   public function send($value, $status = null) {
     if ( !$this->status ) {
@@ -276,10 +280,21 @@ class Response {
     }
 
     if ( $this->useOutputBuffer ) {
-      ob_clean();
+      @ob_clean();
     }
 
     $this->body = $value;
+  }
+
+  /**
+   * Appends string message to current body.
+   */
+  public function write($message) {
+    if ( !is_string($message) || !is_string($this->body) || is_file($this->body) ) {
+      throw new FrameworkException('Message body is not appendable, please clear before write.');
+    }
+
+    $this->body.= $message;
   }
 
   /**
@@ -303,14 +318,14 @@ class Response {
     $this->body = '';
 
     if ( $this->useOutputBuffer ) {
-      ob_clean();
+      @ob_clean();
     }
   }
 
   /**
    * Sends headers to browser.
    */
-  public function writeHeaders() {
+  public function flushHeaders() {
     if ( PHP_SAPI == 'cli' ) {
       return;
     }
@@ -359,25 +374,77 @@ class Response {
   /**
    * Sends the body to output buffer.
    */
-  public function writeBody() {
-    if ( $this->body instanceof \SplFileObject ) {
-      $this->body->fpassthru();
+  public function flushBody() {
+    $body = $this->getBody(true);
+
+    if ( $body instanceof \SplFileObject ) {
+      $body->fpassthru();
     }
-    else if ( is_resource($this->body) ) {
-      fpassthru($this->body);
+    else if ( is_resource($body) ) {
+      fpassthru($body);
     }
-    else if ( is_string($this->body) && is_file($this->body) ) {
-      $path = realpath(System::getPathname() . '/' . $this->body);
+    else if ( is_string($body) && is_file($body) ) {
+      $path = realpath(System::getPathname() . '/' . $body);
 
       if ( $path && is_readable($path) ) {
         readfile($path);
       }
     }
 
-    echo $this->contentEncode($this->body);
+    echo $this->contentEncode($body);
   }
 
-  public function contentEncode($message) {
+  public function __destruct() {
+    if ( !$this->useOutputBuffer ) {
+      if ( !function_exists('headers_sent') || headers_sent() ) {
+        return;
+      }
+
+      // We can still write to output before headers are sent.
+    }
+
+    if ( $this->header('Location') ) {
+      $this->flushHeaders();
+      // No message body for redirections and mismatched conditional requests.
+    }
+    else {
+      // Push the headers to output buffer
+      $this->flushHeaders();
+
+      // Send the body to output buffer
+      $this->flushBody();
+
+      if ( $this->useOutputBuffer ) {
+        // Flush the PHP output buffer
+        @ob_end_flush();
+
+        // Flush the system output buffer
+        flush();
+      }
+    }
+  }
+
+  /**
+   * Translation shorthand
+   */
+  public function __($key) {
+    $translation = $this->translation;
+    if ( is_callable($translation) ) {
+      return $translation($key);
+    }
+  }
+
+  /**
+   * Cast body as string.
+   */
+  public function __toString() {
+    return $this->getBody();
+  }
+
+  /**
+   * Encodes the content base on current headers.
+   */
+  protected function contentEncode($message) {
     $contentTypes = (array) @$this->headers['Content-Type'];
 
     if ( preg_grep('/json/i', $contentTypes) ) {
@@ -396,13 +463,10 @@ class Response {
     return $message;
   }
 
-  public function __($key) {
-    $translation = $this->translation;
-    if ( is_callable($translation) ) {
-      return $translation($key);
-    }
-  }
-
+  /**
+   * Retrieves HTTP status message depends on the given code, also removes message
+   * body on statuses that do not allows it.
+   */
   protected function getStatusMessage($statusCode) {
     switch ( $statusCode ) {
       // 1xx
@@ -484,13 +548,6 @@ class Response {
       case 598: return 'Network read timeout error';
       case 599: return 'Network connect timeout error'; // Unknown
     }
-  }
-
-  /**
-   * Cast body as string.
-   */
-  public function __toString() {
-    return $this->getBody();
   }
 
 }

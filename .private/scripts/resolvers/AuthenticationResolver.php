@@ -20,6 +20,30 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
 
   const CONFIG_IDENTIFIER = 'auth.paths';
 
+  /**
+   * @protected
+   *
+   * Authentication paths.
+   */
+  protected $paths = array(
+      '*' => true
+    );
+
+  /**
+   * @constructor
+   *
+   * @param {array} $options[paths] Authentication path mappings, defaults
+   *                                { "*": true } to allow everything.
+   */
+  public function __construct(array $options = array()) {
+    if ( empty($options['paths']) ) {
+      throw new FrameworkException('Authentication paths must be specified in $options.');
+    }
+    else {
+      $this->paths = (array) $options['paths'];
+    }
+  }
+
   /*! Example Usage:
    *  { "service":
    *    { "users":
@@ -31,12 +55,7 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
    *  }
    */
   public function resolve(Request $req, Response $res) {
-    $auth = @conf::get(self::CONFIG_IDENTIFIER)->getContents();
-
-    // Defaults to allow everything
-    if ( !$auth ) {
-      $auth = [ '*' => true ];
-    }
+    $auth = $this->paths;
 
     $pathNodes = trim($req->uri('path'), '/');
     if ( $pathNodes ) {

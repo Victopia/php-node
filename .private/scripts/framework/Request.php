@@ -174,9 +174,10 @@ class Request {
             , 'port' => @$_SERVER['REMOTE_PORT']
             , 'user' => @$_SERVER['REMOTE_USER']
             , 'referer' => @$_SERVER['HTTP_REFERER']
-            , 'forwarder' => @$_SERVER['HTTP_X_FORWARDED_FOR']
             , 'version' => @$_SERVER['SERVER_PROTOCOL']
             , 'userAgent' => @$_SERVER['HTTP_USER_AGENT']
+            , 'forwarder' => @$_SERVER['HTTP_X_FORWARDED_FOR']
+            , 'isAjax' => strtolower(@$_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest'
             ), compose('not', 'is_null'));
           break;
       }
