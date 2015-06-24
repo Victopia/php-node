@@ -101,7 +101,7 @@ require_once('.private/scripts/Initialize.php');
         'directoryIndex' => conf::get('web::resolvers.file.indexes', 'Home index')
       );
 
-    if ( conf::get('web::http.output.buffer.enabled') ) {
+    if ( conf::get('web::http.output.buffer.enable') ) {
       $fileResolver['outputBuffer']['size'] = conf::get('web::http.output.buffer.size', 1024);
     }
 
@@ -130,7 +130,7 @@ require_once('.private/scripts/Initialize.php');
   // We have no request context options currently, use defaults.
 
 // Response context
-  if ( conf::get('web::http.output.buffer.enabled') ) {
+  if ( conf::get('web::http.output.buffer.enable') ) {
     $response = new framework\Response(array(
         'outputBuffer' => array(
           'size' => conf::get('web::http.output.buffer.size', 1024)

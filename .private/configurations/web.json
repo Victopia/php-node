@@ -2,7 +2,7 @@
   "http": {
     "output": {
       "buffer": {
-        "enabled": true,
+        "enable": true,
         "size": 1024
       }
     }
