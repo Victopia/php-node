@@ -40,7 +40,7 @@ require_once('.private/scripts/Initialize.php');
   $resolver = new framework\Resolver();
 
   // Maintenance resolver
-    /*! Note: Simply don't put it into chain when disabled. */
+    // Simply don't put it into chain when disabled.
     if ( conf::get('system::maintenance.enable') ) {
       $resolver->registerResolver(new resolvers\MaintenanceResolver(array(
           'templatePath' => conf::get('system::maintenance.template_path'),
@@ -56,7 +56,8 @@ require_once('.private/scripts/Initialize.php');
 
   // Access rules and policy
     $resolver->registerResolver(new resolvers\AuthenticationResolver(array(
-        'paths' => conf::get('web::auth.paths', array('*' => true))
+        'paths' => conf::get('web::auth.paths'),
+        'statusCode' => conf::get('web::auth.statusCode')
       )), 80);
 
   // Locale

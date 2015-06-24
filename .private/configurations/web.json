@@ -8,6 +8,14 @@
     }
   },
 
+  "auth": {
+    "paths": {
+      ".private": false,
+      "*": true
+    },
+    "statusCode": 404
+  },
+
   "resolvers": {
     "file": {
       "indexes": "Home index"

@@ -18,8 +18,6 @@ use framework\exceptions\FrameworkException;
  */
 class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
 
-  const CONFIG_IDENTIFIER = 'auth.paths';
-
   /**
    * @protected
    *
@@ -30,17 +28,27 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
     );
 
   /**
+   * @protected
+   *
+   * HTTP Status Code to send when access is denied.
+   */
+  protected $statusCode = 401;
+
+  /**
    * @constructor
    *
    * @param {array} $options[paths] Authentication path mappings, defaults
    *                                { "*": true } to allow everything.
+   * @param {int} $options[statusCode] HTTP status code to send when access is
+   *                                   denied, defaults to 401 Unauthorized.
    */
   public function __construct(array $options = array()) {
-    if ( empty($options['paths']) ) {
-      throw new FrameworkException('Authentication paths must be specified in $options.');
-    }
-    else {
+    if ( !empty($options['paths']) ) {
       $this->paths = (array) $options['paths'];
+    }
+
+    if ( !empty($options['statusCode']) ) {
+      $this->statusCode = (int) $options['statusCode'];
     }
   }
 
@@ -66,6 +74,10 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
     }
 
     foreach ( $pathNodes as $pathNode ) {
+      if ( !util::isAssoc($auth) ) {
+        break; // No more definitions, break out.
+      }
+
       if ( isset($auth[$pathNode]) ) {
         $auth = $auth[$pathNode];
       }
@@ -78,8 +90,14 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
 
     // Type checking to make sure something has been picked from the foreach loop.
     if ( !is_bool($auth) && (!is_array($auth) || util::isAssoc($auth)) ) {
-      throw new FrameworkException('Invalid authentication format, must be ' .
-        'boolean or array of authenticators.');
+      if ( !isset($this->paths['*']) ) {
+        throw new FrameworkException('Global authentication "*" is not defined, ' .
+          'unable to determine access.');
+      }
+      else {
+        throw new FrameworkException('Invalid authentication format, must be ' .
+          'boolean or array of authenticators.');
+      }
     }
 
     // Numeric array
@@ -116,7 +134,7 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
 
     // Boolean
     if ( is_bool($auth) && !$auth ) {
-      $res->status(401);
+      $res->status($this->statusCode);
     }
 
     // TODO: Mark allowed or denied according to the new resolver mechanism.

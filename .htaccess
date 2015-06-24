@@ -41,14 +41,6 @@
   RewriteBase /
 
   #
-  # Restrict access to certein directories
-
-  # 1. Restrict access to .private folder
-  RewriteCond %{REQUEST_URI} \.private
-  RewriteCond %{REMOTE_ADDR} %{SERVER_ADDR}
-  RewriteRule .* - [R=404,L]
-
-  #
   # Prevent redirection loops
   RewriteCond %{REQUEST_URI} !gateway.php$ [NC]
   # Start redirecting to gateway
