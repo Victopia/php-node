@@ -1,7 +1,7 @@
 {
   "data": {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "id": "http://yourdomain.com/serivce/schemas/Users.json",
+    "id": "/serivce/_/Users/schema",
     "type": "object",
     "title": "User",
     "description": "Users for the Jockey platform",

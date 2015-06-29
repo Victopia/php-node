@@ -5,10 +5,6 @@ namespace model;
 
 class Users extends abstraction\JsonSchemaModel {
 
-  function validate() {
-    return true;
-  }
-
   /**
    * @private
    *
