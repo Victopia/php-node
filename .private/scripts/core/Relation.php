@@ -30,8 +30,8 @@ class Relation {
       $params = array_merge((array) $collection, $result);
 
       $result = Database::select(FRAMEWORK_COLLECTION_RELATION
-        , 'Subject'
-        , 'WHERE `@collection` = ? AND `Object` IN ('. implode(',', array_fill(0, count($result), '?')) .')'
+        , 'subject'
+        , 'WHERE `@collection` = ? AND `object` IN ('. implode(',', array_fill(0, count($result), '?')) .')'
         , $params
         , \PDO::FETCH_COLUMN
         , 0
@@ -48,8 +48,8 @@ class Relation {
       $params = array_merge((array) $collection, $result);
 
       $result = Database::select(FRAMEWORK_COLLECTION_RELATION
-        , 'Object'
-        , 'WHERE `@collection` = ? AND `Subject` IN ('. Utility::fillArray($result) .')'
+        , 'object'
+        , 'WHERE `@collection` = ? AND `subject` IN ('. Utility::fillArray($result) .')'
         , $params
         , \PDO::FETCH_COLUMN
         , 0
@@ -118,8 +118,8 @@ class Relation {
   static function set($collection, $subject, $object) {
     return Database::upsert(FRAMEWORK_COLLECTION_RELATION, array(
         Node::FIELD_COLLECTION => $collection
-      , 'Subject' => $subject
-      , 'Object' => $object
+      , 'subject' => $subject
+      , 'object' => $object
       ));
   }
 
@@ -130,14 +130,14 @@ class Relation {
   //--------------------------------------------------
 
   static function deleteSubjects($collection, $object) {
-    return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `Object` = ?', array($object))->rowCount();
+    return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `object` = ?', array($object))->rowCount();
   }
 
   static function deleteObjects($collection, $subject) {
-    return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `Subject` = ?', array($subject))->rowCount();
+    return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `subject` = ?', array($subject))->rowCount();
   }
 
   static function delete($collection, $subject, $object) {
-    return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `Subject` = ? AND `Object` = ?', array($subject, $object))->rowCount();
+    return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `subject` = ? AND `object` = ?', array($subject, $object))->rowCount();
   }
 }

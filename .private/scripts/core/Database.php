@@ -466,6 +466,13 @@ final class Database {
   }
 
   /**
+   * Returns of current connection is in the middle of a transaction.
+   */
+  public static /* boolean */ function inTransaction() {
+    return self::getConnection()->inTransaction();
+  }
+
+  /**
    * Commit changes.
    */
   public static /* Boolean */

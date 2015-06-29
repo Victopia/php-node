@@ -147,7 +147,7 @@ class Process {
 
       // Process object will be updated
       if ( $identicalProcesses ) {
-        $process['ID'] = $identicalProcesses[0]['ID'];
+        $process['id'] = $identicalProcesses[0]['id'];
       }
 
       unset($identicalProcesses);
@@ -173,7 +173,7 @@ class Process {
     }
 
     if ( is_numeric($res) ) {
-      $process['ID'] = $res;
+      $process['id'] = $res;
     }
 
     unset($res);
@@ -219,7 +219,7 @@ class Process {
   function kill($procId, $signal) {
     $proc = Node::get(array(
         Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
-      , 'ID' => (int) $procId
+      , 'id' => (int) $procId
       ));
 
     $proc = util::unwrapAssoc($proc);
@@ -356,7 +356,7 @@ class Process {
       return false;
     }
 
-    $readOnlyFields = ['ID', 'command', 'type', 'weight', 'pid', 'timestamp'];
+    $readOnlyFields = ['id', 'command', 'type', 'weight', 'pid', 'timestamp'];
 
     if ( in_array($name, $readOnlyFields) ) {
       Database::unlockTables();

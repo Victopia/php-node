@@ -199,7 +199,7 @@ $opts = (new framework\Optimist)
     WHERE `inactive`.`timestamp` <= CURRENT_TIMESTAMP
       AND `start_time` <= CURRENT_TIMESTAMP
       AND `inactive`.`pid` IS NULL
-    ORDER BY `occupation`, `weight` DESC, `ID`
+    ORDER BY `occupation`, `weight` DESC, `id`
     LIMIT 1;');
 
   // No waiting jobs in queue.
@@ -222,8 +222,8 @@ $opts = (new framework\Optimist)
   unset($processContents);
 
   $res = Database::query('UPDATE `' . FRAMEWORK_COLLECTION_PROCESS . '` SET `pid` = ?
-    WHERE `ID` = ? AND `pid` IS NULL LIMIT 1',
-    [ getmypid(), $process['ID'] ]);
+    WHERE `id` = ? AND `pid` IS NULL LIMIT 1',
+    [ getmypid(), $process['id'] ]);
 
 // Commit transaction
   Database::unlockTables(true);
@@ -286,19 +286,19 @@ $opts = (new framework\Optimist)
   switch ( strtolower($process['type']) ) {
     // Permanent processes will be restarted upon death
     case 'permanent':
-      core\Database::query('UPDATE `'.FRAMEWORK_COLLECTION_PROCESS.'` SET `pid` = NULL WHERE `ID` = ?', $process['ID']);
+      core\Database::query('UPDATE `'.FRAMEWORK_COLLECTION_PROCESS.'` SET `pid` = NULL WHERE `id` = ?', $process['id']);
 
       Log::write('Permanent process died, clearing pid.', 'Debug', [$res, $process]);
       break;
 
     // Sets pid to 0, prevents it fire again and double enqueue of the same time slot.
     case 'cron':
-      core\Database::query('UPDATE `'.FRAMEWORK_COLLECTION_PROCESS.'` SET `pid` = 0 WHERE `ID` = ?', $process['ID']);
+      core\Database::query('UPDATE `'.FRAMEWORK_COLLECTION_PROCESS.'` SET `pid` = 0 WHERE `id` = ?', $process['id']);
       break;
 
     // Deletes the process object upon exit
     default:
-      $process = array_select($process, array(Node::FIELD_COLLECTION, 'ID', /*'type', 'weight', 'capacity', */'pid'));
+      $process = array_select($process, array(Node::FIELD_COLLECTION, 'id', /*'type', 'weight', 'capacity', */'pid'));
 
       $res = Node::delete($process);
 

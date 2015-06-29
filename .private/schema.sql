@@ -19,13 +19,13 @@ CREATE TABLE `Configurations` (
 DROP TABLE IF EXISTS `Files`;
 CREATE TABLE `Files` (
   `id` bigint(20) unsigned zerofill NOT NULL AUTO_INCREMENT,
-  `UserID` bigint(20) unsigned zerofill NOT NULL,
+  `UserId` bigint(20) unsigned zerofill NOT NULL,
   `name` varchar(255) NOT NULL,
   `mime` varchar(255) NOT NULL,
   `@contents` longblob,
   `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `uni_UserID_name` (`UserID`,`name`)
+  UNIQUE KEY `uni_UserId_name` (`UserId`,`name`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
@@ -34,13 +34,13 @@ CREATE TABLE `Files` (
 
 DROP TABLE IF EXISTS `Logs`;
 CREATE TABLE `Logs` (
-  `ID` bigint(20) unsigned zerofill NOT NULL AUTO_INCREMENT,
+  `id` bigint(20) unsigned zerofill NOT NULL AUTO_INCREMENT,
   `type` enum('Access','Information','Notice','Warning','Exception','Error','Debug') NOT NULL DEFAULT 'Information',
   `subject` char(255) NOT NULL DEFAULT '',
   `action` char(78) NOT NULL DEFAULT '',
   `@contents` longtext NOT NULL,
   `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (`ID`),
+  PRIMARY KEY (`id`),
   KEY `type` (`type`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='This table should not have update actions performed upon.';
 
@@ -50,11 +50,11 @@ CREATE TABLE `Logs` (
 
 DROP TABLE IF EXISTS `Nodes`;
 CREATE TABLE `Nodes` (
-  `ID` bigint(20) unsigned zerofill NOT NULL AUTO_INCREMENT,
+  `id` bigint(20) unsigned zerofill NOT NULL AUTO_INCREMENT,
   `@collection` varchar(255) NOT NULL,
   `@contents` longtext NOT NULL,
   `timestamp` timestamp,
-  PRIMARY KEY (`ID`),
+  PRIMARY KEY (`id`),
   FULLTEXT KEY `content` (`@contents`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci COMMENT='Data nodes';
 
@@ -65,10 +65,10 @@ CREATE TABLE `Nodes` (
 DROP TABLE IF EXISTS `NodeRelations`;
 CREATE TABLE `NodeRelations` (
   `@collection` varchar(255) NOT NULL,
-  `Subject` varchar(40) NOT NULL,
-  `Object` varchar(40) NOT NULL,
-  PRIMARY KEY (`@collection`,`Subject`,`Object`),
-  KEY `key_collection_object` (`@collection`,`Object`)
+  `subject` varchar(40) NOT NULL,
+  `object` varchar(40) NOT NULL,
+  PRIMARY KEY (`@collection`,`subject`,`object`),
+  KEY `key_collection_object` (`@collection`,`object`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
@@ -77,7 +77,7 @@ CREATE TABLE `NodeRelations` (
 
 DROP TABLE IF EXISTS `Processes`;
 CREATE TABLE `Processes` (
-  `ID` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `command` longtext NOT NULL,
   `type` varchar(255) NOT NULL DEFAULT 'system',
   `weight` tinyint(1) unsigned NOT NULL DEFAULT '100' COMMENT 'Process Prority',
@@ -86,7 +86,7 @@ CREATE TABLE `Processes` (
   `start_time` datetime NOT NULL COMMENT 'Scheduled Start Time',
   `@contents` longtext NOT NULL,
   `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`ID`),
+  PRIMARY KEY (`id`),
   UNIQUE KEY `pid` (`pid`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
@@ -110,11 +110,11 @@ CREATE TABLE `ProcessSchedules` (
 
 DROP TABLE IF EXISTS `Sessions`;
 CREATE TABLE `Sessions` (
-  `UserID` bigint(20) unsigned zerofill NOT NULL,
+  `UserId` bigint(20) unsigned zerofill NOT NULL,
   `sid` varchar(40) NOT NULL,
   `token` varchar(40),
   `timestamp` timestamp,
-  PRIMARY KEY (`UserID`),
+  PRIMARY KEY (`UserId`),
   UNIQUE KEY `sid` (`sid`)
 ) ENGINE=MEMORY DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
@@ -138,12 +138,12 @@ CREATE TABLE `Translations` (
 
 DROP TABLE IF EXISTS `Users`;
 CREATE TABLE `Users` (
-  `ID` bigint(20) unsigned zerofill NOT NULL AUTO_INCREMENT,
+  `id` bigint(20) unsigned zerofill NOT NULL AUTO_INCREMENT,
   `username` char(255) NOT NULL,
   `password` char(119) NOT NULL,
   `status` smallint(6) NOT NULL DEFAULT 2,
   `@contents` longtext NOT NULL,
   `timestamp` timestamp,
-  PRIMARY KEY (`ID`),
+  PRIMARY KEY (`id`),
   KEY `idx_credentials` (`username`,`password`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
