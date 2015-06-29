@@ -58,6 +58,8 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
 
   /**
    * Retrieves or updates data of current model.
+   *
+   * For incremental updates please refer to appendData() or prependData().
    */
   function data($data = null) {
     if ( $data === null ) {
@@ -66,6 +68,30 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     else {
       $this->data = array_filter_keys((array) $data, compose('not', startsWith('@')));
     }
+  }
+
+  /**
+   * Append data to current model data, this is equivalent to using `+` operator
+   * with arrays, inexisting keys will be added to current data.
+   *
+   * @param {array} $data Array of data to be appended.
+   */
+  function appendData($data) {
+    $data = array_filter_keys((array) $data, compose('not', startsWith('@')));
+
+    $this->data+= $data;
+  }
+
+  /**
+   * Add data on top of current model data, this differs from appendData() in a
+   * way that the specified data takes precedence.
+   *
+   * @param {array} $data Arrray of data to be prepended.
+   */
+  function prependData($data) {
+    $data = array_filter_keys((array) $data, compose('not', startsWith('@')));
+
+    $this->data = $data + $this->data;
   }
 
   /**

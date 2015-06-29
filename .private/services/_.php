@@ -113,7 +113,21 @@ class _ extends \framework\WebService {
   protected function set() {
     $data = (array) $this->request()->param();
     if ( $data ) {
-      $this->modelClass->data($data);
+      // This will append the existing data to the submitted one.
+      if ( $this->request()->meta('extends') ) {
+        if ( !isset($data[$this->modelClass->primaryKey()]) ) {
+          throw new ServiceException('Extending data without identity field.');
+        }
+
+        $this->modelClass->load(
+          $data[$this->modelClass->primaryKey()]
+          );
+
+        $this->modelClass->appendData($data);
+      }
+      else {
+        $this->modelClass->data($data);
+      }
 
       $errors = $this->modelClass->validate();
       if ( is_array($errors) ) {
