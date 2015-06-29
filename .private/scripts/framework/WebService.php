@@ -93,12 +93,6 @@ abstract class WebService implements interfaces\IWebService {
 		return @$this->request()->user;
 	}
 
-	protected function userIsAdmin() {
-		$user = (array) $this->userContext();
-
-		return in_array('Administrators', (array) @$user['groups']);
-	}
-
 	protected function isLocal() {
 		return (bool) @$this->request()->isLocal;
 	}
