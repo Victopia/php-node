@@ -267,17 +267,8 @@ class Response {
    *
    * Function name inspired by express.js
    */
-  public function send($value, $status = null) {
-    if ( !$this->status ) {
-      $status = 200;
-    }
-
+  public function send($value, $status = 200) {
     $this->status($status);
-
-    if ( $this->status() >= 300 and $this->status() < 400 ) {
-      // No body output should be appended
-      $value = '';
-    }
 
     if ( $this->useOutputBuffer ) {
       @ob_clean();
