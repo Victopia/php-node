@@ -6,6 +6,8 @@ namespace framework;
 use core\Net;
 use core\Utility;
 
+use framework\Configuration as conf;
+
 use framework\exceptions\ServiceException;
 
 class Service {
@@ -17,7 +19,7 @@ class Service {
   //----------------------------------------------------------------------------
 
   private static $defaultOptions = array(
-    'type' => 'get'
+    'method' => 'get'
   );
 
   //----------------------------------------------------------------------------
@@ -36,16 +38,22 @@ class Service {
     }
 
     if ( is_string($options) ) {
-      $options = array( 'type' => $options );
+      $options = array( 'method' => $options );
+    }
+
+    if ( isset($options['type']) && empty($options['method']) ) {
+      $options['method'] = $options['type'];
     }
 
     $options = (array) $options + self::$defaultOptions;
 
+    $prefix = conf::get('web::resolvers.service.prefix', '/service');
     $options['uri'] = array(
         'scheme' => (bool) @$options['secure']? 'https': 'http'
       , 'host' => $hostname
-      , 'path' => "/service/$service/$method/" . implode('/', array_map('urlencode', (array) $parameters))
+      , 'path' => "$prefix/$service/$method/" . implode('/', array_map('urlencode', (array) $parameters))
       );
+    unset($prefix);
 
     // Customizable Resolver
     if ( @$options['resolver'] instanceof Resolver ) {
