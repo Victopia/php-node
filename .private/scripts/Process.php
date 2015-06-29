@@ -10,7 +10,7 @@ use core\Utility;
 
 use Cron\CronExpression;
 
-use framework\Configuration;
+use framework\Configuration as conf;
 use framework\Process;
 
 use framework\exceptions\ProcessException;
@@ -84,8 +84,7 @@ $opts = (new framework\Optimist)
   if ( @$opts['cron'] ) {
     Log::write('Cron started process.', 'Debug');
 
-    // Cron started worker also enqueues new process from the schdule table.
-    Node::getAsync(FRAMEWORK_COLLECTION_PROCESS_SCHEDULE, function($schedule) {
+    $scheduler = function($schedule) {
       $nextTime = CronExpression::factory($schedule['schedule'])->getNextRunDate()->format('Y-m-d H:i:s');
 
       /*! Note
@@ -111,7 +110,13 @@ $opts = (new framework\Optimist)
 
         Process::enqueue($schedule['command'], $schedule);
       }
-    });
+    };
+
+    // Configuration based crontab
+    array_map($scheduler, (array) conf::get('crontab::schedules'));
+
+    // Cron started worker also enqueues new process from the schdule table.
+    Node::getAsync(FRAMEWORK_COLLECTION_PROCESS_SCHEDULE, $scheduler);
   }
 
 // Avoid forking connection crash, renew the connection.
@@ -152,7 +157,7 @@ $opts = (new framework\Optimist)
   Database::disconnect();
 
 // Get maximum allowed connections before table lock.
-  $capLimit = (int) @Configuration::get('core.Net::maxConnections');
+  $capLimit = (int) @conf::get('system::crontab.process_limit');
   if ( !$capLimit ) {
     $capLimit = Process::MAXIMUM_CAPACITY;
   }
