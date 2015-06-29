@@ -26,7 +26,7 @@ abstract class JsonSchemaModel extends AbstractModel {
       }
 
       // return errors if exists
-      if ( !empty($result->errors) )
+      if ( !empty($result->errors) ) {
         return util::objectToArray($result->errors);
       }
     }
