@@ -103,6 +103,10 @@ class ExceptionsHandler {
     if ( Database::isConnected() ) {
       // Release table locks of current session.
       @Database::unlockTables(false);
+
+      if ( Database::inTransaction() ) {
+        @Database::rollback();
+      }
     }
 
     $logContext = array_filter(array(
