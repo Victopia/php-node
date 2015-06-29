@@ -7,8 +7,8 @@
     "mustache/mustache": "~2.8",
     "mtdowling/cron-expression": "~1",
     "erusev/parsedown": "~1.5",
-    "justinrainbow/json-schema": "~1.4"
     "symfony/yaml": "~3.0",
+    "geraintluff/jsv4": "~1.0"
   },
   "require-dev": {
     "simpletest/simpletest": "dev-master"

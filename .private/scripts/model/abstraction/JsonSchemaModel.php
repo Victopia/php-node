@@ -3,25 +3,32 @@
 
 namespace model\abstraction;
 
+use core\Log;
+use core\Utility as util;
+
 use framework\Configuration as conf;
+
+use Jsv4;
 
 abstract class JsonSchemaModel extends AbstractModel {
 
   public function validate() {
     $schema = $this->schema();
 
-    (new \JsonSchema\RefResolver(new \JsonSchema\Uri\UriRetriever))->resolve($schema);
-
-    $validator = new \JsonSchema\Validator;
-
-    $validator->check($this->data, $schema);
-    if ( $validator->isValid() ) {
+    if ( Jsv4::isValid($this->data, $schema) ) {
       return array();
     }
     else {
-      return array_reduce($validator->getErrors(), function($result, $error) {
-        $result[] = sprintf('[%s] %s', $error['property'], $error['message']);
-      }, array());
+      // try to coerce on initial failure
+      $result = Jsv4::coerce($this->data, $schema);
+      if ( $result->value ) {
+        $this->data = $result->value;
+      }
+
+      // return errors if exists
+      if ( !empty($result->errors) )
+        return util::objectToArray($result->errors);
+      }
     }
   }
 
