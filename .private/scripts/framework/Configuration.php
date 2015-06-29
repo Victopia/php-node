@@ -7,6 +7,8 @@ use core\Node;
 use core\Database;
 use core\Utility as util;
 
+use Symfony\Component\Yaml\Yaml;
+
 /* Usage:
 
 	Similar as SimpleXMLElement.
@@ -158,19 +160,25 @@ class Configuration implements \Iterator, \ArrayAccess {
 					if ( $res ) {
 						$confObj+= $res;
 					}
+					else {
+						throw new exceptions\FrameworkException('JSON file exists but decode failed.');
+					}
 				}
 
 				unset($res);
 			}
 
-			// YAML support
-			if ( function_exists('yaml_parse_file') ) {
+			// YAML support (symfony/yaml)
+			if ( class_exists('Yaml') ) {
 				$res = self::FALLBACK_DIRECTORY . "/$this->key.yaml";
 				if ( is_readable($res) ) {
-					$res = yaml_parse_file($res);
+					$res = Yaml::parse($res);
 					// Sorry mate, at least an array.
 					if ( is_array($res) ) {
 						$confObj+= $res;
+					}
+					else {
+						throw new exceptions\FrameworkException('YAML file exists but decode failed.');
 					}
 				}
 

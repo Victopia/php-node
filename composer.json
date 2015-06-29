@@ -8,6 +8,7 @@
     "mtdowling/cron-expression": "~1",
     "erusev/parsedown": "~1.5",
     "justinrainbow/json-schema": "~1.4"
+    "symfony/yaml": "~3.0",
   },
   "require-dev": {
     "simpletest/simpletest": "dev-master"
