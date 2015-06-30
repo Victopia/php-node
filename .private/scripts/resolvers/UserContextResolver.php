@@ -76,7 +76,7 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
         // When no user is set, add a default user
         else if ( $this->setupSession && !@\core\Node::get('User') ) {
           $req->user->data(
-            [ 'ID' => 0
+            [ 'id' => 0
             , 'groups' => ['Administrators']
             , 'username' => 'default'
             ]);

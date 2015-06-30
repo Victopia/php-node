@@ -3,6 +3,7 @@
 
 namespace model\abstraction;
 
+use core\Database;
 use core\EventEmitter;
 use core\Node;
 use core\Utility as util;
@@ -34,7 +35,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    *
    * Primary key
    */
-  protected $primaryKey = 'ID';
+  protected $primaryKey = 'id';
 
   function primaryKey() {
     return $this->primaryKey;
