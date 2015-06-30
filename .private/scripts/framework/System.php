@@ -109,9 +109,8 @@ class System {
    * Get the system root path.
    *
    * Approach 1: Based on relative directory of this script file.
-   *
-   * Approach 2: The last element of debug_backtrace(), may consume more memories
-   *             so cache it with static.
+   * Approach 2: The last element of debug_backtrace() assumes "gateway.php",
+   *             may consume more memories so cache it with static.
    *
    * @param {string} $type Configuration path to the base path relative to system root.
    */
@@ -119,7 +118,7 @@ class System {
     static $root;
     if ( !$root ) {
       // Approach 1
-      $root = str_replace(DS, '/', realpath('.'));
+      $root = realpath(__DIR__ . '/../../..');
 
       // Approach 2
       // $root = debug_backtrace();
@@ -130,7 +129,7 @@ class System {
     if ( $type ) {
       $type = (string) conf::get("system.paths::$type");
       if ( $type ) {
-        return "$root/" . str_replace(DS, '/', $type);
+        return "$root/" . str_replace(DIRECTORY_SEPARATOR, '/', $type);
       }
     }
 
@@ -291,7 +290,10 @@ class System {
       spl_autoload_register(array(__CLASS__, '__autoload'));
     }
 
-    $prefixes = (array) @conf::get('modules::prefix');
+    // Make sure working directory the same as gateway.php
+    @chdir(self::getPathname());
+
+    $prefixes = (array) conf::get('modules::prefix');
     if ( $prefixes ) {
       self::$pathPrefixes = $prefixes;
     }

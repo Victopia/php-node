@@ -1,7 +1,7 @@
 <?php
 /* Process.php | Daemon dequeues and executes processes from the database. */
 
-require_once('.private/scripts/Initialize.php');
+require_once(__DIR__ . '/Initialize.php');
 
 use core\Database;
 use core\Log;
