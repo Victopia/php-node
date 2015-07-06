@@ -1,7 +1,7 @@
 <?php
 /*! AbstractModel.php | Abstraction the data model structure. */
 
-namespace model\abstraction;
+namespace models\abstraction;
 
 use core\Database;
 use core\EventEmitter;

@@ -1,7 +1,7 @@
 <?php
 /*! Schemas.php | Defines JSON Schemas for other JsonSchemaModels to use. */
 
-namespace model;
+namespace models;
 
 use framework\Configuration as conf;
 

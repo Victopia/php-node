@@ -28,7 +28,7 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
   }
 
   public function resolve(Request $req, Response $res) {
-    $req->user = new \model\Users();
+    $req->user = new \models\Users();
 
     // User from CLI
     switch ( $req->client('type') ) {

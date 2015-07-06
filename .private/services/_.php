@@ -55,11 +55,11 @@ class _ extends \framework\WebService {
       // $this->response()->status(501);
       return;
     }
-    else if ( !class_exists("model\\$model") ) {
+    else if ( !class_exists("models\\$model") ) {
       throw new ServiceException("Model $model does not exist.");
     }
 
-    $model = "model\\$model";
+    $model = "models\\$model";
     $this->modelClass = new $model();
 
     // Remove model name

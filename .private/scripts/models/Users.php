@@ -1,7 +1,7 @@
 <?php
 /*! Users.php | The user data model. */
 
-namespace model;
+namespace models;
 
 class Users extends abstraction\JsonSchemaModel {
 

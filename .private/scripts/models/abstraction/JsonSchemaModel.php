@@ -1,7 +1,7 @@
 <?php
 /*! JsonSchemaModel.php | Data models that leverages JSON schema. */
 
-namespace model\abstraction;
+namespace models\abstraction;
 
 use core\Log;
 use core\Utility as util;
