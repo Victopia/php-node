@@ -42,9 +42,9 @@
 
   #
   # Prevent redirection loops
-  RewriteCond %{REQUEST_URI} !gateway.php$ [NC]
+  RewriteCond %{REQUEST_URI} !.private/gateway.php$ [NC]
   # Start redirecting to gateway
-  RewriteRule .* gateway.php [L]
+  RewriteRule .* .private/gateway.php [L]
 
 </IfModule>
 

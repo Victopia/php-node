@@ -28,7 +28,7 @@ use framework\System;
 //
 //--------------------------------------------------
 
-require_once('.private/scripts/Initialize.php');
+require_once('scripts/Initialize.php');
 
 //--------------------------------------------------
 //
