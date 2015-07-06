@@ -92,6 +92,11 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
     $path = $request->uri('path');
 
+    // Store original request
+    if ( empty($request->__directoryIndex) ) {
+      $request->__uri = $request->uri();
+    }
+
     if ( stripos($path, $this->pathPrefix) === 0 ) {
       $path = substr($path, strlen($this->pathPrefix));
     }
@@ -110,7 +115,8 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     //  Emulate DirectoryIndex
     //------------------------------
     if ( is_dir($path) ) {
-      if ( !is_file($path) ) {
+      if ( !is_file($path) && !isset($request->__directoryIndex) ) {
+        // Prevent redirection loop
         $request->__directoryIndex = true;
 
         foreach ( $this->directoryIndex() as $file ) {
@@ -124,7 +130,9 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
         unset($request->__directoryIndex);
 
         // Nothing works, going down.
-        $request->setUri($path);
+        if ( isset($request->__uri) ) {
+          $request->setUri($request->__uri);
+        }
       }
     }
     // Redirects a directory index path to the parent directory.

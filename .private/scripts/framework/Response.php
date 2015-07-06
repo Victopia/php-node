@@ -290,16 +290,9 @@ class Response {
 
   /**
    * Retrieves the message content.
-   *
-   * @param {?boolean} $clearsBody If true, message content will be cleared upon retrieval.
    */
-  public function getBody($clearsBody = false) {
-    $message = $this->body;
-    if ( $clearsBody ) {
-      $this->clearBody();
-    }
-
-    return $message;
+  public function body() {
+    return $this->body;
   }
 
   /**
@@ -366,7 +359,7 @@ class Response {
    * Sends the body to output buffer.
    */
   public function flushBody() {
-    $body = $this->getBody(true);
+    $body = $this->body();
 
     if ( $body instanceof \SplFileObject ) {
       $body->fpassthru();
@@ -412,6 +405,8 @@ class Response {
         // Flush the system output buffer
         flush();
       }
+
+      // $this->clearBody();
     }
   }
 
@@ -429,7 +424,7 @@ class Response {
    * Cast body as string.
    */
   public function __toString() {
-    return $this->getBody();
+    return $this->body();
   }
 
   /**
