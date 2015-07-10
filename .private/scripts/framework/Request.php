@@ -588,10 +588,7 @@ class Request {
       $result = array_filter_keys($result,
         funcAnd(
           notIn([ ini_get('session.name') ]),
-          compose(
-            'not',
-            startsWith($this->paramPrefix)
-          )
+          compose('not', startsWith($this->paramPrefix))
         )
       );
     }
@@ -667,7 +664,7 @@ class Request {
    * @return {Response} The response object after resolution.
    */
   public function send(Resolver $resolver = null, Response $response = null) {
-    if ( $this->resolver ) {
+    if ( $this->resolver() ) {
       trigger_error('Active request cannot be fired again.', E_USER_WARNING);
       return;
     }

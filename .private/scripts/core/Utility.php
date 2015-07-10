@@ -5,9 +5,7 @@ namespace core;
 
 use framework\Configuration;
 use framework\MustacheResource;
-use framework\Request;
 use framework\Resolver;
-use framework\System;
 
 /**
  * Utility class.
@@ -106,42 +104,6 @@ class Utility {
     }
 
     return $filters;
-  }
-
-  /**
-   * Returns whether the current process is in CLI environment.
-   */
-  static function isCLI() {
-    return php_sapi_name() == 'cli' && empty($_SERVER['REMOTE_ADDR']);
-  }
-
-  /**
-   * Gets all network interfaces with an appropriate IPv4 address.
-   *
-   * Mimic the output of os.networkInterfaces() in node.js.
-   */
-  static function networkInterfaces() {
-    return System::networkInterfaces();
-  }
-
-  /**
-   * Returns whether current request is made by local redirect.
-   */
-  static function isLocalRedirect() {
-    return @$_SERVER['HTTP_REFERER'] == System::getHostname('local') &&
-      @$_SERVER['HTTP_HOST'] == System::getHostname() &&
-      @$_SERVER['HTTP_USER_AGENT'] == 'X-PHP';
-  }
-
-  /**
-   * Shorthand function for either isCLI() or isLocalRedirect().
-   *
-   * Service methods should normally allow this no matter what,
-   * unless user accessible data range must be enforced. Functions
-   * should then implement a way to indicate target user.
-   */
-  static function isLocal() {
-    return self::isCLI() || self::isLocalRedirect();
   }
 
   /**

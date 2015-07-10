@@ -317,7 +317,7 @@ class Process {
    */
   public static /* mixed */
   function get($name = null) {
-    if ( !util::isCLI() || !function_exists('posix_getppid') ) {
+    if ( constant('PHP_SAPI') != 'cli' || !function_exists('posix_getppid') ) {
       return null;
     }
 

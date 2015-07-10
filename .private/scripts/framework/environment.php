@@ -25,7 +25,7 @@ date_default_timezone_set(
 // Allow more nesting for functional programming.
 ini_set('xdebug.max_nesting_level', 1000);
 
-if ( Utility::isCLI() ) {
+if ( constant('PHP_SAPI') == 'cli' ) {
   // Turn on garbage collection
   gc_enable();
 }
