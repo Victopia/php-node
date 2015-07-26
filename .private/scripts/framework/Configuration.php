@@ -152,38 +152,49 @@ class Configuration implements \Iterator, \ArrayAccess {
 				unset($res);
 			}
 
-			// JSON support
-			if ( function_exists('json_decode') ) {
-				$res = self::FALLBACK_DIRECTORY . "/$this->key.json";
-				if ( is_readable($res) ) {
-					$res = (array) @json_decode(file_get_contents($res), 1);
-					if ( $res ) {
-						$confObj+= $res;
-					}
-					else {
-						throw new exceptions\FrameworkException('JSON file exists but decode failed.');
-					}
+			// basenames to search
+			$basenames = array('', gethostname());
+
+			array_walk($basenames, function($basename) use(&$confObj) {
+				if ( $basename ) {
+					$basename = ".$basename";
 				}
 
-				unset($res);
-			}
+				$basename = self::FALLBACK_DIRECTORY . "/$this->key$basename";
 
-			// YAML support (symfony/yaml)
-			if ( class_exists('Yaml') ) {
-				$res = self::FALLBACK_DIRECTORY . "/$this->key.yaml";
-				if ( is_readable($res) ) {
-					$res = Yaml::parse($res);
-					// Sorry mate, at least an array.
-					if ( is_array($res) ) {
-						$confObj+= $res;
+				// JSON Support
+				if ( function_exists('json_decode') ) {
+					$res = "$basename.json";
+					if ( is_readable($res) ) {
+						$res = (array) @json_decode(file_get_contents($res), 1);
+						if ( $res ) {
+							$confObj = $res + $confObj;
+						}
+						else {
+							throw new exceptions\FrameworkException('JSON file exists but decode failed.');
+						}
 					}
-					else {
-						throw new exceptions\FrameworkException('YAML file exists but decode failed.');
-					}
+
+					unset($res);
 				}
 
-				unset($res);
-			}
+				// YAML support (symfony/yaml)
+				if ( class_exists('Yaml') ) {
+					$res = "$basename.yaml";
+					if ( is_readable($res) ) {
+						$res = Yaml::parse($res);
+						// Sorry mate, at least an array.
+						if ( is_array($res) ) {
+							$confObj = $res + $confObj;
+						}
+						else {
+							throw new exceptions\FrameworkException('YAML file exists but decode failed.');
+						}
+					}
+
+					unset($res);
+				}
+			});
 		}
 		else {
 			$confObj = &$this->parentObject->__valueOf();
