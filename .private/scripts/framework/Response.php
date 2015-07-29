@@ -374,8 +374,9 @@ class Response {
         readfile($path);
       }
     }
-
-    echo $this->contentEncode($body);
+    else {
+      echo $this->contentEncode($body);
+    }
   }
 
   public function __destruct() {
