@@ -3,13 +3,24 @@
 
 namespace models\abstraction;
 
-use core\Database;
+use Reflection;
+use ReflectionMethod;
+
 use core\EventEmitter;
 use core\Node;
 use core\Utility as util;
 
 /**
  * Base class for all data models.
+ *
+ * Data access will be catered by ArrayAccess, and Magic Methods __get, __set, __isset and __unset.
+ *
+ * Property access will be served by __invoke() with the following rules:
+ * 1. Public properties are directly accessible, this will bypass all generic methods.
+ * 2. Properties starting with an underscore will be treated as read-only.
+ *    i.e. `protected $_foo;` can be accessed via `$obj->foo()`;
+ * 3. Normal properties will take precedence of 2) and reads with the same way as 2).
+ * 4. Normal properties can also be written with `$obj->foo($value);` which is chainable.
  */
 abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Countable, \JsonSerializable {
 
@@ -22,31 +33,30 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   /**
    * @private
    *
-   * Collection name of this data model
+   * (Read-only) Collection name of this data model
    */
-  protected $collectionName;
-
-  function collectionName() {
-    return $this->collectionName;
-  }
+  protected $_collectionName;
 
   /**
    * @private
    *
-   * Primary key
+   * (Read-only) Primary key
    */
-  protected $primaryKey = 'id';
+  protected $_primaryKey = 'id';
 
-  function primaryKey() {
-    return $this->primaryKey;
-  }
-
+  /**
+   * Accessor to data value under the name of the primaryKey property.
+   *
+   * @param {?int|string} $value Identity key to replace, omit this to read.
+   * @return {int|string|AbstractModel} Identity key when read, $this when write.
+   */
   function identity($value = null) {
     if ( $value === null ) {
-      return $this[$this->primaryKey];
+      return @$this[$this->_primaryKey];
     }
     else {
-      $this[$this->primaryKey] = $value;
+      $this[$this->_primaryKey] = $value;
+      return $this; // chainable
     }
   }
 
@@ -58,16 +68,20 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   protected $data = array();
 
   /**
-   * Retrieves or updates data of current model.
+   * Retrieves and/or replaces internal data of current model.
    *
-   * For incremental updates please refer to appendData() or prependData().
+   * For additive updates please refer to appendData() or prependData().
+   *
+   * @param {?array} $value The data to be replaced.
+   * @return {array|AbstractModel} Data when read, $this when write.
    */
-  function data($data = null) {
-    if ( $data === null ) {
+  function data(array $value = null) {
+    if ( $value === null ) {
       return $this->data;
     }
     else {
-      $this->data = array_filter_keys((array) $data, compose('not', startsWith('@')));
+      $this->data = array_filter_keys((array) $value, compose('not', startsWith('@')));
+      return $this;
     }
   }
 
@@ -76,11 +90,11 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * with arrays, inexisting keys will be added to current data.
    *
    * @param {array} $data Array of data to be appended.
+   * @return {AbstractModel} Chainable
    */
-  function appendData($data) {
-    $data = array_filter_keys((array) $data, compose('not', startsWith('@')));
-
-    $this->data+= $data;
+  function appendData(array $data) {
+    $this->data($this->data + $data);
+    return $this;
   }
 
   /**
@@ -88,11 +102,11 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * way that the specified data takes precedence.
    *
    * @param {array} $data Arrray of data to be prepended.
+   * @return {AbstractModel} Chainable
    */
-  function prependData($data) {
-    $data = array_filter_keys((array) $data, compose('not', startsWith('@')));
-
-    $this->data = $data + $this->data;
+  function prependData(array $data) {
+    $this->data($data + $this->data);
+    return $this;
   }
 
   /**
@@ -102,13 +116,54 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * true when saving a model without an identity value or with an identity of
    * inexistance.
    */
-  private $isCreate = false;
+  private $_isCreate = false;
+
+  //----------------------------------------------------------------------------
+  //
+  //  Overloading
+  //
+  //----------------------------------------------------------------------------
+
+  function __get($name) {
+    return $this->data[$name];
+  }
+
+  function __set($name, $value) {
+    if ( $offset[0] != '@' ) {
+      $this->data[$name] = $value;
+    }
+  }
+
+  function __isset($name) {
+    return isset($this->data[$name]);
+  }
+
+  function __unset($name) {
+    unset($this->data[$name]);
+  }
 
   /**
-   * (read-only) Check if the model is now in the middle of creation save.
+   * Generic accessors
    */
-  protected function isCreate() {
-    return $this->isCreate;
+  function __call($name, $args) {
+    // Note: public methods are called directly, we don't need to take care of methods here.
+
+    // RW takes precedence
+    if ( isset($this->$name) ) {
+      if ( !$args ) {
+        return $this->data[$name];
+      }
+
+      if ( count($args) == 1 ) {
+        $this->$name = $args[0];
+
+        return $this;
+      }
+    }
+    // Read-only properties
+    else if ( isset($this->{"_$name"}) ) {
+      return $this->{"_$name"};
+    }
   }
 
   //----------------------------------------------------------------------------
@@ -117,22 +172,20 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   //
   //----------------------------------------------------------------------------
 
-  function offsetExists($offset) {
-    return isset($this->data[$offset]);
-  }
-
   function offsetGet($offset) {
-    return @$this->data[$offset];
+    return $this->$offset;
   }
 
   function offsetSet($offset, $value) {
-    if ( $offset[0] != '@' ) {
-      $this->data[$offset] = $value;
-    }
+    $this->$offset = $value;
+  }
+
+  function offsetExists($offset) {
+    return isset($this->$offset);
   }
 
   function offsetUnset($offset) {
-    unset($this->data);
+    unset($this->$offset);
   }
 
   //----------------------------------------------------------------------------
@@ -167,28 +220,6 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
 
   //----------------------------------------------------------------------------
   //
-  //  Overloading
-  //
-  //----------------------------------------------------------------------------
-
-  function __get($name) {
-    return $this->data[$name];
-  }
-
-  function __set($name, $value) {
-    $this->data[$name] = $value;
-  }
-
-  function __isset($name) {
-    return isset($this->data[$name]);
-  }
-
-  function __unset($name) {
-    unset($this->data[$name]);
-  }
-
-  //----------------------------------------------------------------------------
-  //
   //  Methods
   //
   //----------------------------------------------------------------------------
@@ -201,9 +232,10 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   function __construct($data = null) {
     $this->data($data);
 
-    if ( !$this->collectionName ) {
-      $this->collectionName = explode('\\', get_called_class());
-      $this->collectionName = end($this->collectionName);
+    // Note: Inheriting classes can define the property to override this.
+    if ( !$this->_collectionName ) {
+      $this->_collectionName = explode('\\', get_called_class());
+      $this->_collectionName = end($this->_collectionName);
     }
   }
 
@@ -213,9 +245,12 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * Data models should implement this method to validate before save, database
    * exceptions are not supposed to be thrown directly.
    *
-   * @return {array} An array of errors.
+   * @param {array} An array of errors.
+   * @return {AbstractModel} Chainable.
    */
-  abstract function validate();
+  function validate(&$errors = array()) {
+    return $this;
+  }
 
   /**
    * Get a list of data models from the collection.
@@ -223,11 +258,11 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   function get($filter = array()) {
     if ( $filter && !util::isAssoc($filter) ) {
       $filter = array(
-          $this->primaryKey => $filter
+          $this->_primaryKey => $filter
         );
     }
 
-    $filter[Node::FIELD_COLLECTION] = $this->collectionName;
+    $filter[Node::FIELD_COLLECTION] = $this->_collectionName;
 
     $collection = array();
     Node::getAsync($filter, function($data) use(&$collection) {
@@ -252,18 +287,18 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    */
   function load($identity) {
     $filter = array(
-        Node::FIELD_COLLECTION => $this->collectionName
-      , $this->primaryKey => $identity
+        Node::FIELD_COLLECTION => $this->_collectionName
+      , $this->_primaryKey => $identity
       );
 
     if ( is_scalar($identity) ) {
-      $filter[$this->primaryKey] = $identity;
+      $filter[$this->_primaryKey] = $identity;
     }
     else if ( is_array($identity)) {
       $filter+= $identity;
     }
 
-    $filter = $this->beforeLoad($filter);
+    $this->beforeLoad($filter);
     if ( $filter !== false ) {
       $data = (array) @Node::getOne($filter);
       if ( !$data ) {
@@ -275,7 +310,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       $this->afterLoad();
     }
 
-    return true;
+    return $this;
   }
 
   /**
@@ -287,14 +322,14 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   function save(&$result = array()) {
     $this->isCreate = !$this->identity() && !$this->get($this->identity());
 
-    $errors = $this->beforeSave();
+    $this->beforeSave($errors);
     if ( $errors ) {
       if ( is_array($errors) ) {
         $result['errors'] = $errors;
       }
     }
     else {
-      $res = Node::set([Node::FIELD_COLLECTION => $this->collectionName] + $this->data);
+      $res = Node::set([Node::FIELD_COLLECTION => $this->_collectionName] + $this->data);
       if ( is_numeric($res) ) {
         $result['action'] = 'insert';
         $this->identity($res);
@@ -321,11 +356,11 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    */
   function delete(&$isDeleted = false) {
     $filter =
-      [ Node::FIELD_COLLECTION => $this->collectionName
+      [ Node::FIELD_COLLECTION => $this->_collectionName
       , '@limit' => 1
       ] + $this->data;
 
-    $filter = $this->beforeDelete($filter);
+    $this->beforeDelete($filter);
     if ( $filter !== false ) {
       $isDeleted = (bool) Node::delete($filter);
 
@@ -339,49 +374,61 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * Called before model is loaded, performing modifications to the filter
    * before passing down to Node::get() or Node::getOne().
    *
-   * @param {array} $filter The filter array created from the current model.
-   * @return {array|boolean} The filter to be passed down to Node::get(), or
-   *                         return false to prevent the model from loading.
+   * @param {=array} $filter The filter array passed down to Node::get().
+   * @return {AbstractModel} Chainable.
    */
-  protected function beforeLoad($filter) {
-    return $filter;
+  protected function beforeLoad(&$filter) {
+    return $this;
   }
 
   /**
    * Called after the model is loaded.
+   *
+   * @return {AbstractModel} Chainable.
    */
-  protected function afterLoad() { /* noop */ }
+  protected function afterLoad() {
+    return $this;
+  }
 
   /**
    * Called before the model is being saved, performing last chance modifications
    * before passing down to Node::set().
    *
-   * @return {?array} Return anything to prevent save action.
+   * @param {=array} $errors This will contain all validation errors.
+   * @return {AbstractModel} Chainable.
    */
-  protected function beforeSave() {
-    return (array) $this->validate();
+  protected function beforeSave(&$errors = array()) {
+    $this->validate($errors);
+    return $this;
   }
 
   /**
    * Called after the model is safed.
+   *
+   * @return {AbstractModel} Chainable.
    */
-  protected function afterSave() { /* noop */ }
+  protected function afterSave() {
+    return $this;
+  }
 
   /**
    * Called before the model is being deleted, performaing last change modifications
    * before passing down to Node::delete().
    *
-   * @param {array} $filter The filter array created from the current model.
-   * @return {array|boolean} The filter to be passed down to Node::delete(), or
-   *                         return false to deny this action.
+   * @param {=array} $filter The filter array passed down to Node::delete().
+   * @return {AbstractModel} Chainable.
    */
-  protected function beforeDelete($filter) {
-    return $filter;
+  protected function beforeDelete(&$filter = array()) {
+    return $this;
   }
 
   /**
    * Called after model deletion.
+   *
+   * @return {AbstractModel} Chainable.
    */
-  protected function afterDelete() { /* noop */ }
+  protected function afterDelete() {
+    return $this;
+  }
 
 }

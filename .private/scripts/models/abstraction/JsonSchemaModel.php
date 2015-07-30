@@ -10,15 +10,12 @@ use framework\Configuration as conf;
 
 use Jsv4;
 
-abstract class JsonSchemaModel extends AbstractModel {
+abstract class JsonSchemaModel extends AbstractRelationModel {
 
-  public function validate() {
+  public function validate(&$errors = array()) {
     $schema = $this->schema();
 
-    if ( Jsv4::isValid($this->data, $schema) ) {
-      return array();
-    }
-    else {
+    if ( !Jsv4::isValid($this->data, $schema) ) {
       // try to coerce on initial failure
       $result = Jsv4::coerce($this->data, $schema);
       if ( $result->value ) {
@@ -27,9 +24,11 @@ abstract class JsonSchemaModel extends AbstractModel {
 
       // return errors if exists
       if ( !empty($result->errors) ) {
-        return util::objectToArray($result->errors);
+        $errors = array_merge(util::objectToArray($result->errors));
       }
     }
+
+    return parent::validate();
   }
 
   public function schema($type = 'data') {
@@ -43,7 +42,7 @@ abstract class JsonSchemaModel extends AbstractModel {
         break;
     }
 
-    return conf::get("$this->collectionName.model::$type", $default);
+    return conf::get("{$this->collectionName()}.model::$type", $default);
   }
 
 }
