@@ -684,8 +684,6 @@ class Node {
   /**
    * Upserts one or a set of data.
    *
-   * Important: All "timestamp" properties in argument $contents will be removed.
-   *
    * @param $contents An array of data to be updated, data row will be identified by id.
    * @param $extendExists true means $contents can be partial update, fields not specified
    *        will have their old value retained instead of replacing the whole row.
