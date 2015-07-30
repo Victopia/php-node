@@ -65,10 +65,10 @@ CREATE TABLE `Nodes` (
 DROP TABLE IF EXISTS `NodeRelations`;
 CREATE TABLE `NodeRelations` (
   `@collection` varchar(255) NOT NULL,
-  `subject` varchar(40) NOT NULL,
-  `object` varchar(40) NOT NULL,
-  PRIMARY KEY (`@collection`,`subject`,`object`),
-  KEY `key_collection_object` (`@collection`,`object`)
+  `parent` varchar(40) NOT NULL,
+  `child` varchar(40) NOT NULL,
+  PRIMARY KEY (`@collection`,`parent`,`child`),
+  KEY `key_collection_object` (`@collection`,`child`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
