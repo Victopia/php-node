@@ -196,7 +196,7 @@ class Utility {
    *
    * To determine a numeric array, inverse the result of this function.
    */
-  static function isAssoc($value) {
+  static function isAssoc($value, $strict = false) {
     /*! Note
      *  This is the original version found somewhere in the internet,
      *  keeping it to respect the author.
@@ -208,9 +208,16 @@ class Utility {
      *  return is_array($value) && count($value) &&
      *    count(array_diff_key($value, array_keys(array_keys($value))));
      */
-    return is_array($value) && $value &&
-      // All keys must be numeric to qualify as NOT assoc.
+    $ret = is_array($value) && $value &&
+      // all keys must be numeric to qualify as NOT assoc.
       array_filter(array_keys($value), compose('not', 'is_numeric'));
+
+    // numeric keys must be consecutive to be NOT assoc (favors json_encode)
+    if ( $strict && !$ret ) {
+      $ret = $ret || array_sum(array_keys($value)) != (count($value) - 1) / 2 * count($value);
+    }
+
+    return $ret;
   }
 
   /**
