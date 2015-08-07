@@ -13,7 +13,7 @@
     "monolog/monolog": "^1.15@dev"
   },
   "require-dev": {
-    "simpletest/simpletest": "dev-master"
+    "phpunit/phpunit": "^5.1@dev"
   },
   "license": "WTFPL",
   "authors": [
