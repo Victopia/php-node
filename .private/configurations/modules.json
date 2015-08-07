@@ -1,6 +1,0 @@
-{
-  "prefix": {
-    "services": ".private/services",
-    "*": ".private/scripts"
-  }
-}

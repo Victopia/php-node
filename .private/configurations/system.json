@@ -4,7 +4,13 @@
   "bootstrap": {
     "requires": [
       ".private/scripts/vendor/autoload.php"
-    ]
+    ],
+    "autoload": {
+      "prefix": {
+        "services": ".private/services",
+        "*": ".private/scripts"
+      }
+    }
   },
 
   "database": {

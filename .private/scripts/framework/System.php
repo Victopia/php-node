@@ -293,7 +293,7 @@ class System {
     // Make sure working directory the same as gateway.php
     @chdir(self::getPathname());
 
-    $prefixes = (array) conf::get('modules::prefix');
+    $prefixes = (array) conf::get('system::bootstrap.autoload.prefix');
     if ( $prefixes ) {
       self::$pathPrefixes = $prefixes;
     }
