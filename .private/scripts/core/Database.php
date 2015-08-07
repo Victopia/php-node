@@ -342,18 +342,7 @@ final class Database {
       $stmt->bindValue($index + 1, $param, $parmType);
     });
 
-    try {
-      $res = $stmt->execute();
-    }
-    catch (\PDOException $e) {
-      switch ( $e->getCode() ) {
-        case 2013: // Lost connection to MySQL server during query
-          // Auto retry after 2 seconds
-          sleep(2);
-
-          return self::query($query, $param, $options);
-      }
-    }
+    $stmt->execute();
 
     if ( $res ) {
       return $stmt;
