@@ -129,7 +129,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   }
 
   function __set($name, $value) {
-    if ( $offset[0] != '@' ) {
+    if ( $name[0] != '@' ) {
       $this->data[$name] = $value;
     }
   }
@@ -147,6 +147,11 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    */
   function __call($name, $args) {
     // Note: public methods are called directly, we don't need to take care of methods here.
+
+    // Special methods are ignored
+    if ( $name[0] == '_' ) {
+      throw new \BadMethodCallException('Method does not exist.');
+    }
 
     // RW takes precedence
     if ( isset($this->$name) ) {
