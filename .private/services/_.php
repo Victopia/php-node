@@ -65,8 +65,13 @@ class _ extends \framework\WebService {
     // Remove model name
     $args = array_slice(func_get_args(), 1);
 
-    $method = $this->resolveMethodName($args);
-    $method = array($this, $method);
+    // Exposed model methods: public function _*() { }
+    if ( $args && method_exists($this->modelClass, "_$args[0]") ) {
+      $method = array($this->modelClass, '_' . array_shift($args));
+    }
+    else {
+      $method = array($this, $this->resolveMethodName($args));
+    }
 
     return call_user_func_array($method, $args);
   }
