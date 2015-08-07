@@ -155,7 +155,7 @@ class Cache {
 		if ( $res->isFile() ) {
 			// Remove target revision(s).
 			if ( !$res->isWritable() ) {
-				Log::write('Target file is not writable, deletion skipped.', 'Warning');
+				Log::warning('Target file is not writable, deletion skipped.');
 			}
 			else {
 				$path = $res->getRealPath();

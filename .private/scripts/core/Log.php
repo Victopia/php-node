@@ -3,17 +3,44 @@
 
 namespace core;
 
+use framework\Configuration;
 use framework\Process;
 use framework\Session;
 use framework\System;
 
+use Psr\Log\LoggerInterface;
+
 class Log {
 
+  private static $loggers = array();
+
+  static function setLogger(LoggerInterface $logger) {
+    self::$loggers[$logger->getName()] = $logger;
+  }
+
+  static function getLogger($name = 'default') {
+    return @self::$loggers[$name];
+  }
+
+  /**
+   * Pipe method calls into the logger.
+   */
+  static function __callStatic($name, $args) {
+    return call_user_func_array(array(self::getLogger(), $name), $args);
+  }
+
   static function write($message, $type = 'Notice', $context = null) {
-    // Skip debug logs on production environment.
-    if ( System::environment() == System::ENV_PRODUCTION && $type == 'Debug' ) {
+    // Enabled log types
+    $types = Configuration::get('log', true);
+    if ( is_array($types) ) {
+      if ( !in_array($type, $types) ) {
+        return;
+      }
+    }
+    else if ( !$types ) {
       return;
     }
+    unset($types);
 
     $message = array('message' => $message);
 

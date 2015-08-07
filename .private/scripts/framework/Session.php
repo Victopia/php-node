@@ -122,7 +122,7 @@ class Session {
     static::$currentSession = $sid;
 
     // Log the sign in action.
-    Log::write('Session validated.', 'Information', $sid);
+    Log::info(sprintf('Session validated: %s', $sid));
 
     return $sid;
   }
@@ -137,7 +137,7 @@ class Session {
 
     Database::query('DELETE FROM `'.FRAMEWORK_COLLECTION_SESSION.'` WHERE `sid` = ?', array($sid));
 
-    Log::write('Session invalidated.', 'Information', $sid);
+    Log::info(sprintf('Session invalidated: %s', $sid));
 
     /* Clear reference */
     static::$currentSession = null;

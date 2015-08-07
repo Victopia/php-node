@@ -216,16 +216,29 @@ Session::generateToken($sid);
 
 ### Log
 
-Basic logging into database.
+This is a wrapper of Psr\Log interface.
+
+Instantiate the logger and call `Log::setLogger()` at initialize.
 
 ```PHP
-// Overloaded function write()
+// Any Psr\Log compatible loggers
+Log::setLogger($logger);
 
-// This writes the content without logging a specific user.
-Log::write($contents);
+// __callStatic will be piped to logger
+static function __callStatic($name, $args) {
+  return call_user_func_array(array($this->getLogger(), $name), $args);
+}
 
-// This validates a session with 'sid' and acquires user info when logging.
-Log::write($sid, $identifier, $action, $remarks = NULL);
+// Calling log methods directly from the Log class.
+Log::log($type, $message, $context);
+Log::emergency($message, $context);
+Log::alert($message, $context);
+Log::critical($message, $context);
+Log::error($message, $context);
+Log::warning($message, $context);
+Log::notice($message, $context);
+Log::info($message, $context);
+Log::debug($message, $context);
 ```
 
 ## Low level classes
@@ -243,8 +256,7 @@ This class is inspired by the old jQuery ajax style, without the deferred/promis
 Sample usage:
 
 ```PHP
-
-net::httpRequest(array(
+Net::httpRequest(array(
     'url' => 'http://www.google.com'
   , 'type' => 'POST'
   , 'data' => array( /* data object to be encoded */ )

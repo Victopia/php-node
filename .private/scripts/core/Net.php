@@ -277,7 +277,7 @@ class Net {
       $curlOption = (array) @$option['__curlOpts'] + $curlOption;
 
       if ( System::environment() == 'debug' ) {
-        Log::write('Net ' . $curlOption[CURLOPT_CUSTOMREQUEST] . ' to ' . $curlOption[CURLOPT_URL], 'Debug', $curlOption);
+        Log::debug('Net ' . $curlOption[CURLOPT_CUSTOMREQUEST] . ' to ' . $curlOption[CURLOPT_URL], $curlOption);
       }
 
       return $curlOption;

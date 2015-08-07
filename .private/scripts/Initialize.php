@@ -2,12 +2,21 @@
 /*! Initialize.php | Define general methods and setup global usage classes. */
 
 use core\Node;
+use core\Log;
 
 use framework\Configuration as conf;
 use framework\Resolver;
 use framework\Session;
 use framework\Service;
 use framework\System;
+
+use framework\log\processors\BacktraceProcessor;
+use framework\log\processors\SessionProcessor;
+use framework\log\processors\ProcessProcessor;
+use framework\log\handlers\NodeHandler;
+
+use Monolog\Logger;
+use Monolog\Handler\NullHandler;
 
 //------------------------------------------------------------------------------
 //
@@ -85,6 +94,40 @@ if ( $dbOptions ) {
 }
 
 unset($dbOptions);
+
+//------------------------------------------------------------------------------
+//
+//  Logger initialization
+//
+//------------------------------------------------------------------------------
+
+/*! Note @ 7 Aug, 2015
+ *  Here we started to make use of the Psr\Log interface and Seldaek\Monolog,
+ *  digging the original Log class empty as a wrapper to LoggerInterface, and
+ *  moved the backtrace and session info into separate processors in monolog.
+ *
+ *  Specifically, backtrace context like file, subject and action are moved to
+ *  the BacktraceProcessor class, while session info is moved to the
+ *  SessionProcessor class.
+ *
+ *  Node::set() invoke is migrated into NodeHandler class.
+ */
+
+Log::setLogger(new Logger('default'));
+
+// Log enabled
+if ( conf::get('log', true) ) {
+  Log::getLogger()
+    ->pushProcessor(new BacktraceProcessor())
+    ->pushProcessor(new SessionProcessor())
+    ->pushProcessor(new ProcessProcessor())
+    ->pushHandler(new NodeHandler());
+}
+else {
+  // This should not be necessary, no handlers will run nothing.
+  Log::getLogger()
+    ->pushHandler(new NullHandler());
+}
 
 //------------------------------------------------------------------------------
 //

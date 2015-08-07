@@ -35,7 +35,7 @@ CREATE TABLE `Files` (
 DROP TABLE IF EXISTS `Logs`;
 CREATE TABLE `Logs` (
   `id` bigint(20) unsigned zerofill NOT NULL AUTO_INCREMENT,
-  `type` enum('Access','Information','Notice','Warning','Exception','Error','Debug') NOT NULL DEFAULT 'Information',
+  `type` enum('Debug','Info','Notice','Warning','Error','Critical','Alert','Emergency') NOT NULL DEFAULT 'Info',
   `subject` char(255) NOT NULL DEFAULT '',
   `action` char(78) NOT NULL DEFAULT '',
   `@contents` longtext NOT NULL,

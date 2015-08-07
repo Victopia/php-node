@@ -27,7 +27,7 @@ class LogResolver implements \framework\interfaces\IRequestResolver {
 							$request->client('type'),
 							$request->uri(),
 						));
-					// @Log::write();
+
 					break;
 
 				default:
@@ -37,7 +37,7 @@ class LogResolver implements \framework\interfaces\IRequestResolver {
 							$request->uri('path'),
 						));
 
-				  @Log::write($message, 'Debug', array_filter(array(
+				  @Log::debug($message, array_filter(array(
 				      'origin' =>  $request->client('referer')
 				    , 'userAgent' => util::cascade(@$request->client('userAgent'), 'Unknown')
 				    , 'timeElapsed' => round(microtime(1) - $request->timestamp(), 4) . ' secs'

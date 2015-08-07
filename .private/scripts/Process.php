@@ -74,7 +74,7 @@ $opts = (new framework\Optimist)
     // $affectedRows+= $res->rowCount();
 
     if ( $affectedRows ) {
-      Log::write(sprintf('Process cleanup, %d processes removed.', $affectedRows));
+      Log::info(sprintf('Process cleanup, %d processes removed.', $affectedRows));
     }
 
     die;
@@ -82,7 +82,7 @@ $opts = (new framework\Optimist)
 
 // Cron processes
   if ( @$opts['cron'] ) {
-    Log::write('Cron started process.', 'Debug');
+    Log::debug('Cron started process.');
 
     $scheduler = function($schedule) {
       $nextTime = CronExpression::factory($schedule['schedule'])->getNextRunDate()->format('Y-m-d H:i:s');
@@ -106,7 +106,7 @@ $opts = (new framework\Optimist)
           , '$spawn' => false
           ];
 
-        Log::write('Scheduling new process', 'Debug', $schedule);
+        Log::debug('Scheduling new process', $schedule);
 
         Process::enqueue($schedule['command'], $schedule);
       }
@@ -128,7 +128,7 @@ $opts = (new framework\Optimist)
     $ret = shell_exec('nohup ' . Process::EXEC_PATH . ' --nohup >/dev/null 2>&1 & echo $!');
 
     if ( !$ret ) {
-      Log::write('Process cannot be spawn, please review your configuration.', 'Error');
+      Log::error('Process cannot be spawn, please review your configuration.');
     }
 
     die;
@@ -177,7 +177,7 @@ $opts = (new framework\Optimist)
   Database::unlockTables(true);
 
   if ( $res >= $capLimit ) {
-    Log::write('Active processes has occupied maximum server capacity, daemon exits.', 'Debug');
+    Log::debug('Active processes has occupied maximum server capacity, daemon exits.');
 
     Database::rollback();
 
@@ -208,7 +208,7 @@ $opts = (new framework\Optimist)
 
     Database::rollback();
 
-    Log::write('No more jobs to do, suicide.', 'Debug');
+    Log::debug('No more jobs to do, suicide.');
 
     die;
   }
@@ -231,7 +231,7 @@ $opts = (new framework\Optimist)
   Database::commit();
 
   if ( $res->rowCount() < 1 ) {
-    Log::write('Unable to update process pid, worker exits.', 'Warning');
+    Log::warning('Unable to update process pid, worker exits.');
 
     die;
   }
@@ -246,7 +246,7 @@ $opts = (new framework\Optimist)
   }
 
 // More debug logs
-  Log::write("Execute process: $process[command]", 'Debug');
+  Log::debug("Execute process: $process[command]");
 
 // Spawn process and retrieve the pid
   $proc = false;
@@ -276,8 +276,12 @@ $opts = (new framework\Optimist)
   $stderr = stream_get_contents($pipes[2]);
 
   if ( "$stdout$stderr" ) {
-    Log::write(sprintf('Output captured from command line: %s', $process['command']),
-      $stderr ? 'Error' : 'Information', array_filter(array('stdout' => $stdout, 'stderr' => $stderr)));
+    $method = $stderr ? 'error' : 'info';
+
+    Log::$method(sprintf('Output captured from command line: %s', $process['command']),
+      array_filter(array('stdout' => $stdout, 'stderr' => $stderr)));
+
+    unset($method);
   }
 
   unset($stdout, $stderr);
@@ -288,7 +292,7 @@ $opts = (new framework\Optimist)
     case 'permanent':
       core\Database::query('UPDATE `'.FRAMEWORK_COLLECTION_PROCESS.'` SET `pid` = NULL WHERE `id` = ?', $process['id']);
 
-      Log::write('Permanent process died, clearing pid.', 'Debug', [$res, $process]);
+      Log::debug('Permanent process died, clearing pid.', [$res, $process]);
       break;
 
     // Sets pid to 0, prevents it fire again and double enqueue of the same time slot.
@@ -302,7 +306,7 @@ $opts = (new framework\Optimist)
 
       $res = Node::delete($process);
 
-      Log::write("Deleting finished process, affected rows: $res.", 'Debug', [$res, $process]);
+      Log::debug("Deleting finished process, affected rows: $res.", [$res, $process]);
 
       break;
   }

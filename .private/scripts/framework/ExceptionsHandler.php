@@ -15,6 +15,8 @@ use framework\System;
 use framework\exceptions\GeneralException;
 use framework\exceptions\FrameworkException;
 
+use Psr\Log\LogLevel;
+
 class ExceptionsHandler {
   public static function setHandlers() {
         set_error_handler('framework\ExceptionsHandler::handleError', error_reporting());
@@ -53,24 +55,24 @@ class ExceptionsHandler {
         case E_CORE_ERROR:
         case E_USER_ERROR:
         default:
-          $logType = 'Error';
+          $logType = LogLevel::CRITICAL;
           break;
 
         case E_WARNING:
         case E_CORE_WARNING:
         case E_USER_WARNING:
-          $logType = 'Warning';
+          $logType = LogLevel::WARNING;
           break;
 
         case E_DEPRECATED:
         case E_NOTICE:
         case E_USER_DEPRECATED:
         case E_USER_NOTICE:
-          $logType = 'Notice';
+          $logType = LogLevel::NOTICE;
           break;
 
         case E_STRICT:
-          $logType = 'Information';
+          $logType = LogLevel::INFO;
           break;
       }
 
@@ -83,10 +85,12 @@ class ExceptionsHandler {
         $exceptionType = substr(strrchr($exceptionType, '\\'), 1);
       }
 
-      $logType = 'Exception';
+      $logType = LogLevel::ERROR;
     }
 
     $logString = sprintf('[Gateway] Uncaught %s#%d with message: "%s".', $exceptionType, $eN, $eS);
+
+    unset($exceptionType);
 
     // Current request context
     $resolver = Resolver::getActiveInstance();
@@ -116,7 +120,7 @@ class ExceptionsHandler {
 
     // Log the error
     try {
-      @Log::write($logString, $logType, $logContext);
+      @Log::log($logType, $logString, $logContext);
     }
     catch (\Exception $e) { }
 
@@ -142,9 +146,16 @@ class ExceptionsHandler {
         }
       }
 
+      if ( $e instanceof ErrorException ) {
+        $statusCode = 500;
+      }
+      else {
+        $statusCode = 400;
+      }
+
       $response->clearHeaders();
       $response->header('Content-Type', 'application/json; charset=utf-8');
-      $response->send($output, $e instanceof ErrorException ? 500 : 400);
+      $response->send($output, $statusCode);
     }
     else {
       header('Content-Type: text/plain', true, 500);
@@ -179,7 +190,7 @@ class ExceptionsHandler {
     }
 
     // CLI exit code on Exceptions and Errors
-    if ( in_array($logType, array('Exception', 'Error')) ) {
+    if ( in_array($logType, array(LogLevel::ERROR, LogLevel::CRITICAL, LogLevel::ALERT, LogLevel::EMERGENCY)) ) {
       $exitCode = $e->getCode();
       if ( $exitCode <= 0 ) {
         $exitCode = 1;

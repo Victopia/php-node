@@ -254,7 +254,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
             }
 
             if ( $output ) {
-              Log::write($output, 'Warning');
+              Log::warning($output);
 
               // Error caught when minifying javascript, rollback to original.
               $path = $opath;
@@ -294,7 +294,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
               (new lessc)->checkedCompile($lessPath, $cssPath);
             }
             catch (\Exception $e) {
-              Log::write('Unable to compile CSS from less.', 'Exception', $e);
+              Log::warning('Unable to compile CSS from less.', $e);
 
               die;
             }
