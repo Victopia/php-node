@@ -47,7 +47,7 @@ class MarkdownResolver implements \framework\interfaces\IRequestResolver {
     if ( is_file($pathname) ) {
       $text = file_get_contents($pathname);
       $text = (new Parsedown)->text($text);
-      $response->send($text);
+      $response->send($text, 200);
     }
   }
 

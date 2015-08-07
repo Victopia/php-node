@@ -52,7 +52,6 @@ class _ extends \framework\WebService {
   function __invoke($model = null) {
     if ( !$model ) {
       $this->response()->send('Please specifiy a model name.', 501);
-      // $this->response()->status(501);
       return;
     }
     else if ( !class_exists("models\\$model") ) {
@@ -134,10 +133,10 @@ class _ extends \framework\WebService {
         $this->modelClass->data($data);
       }
 
-      $errors = $this->modelClass->validate();
-      if ( is_array($errors) ) {
-        $this->response()->status(400);
-        return $errors;
+      $this->modelClass->validate($errors);
+      if ( $errors ) {
+        $this->response()->send($errors, 400);
+        return;
       }
 
       $this->modelClass->save($result);

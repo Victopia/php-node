@@ -267,8 +267,10 @@ class Response {
    *
    * Function name inspired by express.js
    */
-  public function send($value, $status = 200) {
-    $this->status($status);
+  public function send($value, $status = null) {
+    if ( $status !== null ) {
+      $this->status($status);
+    }
 
     if ( $this->useOutputBuffer ) {
       @ob_clean();

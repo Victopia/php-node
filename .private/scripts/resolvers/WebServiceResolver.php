@@ -159,7 +159,7 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
     if ( $serviceResponse !== null ) {
       // JSON encode the result and response to client.
       $response->header('Content-Type', 'application/json');
-      $response->send($serviceResponse); // This sets repsonse code to 200
+      $response->send($serviceResponse, 200); // This sets repsonse code to 200
     }
     else if ( !$response->status() ) {
       $response->status(204);
