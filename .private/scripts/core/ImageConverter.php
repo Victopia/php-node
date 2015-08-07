@@ -283,7 +283,6 @@ class ImageConverter {
         }
 
         $color = imagecolorallocatealpha($this->image, $color[0], $color[1], $color[2], $color[3]);
-        log::write('color dump', 'Information', $color);
       }
     }
 
