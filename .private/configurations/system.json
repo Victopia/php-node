@@ -1,15 +1,25 @@
 {
   "environment": "development",
 
-  "bootstrap": {
+  "paths": {
     "requires": [
       ".private/scripts/vendor/autoload.php"
     ],
     "autoload": {
-      "prefix": {
-        "services": ".private/services",
-        "*": ".private/scripts"
-      }
+      "services": ".private/services",
+      "*": ".private/scripts"
+    },
+    "scss": {
+      "src": ".private/src/scss",
+      "dst": "assets/css"
+    },
+    "jsmin": {
+      "src": ".private/src/javascripts",
+      "dst": "assets/js"
+    },
+    "cssmin": {
+      "src": "assets/css",
+      "dst": "assets/css"
     }
   },
 

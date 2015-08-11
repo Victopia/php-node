@@ -293,17 +293,17 @@ class System {
     // Make sure working directory the same as gateway.php
     @chdir(self::getPathname());
 
-    $prefixes = (array) conf::get('system::bootstrap.autoload.prefix');
+    $prefixes = (array) conf::get('system::paths.autoload');
     if ( $prefixes ) {
       self::$pathPrefixes = $prefixes;
     }
 
     // additional files
-    foreach ( (array) @conf::get('system::bootstrap.requires') as $file ) {
+    foreach ( (array) @conf::get('system::paths.requires') as $file ) {
       require_once($file);
     }
 
-    foreach ( (array) @conf::get('system::bootstrap.includes') as $file ) {
+    foreach ( (array) @conf::get('system::paths.includes') as $file ) {
       include_once($file);
     }
   }
