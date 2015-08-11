@@ -342,9 +342,7 @@ final class Database {
       $stmt->bindValue($index + 1, $param, $parmType);
     });
 
-    $res = $stmt->execute();
-
-    if ( $res ) {
+    if ( $stmt->execute() ) {
       return $stmt;
     }
 
