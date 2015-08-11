@@ -73,20 +73,27 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
       $pathNodes = [ '/' ];
     }
 
-    foreach ( $pathNodes as $pathNode ) {
+    $lastWildcard = null;
+
+    foreach ( $pathNodes as $index => $pathNode ) {
       if ( !util::isAssoc($auth) ) {
         break; // No more definitions, break out.
+      }
+
+      if ( isset($auth['*']) ) {
+        $lastWildcard = $auth['*'];
       }
 
       if ( isset($auth[$pathNode]) ) {
         $auth = $auth[$pathNode];
       }
-      else if ( isset($auth['*']) ) {
-        $auth = $auth['*'];
-        break; // break out on wildcards
+      else {
+        $auth = $lastWildcard;
+        break;
       }
     }
-    unset($pathNodes);
+
+    unset($pathNodes, $lastWildcard);
 
     // Type checking to make sure something has been picked from the foreach loop.
     if ( !is_bool($auth) && (!is_array($auth) || util::isAssoc($auth)) ) {
