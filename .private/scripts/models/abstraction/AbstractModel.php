@@ -382,7 +382,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * @param {=array} $filter The filter array passed down to Node::get().
    * @return {AbstractModel} Chainable.
    */
-  protected function beforeLoad(&$filter) {
+  protected function beforeLoad(array &$filter) {
     return $this;
   }
 
@@ -402,7 +402,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * @param {=array} $errors This will contain all validation errors.
    * @return {AbstractModel} Chainable.
    */
-  protected function beforeSave(&$errors = array()) {
+  protected function beforeSave(array &$errors = array()) {
     $this->validate($errors);
     return $this;
   }
@@ -423,7 +423,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * @param {=array} $filter The filter array passed down to Node::delete().
    * @return {AbstractModel} Chainable.
    */
-  protected function beforeDelete(&$filter = array()) {
+  protected function beforeDelete(array &$filter = array()) {
     return $this;
   }
 
