@@ -53,7 +53,7 @@ class sessions extends \framework\WebService {
 		return $this->request()->user;
 	}
 
-	function generateToken() {
+	function token() {
 		return Session::generateToken();
 	}
 
