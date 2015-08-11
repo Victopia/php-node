@@ -234,37 +234,6 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
    */
   private function createVirtualFile(&$path) {
     switch ( pathinfo($path , PATHINFO_EXTENSION) ) {
-      case 'js':
-        // When requesting *.min.js, minify it from the original source.
-        $opath = preg_replace('/\.min(\.js)$/', '\\1', $path, -1, $count);
-
-        if ( $count > 0 && is_file($opath) ) {
-          $mtime = filemtime($opath);
-
-          // Whenever orginal source exists and is newer,
-          // udpate minified version.
-          if ( !is_file($path) || $mtime > filemtime($path) ) {
-            $output = shell_exec("cat $opath | uglifyjs -o $path 2>&1");
-
-            if ( $output ) {
-              $output = "[uglifyjs] $output.";
-            }
-            elseif ( !file_exists($path) ) {
-              $output = "[uglifyjs] Error writing output file $path.";
-            }
-
-            if ( $output ) {
-              Log::warning($output);
-
-              // Error caught when minifying javascript, rollback to original.
-              $path = $opath;
-            }
-            else {
-              touch($path, $mtime);
-            }
-          }
-        }
-        break;
       case 'png':
         // When requesting *.png, we search for svg for conversion.
         $opath = preg_replace('/\.png$/', '.svg', $path, -1, $count);
@@ -280,62 +249,6 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
             @touch($path, $mtime);
           }
         }
-        break;
-      case 'css':
-        // Auto compile CSS from LESS
-        $lessPath = preg_replace('/(?:\.min)?\.css$/', '.less', $path);
-        $cssPath = preg_replace('/(?:\.min)?\.css$/', '.css', $path);
-
-        if ( file_exists($lessPath) ) {
-          if ( !file_exists($cssPath) || filemtime($lessPath) > filemtime($cssPath) ) {
-            @unlink($cssPath);
-
-            try {
-              (new lessc)->checkedCompile($lessPath, $cssPath);
-            }
-            catch (\Exception $e) {
-              Log::warning('Unable to compile CSS from less.', $e);
-
-              die;
-            }
-          }
-        }
-
-        unset($lessPath, $cssPath);
-
-        // Auto minify *.min.css it from the original *.css.
-        $cssPath = preg_replace('/\.min(\.css)$/', '\\1', $path, -1, $count);
-
-        if ( $count > 0 && is_file($cssPath) ) {
-          $mtime = filemtime($cssPath);
-
-          /* Whenever orginal source exists and is newer, update minified version. */
-          if ( !file_exists($path) || $mtime > filemtime($path) ) {
-            @unlink($path);
-
-            // Store the offset in cache, enabling a waiting time before HTTP retry.
-            Cache::delete($path);
-            Cache::set($path, time());
-
-            $contents = file_get_contents($cssPath);
-
-            if ( $contents ) {
-              $contents = $this->minifyCSS($contents);
-
-              if ( $contents ) {
-                file_put_contents($path, $contents);
-              }
-            }
-
-            unset($contents);
-          }
-
-          if ( !is_file($path) ) {
-            $path = $cssPath;
-          }
-        }
-
-        unset($count, $cssPath);
         break;
       case 'csv':
         header('Content-Disposition: attachment;', true);
@@ -354,29 +267,6 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
         }
         break;
     }
-  }
-
-  /**
-   * @private
-   */
-  private function minifyCSS($contents) {
-    $result = '';
-
-    Net::httpRequest(array(
-        'url' => 'http://cssminifier.com/raw'
-      , 'type' => 'post'
-      , 'data' => array( 'input' => $contents )
-      , '__curlOpts' => array(
-          CURLOPT_TIMEOUT => 5
-        )
-      , 'success' => function($response, $request) use(&$result) {
-          if ( @$request['status'] == 200 && $response ) {
-            $result = $response;
-          }
-        }
-      ));
-
-    return $result;
   }
 
 }

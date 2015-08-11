@@ -10,7 +10,11 @@
       "*": ".private/scripts"
     },
     "scss": {
-      "src": ".private/src/scss",
+      "src": ".private/src/stylesheets",
+      "dst": "assets/css"
+    },
+    "less": {
+      "src": ".private/src/stylesheets",
       "dst": "assets/css"
     },
     "jsmin": {

@@ -73,29 +73,55 @@ require_once('scripts/Initialize.php');
   // Markdown handling
     $resolver->registerResolver(new resolvers\MarkdownResolver(), 50);
 
-  // Template resolver
-    // $templateResolver = new resolvers\TemplateResolver(array(
-    //     'render' => function($path) {
-    //         static $mustache;
-    //         if ( !$mustache ) {
-    //           $mustache = new Mustache_Engine();
-    //         }
+  /*! Note: These resolvers await rework
+   * // Template resolver
+   *   $templateResolver = new resolvers\TemplateResolver(array(
+   *       'render' => function($path) {
+   *           static $mustache;
+   *           if ( !$mustache ) {
+   *             $mustache = new Mustache_Engine();
+   *           }
+   *
+   *           $resource = util::getResourceContext();
+   *
+   *           return $mustache->render(file_get_contents($path), $resource);
+   *         }
+   *     , 'extensions' => 'mustache html'
+   *     ));
+   *
+   *      $templateResolver->directoryIndex('Home index');
+   *
+   *      $resolver->registerResolver($templateResolver, 50);
+   *
+   *      unset($templateResolver);
+   *
+   * // External URL
+   *   $resolver->registerResolver(new resolvers\ExternalResolver(), 30);
+   */
 
-    //         $resource = util::getResourceContext();
+  // SCSS Compiler
+    $resolver->registerResolver(new resolvers\ScssResolver(array(
+        'source' => conf::get('system::paths.scss.src'),
+        'output' => conf::get('system::paths.scss.dst', 'assets/css')
+      )), 30);
 
-    //         return $mustache->render(file_get_contents($path), $resource);
-    //       }
-    //   , 'extensions' => 'mustache html'
-    //   ));
+  // LESS Compiler
+    $resolver->registerResolver(new resolvers\LessResolver(array(
+        'source' => conf::get('system::paths.less.src'),
+        'output' => conf::get('system::paths.less.dst', 'assets/css')
+      )), 25);
 
-    // $templateResolver->directoryIndex('Home index');
+  // Css Minifier
+    $resolver->registerResolver(new resolvers\CssMinResolver(array(
+        'source' => conf::get('system::paths.cssmin.src'),
+        'output' => conf::get('system::paths.cssmin.dst', 'assets/css')
+      )), 20);
 
-    // $resolver->registerResolver($templateResolver, 50);
-
-    // unset($templateResolver);
-
-  // External URL
-    // $resolver->registerResolver(new resolvers\ExternalResolver(), 30);
+  // Js Minifier
+    $resolver->registerResolver(new resolvers\JsMinResolver(array(
+        'source' => conf::get('system::paths.jsmin.src'),
+        'output' => conf::get('system::paths.jsmin.dst', 'assets/js')
+      )), 20);
 
   // Physical file handling
     $fileResolver = array(
@@ -111,13 +137,6 @@ require_once('scripts/Initialize.php');
     $resolver->registerResolver($fileResolver, 10);
 
     unset($fileResolver);
-
-  /*! Note @ 24 Apr, 2015
-   *  Cache resolver is now disabled because it handles way more than expected,
-   *  such as conditional request and etag.
-   *
-   *  $resolver->registerResolver(new resolvers\CacheResolver('/cache/'), 0);
-   */
 
   // HTTP error pages in HTML or JSON
     $resolver->registerResolver(new resolvers\StatusDocumentResolver(array(
