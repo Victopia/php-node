@@ -73,31 +73,37 @@ function unshiftsArg() {
   };
 }
 
-function funcAnd($inputA, $inputB) {
-  return function($input) use($inputA, $inputB) {
-    if ( is_callable($inputA) ) {
-      $inputA = $inputA($input);
-    }
+function funcAnd() {
+  $funcs = func_get_args();
+  return function($input) use($funcs) {
+    return array_reduce($funcs, function($result, $func) use($input) {
+      if ( !$result ) {
+        return $result;
+      }
 
-    if ( is_callable($inputB) ) {
-      $inputB = $inputB($input);
-    }
+      if ( is_callable($func) ) {
+        $func = $func($input);
+      }
 
-    return $inputA && $inputB;
+      return $result && $func;
+    }, true);
   };
 };
 
-function funcOr($inputA, $inputB) {
-  return function($input) use($inputA, $inputB) {
-    if ( is_callable($inputA) ) {
-      $inputA = $inputA($input);
-    }
+function funcOr() {
+  $funcs = func_get_args();
+  return function($input) use($funcs) {
+    return array_reduce($funcs, function($result, $func) use($input) {
+      if ( !$result ) {
+        return $result;
+      }
 
-    if ( is_callable($inputB) ) {
-      $inputB = $inputB($input);
-    }
+      if ( is_callable($func) ) {
+        $func = $func($input);
+      }
 
-    return $inputA || $inputB;
+      return $result || $func;
+    }, true);
   };
 };
 
