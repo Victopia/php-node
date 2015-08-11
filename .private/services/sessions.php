@@ -10,7 +10,7 @@ use framework\exceptions\ServiceException;
 /**
  * This class act as a sample service, further demonstrates how to write RESTful functions.
  */
-class sessions implements \framework\interfaces\IWebService {
+class sessions extends \framework\WebService {
 	function validate($username, $password, $overrideExists = false) {
 		$res = Session::validate($username, $password, $overrideExists);
 		if ( is_int($res) ) {
@@ -49,6 +49,10 @@ class sessions implements \framework\interfaces\IWebService {
 		return Session::current();
 	}
 
+	function user($property = null) {
+		return $this->request()->user;
+	}
+
 	function generateToken() {
 		return Session::generateToken();
 	}
@@ -61,7 +65,11 @@ class sessions implements \framework\interfaces\IWebService {
 		return Session::restore($sid);
 	}
 
-	function invalidate() {
+	function invalidate($sid = null) {
+		if ( $sid === null ) {
+			$sid = $this->request()->param('__sid');
+		}
+
 		return Session::invalidate($sid);
 	}
 }
