@@ -34,7 +34,7 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
     switch ( $req->client('type') ) {
       case 'cli':
         // Retrieve user context from process data, then CLI argument.
-        $userId = (int) Process::get('userId');
+        $userId = (int) Process::get('type');
         if ( !$userId ) {
           $req->cli()->options('u', array(
               'alias' => 'user'
@@ -42,7 +42,7 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
             , 'describe' => 'Idenitfier of target context user.'
             ));
 
-          $userId = (int) $req->param('user');
+          $userId = (int) $req->meta('user');
         }
 
         if ( $userId ) {
@@ -74,11 +74,11 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
           }
         }
         // When no user is set, add a default user
-        else if ( $this->setupSession && !@\core\Node::get('User') ) {
+        else if ( $this->setupSession && !@$req->user->get() ) {
           $req->user->data(
             [ 'id' => 0
             , 'groups' => ['Administrators']
-            , 'username' => 'default'
+            , 'username' => '__default'
             ]);
         }
         break;
