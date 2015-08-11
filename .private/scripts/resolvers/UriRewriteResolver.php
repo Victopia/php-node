@@ -17,7 +17,7 @@ class UriRewriteResolver implements \framework\interfaces\IRequestResolver {
    *
    * Base path to match against requests
    */
-  protected $pattern = '/.*/';
+  protected $sourceFunc = null;
 
   /**
    * @protected
@@ -30,16 +30,32 @@ class UriRewriteResolver implements \framework\interfaces\IRequestResolver {
    * @constructor
    *
    * @param {array} $options
-   * @param {?string} $options[pattern] Base path to match against requests, defaults to root.
+   * @param {?string} $options[source] Base path to match against requests, defaults to root.
    * @param {string|callable} $options[target] Redirects to a static target, or function($request) returns a string;
    */
   public function __construct(array $options) {
-    if ( !empty($options['pattern']) ) {
-      if ( @preg_match($options['pattern'], null) === false ) {
-        throw new InvalidArgumentException('pattern must be valid regex expression.');
+    if ( !empty($options['source']) ) {
+      if ( is_string($options['source']) ) {
+        // Regex
+        if ( @preg_match($options['source'], null) !== false ) {
+          $options['source'] = matches($options['source']);
+        }
+        // Not a function name, plain string.
+        else if ( !is_callable($options['source']) ) {
+          $options['source'] = startsWith($options['source']);
+        }
       }
 
-      $this->pattern = $options['pattern'];
+      // Callable
+      if ( is_callable($options['source']) ) {
+        $this->sourceFunc = $options['source'];
+      }
+      else {
+        throw new InvalidArgumentException('Source must be string, regex or callable.');
+      }
+    }
+    else {
+      $this->sourceFunc = matches('/.*/');
     }
 
     if ( empty($options['target']) || (!is_string($options['target']) && !is_callable($options['target'])) ) {
@@ -50,7 +66,8 @@ class UriRewriteResolver implements \framework\interfaces\IRequestResolver {
   }
 
   public function resolve(Request $request, Response $response) {
-    if ( preg_match($this->pattern, $request->uri('path')) ) {
+    $sourceFunc = $this->sourceFunc;
+    if ( $sourceFunc($request->uri('path')) ) {
       $target = $this->target;
       if ( is_callable($this->target) ) {
         $target = $this->target($request);
