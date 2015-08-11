@@ -12,7 +12,7 @@ class BacktraceProcessor {
   private $level;
   private $backtraceLevel;
 
-  public function __construct($level = Logger::DEBUG, $backtraceLevel = 7) {
+  public function __construct($level = Logger::DEBUG, $backtraceLevel = 8) {
     $this->level = Logger::toMonologLevel($level);
     $this->backtraceLevel = $backtraceLevel;
   }
