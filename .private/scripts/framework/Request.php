@@ -100,7 +100,7 @@ class Request {
 
       // Special parameter prefix
       if ( !empty($options['prefix']) ) {
-        $this->paramPrefix = $options['prefix'];
+        $this->metaPrefix = $options['prefix'];
       }
 
       // Request URI
@@ -295,8 +295,8 @@ class Request {
 
       // Parse special parameter values
       array_walk_recursive($this->paramCache, function(&$value) {
-        if ( is_string($value) && strpos($value, $this->paramPrefix) === 0 ) {
-          $_value = substr($value, strlen($this->paramPrefix));
+        if ( is_string($value) && strpos($value, $this->metaPrefix) === 0 ) {
+          $_value = substr($value, strlen($this->metaPrefix));
           switch ( strtolower($_value) ) {
             case 'true':
               $value = true;
@@ -322,7 +322,7 @@ class Request {
     // Unified params ($_REQUEST mimic)
     switch ( $this->client('type') ) {
       case 'cli':
-        $this->paramCache['request'] = $this->paramCache['cli'];
+        // $this->paramCache['request'] = $this->paramCache['cli'];
         break;
 
       default:
@@ -350,7 +350,7 @@ class Request {
    *
    * Parameters prefixed with this will be parsed as special.
    */
-  protected $paramPrefix = '@';
+  protected $metaPrefix = '@';
 
   //-------------------------------------
   //  Resolver
@@ -530,12 +530,19 @@ class Request {
     switch ( strtolower($type) ) {
       case 'request':
       default:
-        return @$this->paramCache['request'];
+        switch ( $this->client('type') ) {
+          case 'cli':
+            return @$this->paramCache['cli']->argv;
+
+          default:
+            return @$this->paramCache['request'];
+        }
 
       case 'get':
       case 'post':
       case 'cookies':
       case 'files':
+      case 'cli':
         return @$this->paramCache[$type];
     }
   }
@@ -548,16 +555,16 @@ class Request {
   protected $meta;
 
   /**
-   * Parameters starts with $paramPrefix will not be returned from param() and
+   * Parameters starts with metaPrefix will not be returned from param() and
    * must be retrieved from this function.
    */
   public function meta($name = null) {
     $value = &$this->meta;
     if ( !$value ) {
       $value = $this->_param();
-      $value = array_filter_keys($value, startsWith($this->paramPrefix));
+      $value = array_filter_keys($value, startsWith($this->metaPrefix));
       $value = array_combine(
-        array_map(replaces('/^'.preg_quote($this->paramPrefix).'/', ''), array_keys($value)),
+        array_map(replaces('/^'.preg_quote($this->metaPrefix).'/', ''), array_keys($value)),
         array_values($value));
     }
 
@@ -588,7 +595,7 @@ class Request {
       $result = array_filter_keys($result,
         funcAnd(
           notIn([ ini_get('session.name') ]),
-          compose('not', startsWith($this->paramPrefix))
+          compose('not', startsWith($this->metaPrefix))
         )
       );
     }
@@ -664,7 +671,7 @@ class Request {
    * @return {Response} The response object after resolution.
    */
   public function send(Resolver $resolver = null, Response $response = null) {
-    if ( $this->resolver() ) {
+    if ( $this->resolver ) {
       trigger_error('Active request cannot be fired again.', E_USER_WARNING);
       return;
     }
