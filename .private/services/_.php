@@ -85,7 +85,7 @@ class _ extends \framework\WebService {
    * Gets a list of data from target collection.
    */
   protected function let() {
-    return $this->modelClass->get(
+    return $this->modelClass->find(
       $this->createFilter()
       );
   }

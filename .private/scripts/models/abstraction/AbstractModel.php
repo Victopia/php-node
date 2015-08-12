@@ -260,7 +260,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   /**
    * Get a list of data models from the collection.
    */
-  function get($filter = array()) {
+  function find(array $filter = array()) {
     if ( $filter && !util::isAssoc($filter) ) {
       $filter = array(
           $this->_primaryKey => $filter
