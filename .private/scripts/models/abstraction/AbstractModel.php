@@ -24,6 +24,23 @@ use core\Utility as util;
  */
 abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Countable, \JsonSerializable {
 
+  /**
+   * @constructor
+   *
+   * Instantiate the model with specified data.
+   *
+   * @param {?array} $data Designated data to be set into this model object.
+   */
+  function __construct(array $data = null) {
+    $this->data($data);
+
+    // Note: Inheriting classes can define the property to override this.
+    if ( !$this->_collectionName ) {
+      $this->_collectionName = explode('\\', get_called_class());
+      $this->_collectionName = end($this->_collectionName);
+    }
+  }
+
   //----------------------------------------------------------------------------
   //
   //  Properties
@@ -228,21 +245,6 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   //  Methods
   //
   //----------------------------------------------------------------------------
-
-  /**
-   * Instantiate the model with specified data.
-   *
-   * @param {?array} $data Designated data to be set into this model object.
-   */
-  function __construct(array $data = null) {
-    $this->data($data);
-
-    // Note: Inheriting classes can define the property to override this.
-    if ( !$this->_collectionName ) {
-      $this->_collectionName = explode('\\', get_called_class());
-      $this->_collectionName = end($this->_collectionName);
-    }
-  }
 
   /**
    * Validate current data inside this model.
