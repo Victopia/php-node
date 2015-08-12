@@ -73,7 +73,7 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
       $pathNodes = [ '/' ];
     }
 
-    $lastWildcard = null;
+    $lastWildcard = @$auth['*'];
 
     foreach ( $pathNodes as $index => $pathNode ) {
       if ( !util::isAssoc($auth) ) {
@@ -88,24 +88,21 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
         $auth = $auth[$pathNode];
       }
       else {
-        $auth = $lastWildcard;
+        unset($auth);
         break;
       }
     }
 
-    unset($pathNodes, $lastWildcard);
-
-    // Type checking to make sure something has been picked from the foreach loop.
-    if ( !is_bool($auth) && (!is_array($auth) || util::isAssoc($auth)) ) {
-      if ( !isset($this->paths['*']) ) {
-        throw new FrameworkException('Global authentication "*" is not defined, ' .
-          'unable to determine access.');
+    if ( !isset($auth) || !is_bool($auth) && (!is_array($auth) || util::isAssoc($auth)) ) {
+      if ( empty($lastWildcard) ) {
+        throw new FrameworkException('Unable to resolve authentication chain from request URI.');
       }
       else {
-        throw new FrameworkException('Invalid authentication format, must be ' .
-          'boolean or array of authenticators.');
+        $auth = $lastWildcard;
       }
     }
+
+    unset($pathNodes, $lastWildcard);
 
     // Numeric array
     if ( is_array($auth) && !util::isAssoc($auth) ) {
