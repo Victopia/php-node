@@ -60,6 +60,11 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
 
   public /* String */
   function resolve(Request $request, Response $response) {
+    // skip when something is already done
+    if ( $response->status() ) {
+      return;
+    }
+
     $path = $request->uri('path');
 
     // Request URI must start with the specified path prefix. e.g. /:resource/.
