@@ -118,7 +118,7 @@ abstract class AbstractRelationModel extends AbstractModel {
    * @param {?array|AbstractModel|int|string} $parents Target parents to delete, or all parents of omitted.
    * @param {?string} $collection Collection identifier of the relation, defaults to the model's collection name.
    */
-  function deleteParents($collection = null, $parents = null) {
+  protected function deleteParents($collection = null, $parents = null) {
     if ( $collection === null ) {
       $collection = $this->collectionName();
     }
@@ -147,7 +147,7 @@ abstract class AbstractRelationModel extends AbstractModel {
    * @param {?array|AbstractModel|int|string} $children Target children to delete, or all children of omitted.
    * @param {?string} $collection Collection identifier of the relation, defaults to the model's collection name.
    */
-  function deleteChildren($collection = null, $children = null) {
+  protected function deleteChildren($collection = null, $children = null) {
     if ( $collection === null ) {
       $collection = $this->collectionName();
     }
