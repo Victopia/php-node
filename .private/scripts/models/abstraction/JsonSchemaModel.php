@@ -12,7 +12,7 @@ use Jsv4;
 
 abstract class JsonSchemaModel extends AbstractRelationModel {
 
-  public function validate(&$errors = array()) {
+  public function validate(array &$errors = array()) {
     $schema = $this->schema();
 
     if ( !Jsv4::isValid($this->data, $schema) ) {

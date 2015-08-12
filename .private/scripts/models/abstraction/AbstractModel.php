@@ -234,7 +234,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    *
    * @param {?array} $data Designated data to be set into this model object.
    */
-  function __construct($data = null) {
+  function __construct(array $data = null) {
     $this->data($data);
 
     // Note: Inheriting classes can define the property to override this.
@@ -253,7 +253,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * @param {array} An array of errors.
    * @return {AbstractModel} Chainable.
    */
-  function validate(&$errors = array()) {
+  function validate(array &$errors = array()) {
     return $this;
   }
 
@@ -324,7 +324,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * @param {&array} $result[errors] Array of validation errors.
    *                 $result[success] True on succeed, otherwise not set.
    */
-  function save(&$result = array()) {
+  function save(array &$result = array()) {
     $this->isCreate = !$this->identity() && !$this->get($this->identity());
 
     $this->beforeSave($errors);
