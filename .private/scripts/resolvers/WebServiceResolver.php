@@ -146,7 +146,7 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
     }
 
     // Access log
-    if ( System::environment() == 'debug' || !@$request->isLocal ) {
+    if ( System::environment() == 'debug' || !@$request->__local ) {
       Log::debug(sprintf('[WebService] %s %s->%s', $request->method(), $classname, $function),
         array_filter(array('parameters' => $parameters)));
     }

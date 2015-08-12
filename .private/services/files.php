@@ -33,7 +33,7 @@ class files implements \framework\interfaces\IAuthorizableWebService {
       }
 
       // If local redirect, username must exists.
-      if ( @Resolver::getActiveInstance()->request()->isLocal ) {
+      if ( @Resolver::getActiveInstance()->request()->__local ) {
         return isset($args[0]);
       }
 

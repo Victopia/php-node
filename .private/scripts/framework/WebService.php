@@ -94,7 +94,7 @@ abstract class WebService implements interfaces\IWebService {
 	}
 
 	protected function isLocal() {
-		return (bool) @$this->request()->isLocal;
+		return (bool) @$this->request()->__local;
 	}
 
 }

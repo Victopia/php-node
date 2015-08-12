@@ -75,7 +75,7 @@ class Service {
     $serviceRequest = new Request($options);
 
     // Explicitly force this request to be local.
-    $serviceRequest->isLocal = true;
+    $serviceRequest->__local = true;
 
     return $serviceRequest->send($serviceResolver, $serviceResponse);
   }
