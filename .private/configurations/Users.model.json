@@ -45,7 +45,7 @@
         "description": "Last name of the user",
         "type": "string"
       },
-      "birthdayaaa": {
+      "birthday": {
         "description": "Date, or possibly time, of the birth of the user.",
         "type": "string",
         "format": "date-time"
