@@ -8,9 +8,9 @@ namespace core;
  *
  * Index collection identifiers for easy searching, saving up system resources.
  *
- * Functions have pretty descriptive names, while Subject and Objects are custom defined.
+ * Functions have pretty descriptive names, while Parents and Children are custom defined.
  *
- * Database expects Subject and Object as a string with no more than 40 characters,
+ * Database expects Parent and Child as a string with no more than 40 characters,
  * users are encouraged to SHA1 hash their custom identifiers for unique data objects.
  *
  * @author Vicary Arcahgnel <vicary@victopia.org>
@@ -23,15 +23,15 @@ class Relation {
   //
   //--------------------------------------------------
 
-  static function getSubjects($collection, $object) {
-    $result = (array) $object;
+  static function getParents($collection, $children) {
+    $result = (array) $children;
 
     if ( $result ) {
       $params = array_merge((array) $collection, $result);
 
       $result = Database::select(FRAMEWORK_COLLECTION_RELATION
-        , 'subject'
-        , 'WHERE `@collection` = ? AND `object` IN ('. implode(',', array_fill(0, count($result), '?')) .')'
+        , 'parent'
+        , 'WHERE `@collection` = ? AND `child` IN ('. implode(',', array_fill(0, count($result), '?')) .')'
         , $params
         , \PDO::FETCH_COLUMN
         , 0
@@ -41,15 +41,15 @@ class Relation {
     return $result;
   }
 
-  static function getObjects($collection, $subject) {
-    $result = (array) $subject;
+  static function getChildren($collection, $parents) {
+    $result = (array) $parents;
 
     if ( $result ) {
       $params = array_merge((array) $collection, $result);
 
       $result = Database::select(FRAMEWORK_COLLECTION_RELATION
-        , 'object'
-        , 'WHERE `@collection` = ? AND `subject` IN ('. Utility::fillArray($result) .')'
+        , 'child'
+        , 'WHERE `@collection` = ? AND `parent` IN ('. Utility::fillArray($result) .')'
         , $params
         , \PDO::FETCH_COLUMN
         , 0
@@ -59,13 +59,13 @@ class Relation {
     return $result;
   }
 
-  static function getAncestors($collection, $object) {
-    $result = (array) $object;
+  static function getAncestors($collection, $children) {
+    $result = (array) $children;
 
     $ancestors = array();
 
     while ( $result ) {
-      $result = self::getSubjects($collection, $result);
+      $result = self::getParents($collection, $result);
 
       $ancestors = array_merge($ancestors, $result);
     }
@@ -77,13 +77,13 @@ class Relation {
     return $ancestors;
   }
 
-  static function getDescendants($collection, $subject) {
-    $result = (array) $subject;
+  static function getDescendants($collection, $parents) {
+    $result = (array) $parents;
 
     $descendants = array();
 
     while ( $result ) {
-      $result = self::getObjects($collection, $result);
+      $result = self::getChildren($collection, $result);
 
       $descendants = array_merge($descendants, $result);
     }
@@ -96,17 +96,17 @@ class Relation {
   }
 
   /**
-   * Check whether a pair of subject and object is related.
+   * Check whether a pair of parent and child is related.
    */
-  static function isRelated($collection, $subject, $object, $direct = false) {
+  static function isRelated($collection, $parent, $child, $direct = false) {
     if ( $direct ) {
-      $children = self::getObjects($collection, $subject);
+      $children = self::getChildren($collection, $parent);
     }
     else {
-      $children = self::getDescendants($collection, $subject);
+      $children = self::getDescendants($collection, $parent);
     }
 
-    return in_array($object, $children);
+    return in_array($child, $children);
   }
 
   //--------------------------------------------------
@@ -115,11 +115,11 @@ class Relation {
   //
   //--------------------------------------------------
 
-  static function set($collection, $subject, $object) {
+  static function set($collection, $parent, $child) {
     return Database::upsert(FRAMEWORK_COLLECTION_RELATION, array(
         Node::FIELD_COLLECTION => $collection
-      , 'subject' => $subject
-      , 'object' => $object
+      , 'parent' => $parent
+      , 'child' => $child
       ));
   }
 
@@ -129,15 +129,15 @@ class Relation {
   //
   //--------------------------------------------------
 
-  static function deleteSubjects($collection, $object) {
-    return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `object` = ?', array($object))->rowCount();
+  static function deleteParents($collection, $child) {
+    return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `child` = ?', array($child))->rowCount();
   }
 
-  static function deleteObjects($collection, $subject) {
-    return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `subject` = ?', array($subject))->rowCount();
+  static function deleteChildren($collection, $parent) {
+    return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `parent` = ?', array($parent))->rowCount();
   }
 
-  static function delete($collection, $subject, $object) {
-    return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `subject` = ? AND `object` = ?', array($subject, $object))->rowCount();
+  static function delete($collection, $parent, $child) {
+    return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `parent` = ? AND `child` = ?', array($parent, $child))->rowCount();
   }
 }
