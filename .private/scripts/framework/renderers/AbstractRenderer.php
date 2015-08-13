@@ -112,6 +112,6 @@ abstract class AbstractRenderer implements IFileRenderer {
   /**
    * Renders target file.
    */
-  abstract function render();
+  abstract function render($path);
 
 }

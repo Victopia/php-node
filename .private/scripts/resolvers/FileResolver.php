@@ -194,8 +194,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
    */
   private function handle($path, $request, $response) {
     $context = array(
-        'path' => $path
-      , 'request' => $request
+        'request' => $request
       , 'response' => $response
       );
 
@@ -226,7 +225,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
         break;
     }
 
-    $renderer->render();
+    $renderer->render($path);
   }
 
   /**

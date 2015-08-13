@@ -60,7 +60,7 @@ class StatusDocumentResolver implements \framework\interfaces\IRequestResolver {
       $response->status(404);
     }
 
-    if ( $response->body() ) {
+    if ( $response->body() || is_array($response->body()) ) {
       return;
     }
 
@@ -88,12 +88,11 @@ class StatusDocumentResolver implements \framework\interfaces\IRequestResolver {
     // Fall back to PHP
     else if ( file_exists("$basename.php") ) {
       $context = array(
-          'path' => "$basename.php"
-        , 'request' => $request
+          'request' => $request
         , 'response' => $response
         );
 
-      (new IncludeRenderer($context))->render();
+      (new IncludeRenderer($context))->render("$basename.php");
     }
     // Fall back to HTML
     else if ( file_exists("$basename.html") ) {

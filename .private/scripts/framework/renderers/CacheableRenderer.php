@@ -17,19 +17,19 @@ class CacheableRenderer extends AbstractRenderer {
 
   const MAX_AGE_PERMANENT = 2592000; // 30 days
 
-  public function render() {
-    $this->sendCacheHeaders();
+  public function render($path) {
+    $this->sendCacheHeaders($path);
 
     $request = $this->request();
     $response = $this->response();
 
     // Request header: If-Modified-Since
-    $mtime = filemtime($this->path);
+    $mtime = filemtime($path);
     if ( strtotime($request->header('If-Modified-Since')) >= $mtime ) {
       return $response->status(304);
     }
 
-    $eTag = $this->generateETag($this->path);
+    $eTag = $this->generateETag($path);
 
     /*! Note by Vicary @ 17 Jul, 2013
      *  Since apache handles the Range header on its own,
@@ -160,10 +160,10 @@ class CacheableRenderer extends AbstractRenderer {
   /**
    * @private
    */
-  private function sendCacheHeaders() {
+  private function sendCacheHeaders($path) {
     $req = $this->request();
     $res = $this->response();
-    $eTag = $this->generateETag($this->path);
+    $eTag = $this->generateETag($path);
 
     // Weak cache for virtual contents
     if ( @$req->isVirtual ) {
@@ -178,7 +178,7 @@ class CacheableRenderer extends AbstractRenderer {
     }
 
     $res->header('ETag', $eTag);
-    $res->header('Last-Modified', gmdate(DATE_RFC1123, filemtime($this->path)));
+    $res->header('Last-Modified', gmdate(DATE_RFC1123, filemtime($path)));
   }
 
   /**

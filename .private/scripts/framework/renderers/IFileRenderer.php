@@ -8,6 +8,6 @@ interface IFileRenderer {
   /**
    * The rendering function for specified file.
    */
-  public function render();
+  public function render($path);
 
 }

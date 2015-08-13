@@ -7,10 +7,10 @@ use core\Utility as util;
 
 class StaticFileRenderer extends CacheableRenderer {
 
-  public function render() {
+  public function render($path) {
     $res = $this->response();
 
-    $mime = util::getInfo($this->path);
+    $mime = util::getInfo($path);
     if ( preg_match('/^text\//', $mime) ) {
       $res->header('Content-Type', "$mime; charset=utf-8");
     }
@@ -20,13 +20,13 @@ class StaticFileRenderer extends CacheableRenderer {
     }
     unset($mime);
 
-    parent::render();
+    parent::render($path);
 
     // Ouptut the file
     if ( $res->status() < 300 ) {
-      $res->header('Content-Length', filesize($this->path));
+      $res->header('Content-Length', filesize($path));
 
-      $res->send($this->path);
+      $res->send($path);
     }
   }
 
