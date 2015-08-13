@@ -33,12 +33,6 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    */
   function __construct(array $data = null) {
     $this->data($data);
-
-    // Note: Inheriting classes can define the property to override this.
-    if ( !$this->_collectionName ) {
-      $this->_collectionName = explode('\\', get_called_class());
-      $this->_collectionName = end($this->_collectionName);
-    }
   }
 
   //----------------------------------------------------------------------------
@@ -50,9 +44,19 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   /**
    * @private
    *
-   * (Read-only) Collection name of this data model
+   * Collection name of this data model
    */
-  protected $_collectionName;
+  protected static $_collectionName;
+
+  static function collectionName() {
+    // Note: Inherited classes can define the static property to override this.
+    if ( !self::$_collectionName ) {
+      self::$_collectionName = explode('\\', get_called_class());
+      self::$_collectionName = end(self::$_collectionName);
+    }
+
+    return self::$_collectionName;
+  }
 
   /**
    * @private
@@ -269,7 +273,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
         );
     }
 
-    $filter[Node::FIELD_COLLECTION] = $this->_collectionName;
+    $filter[Node::FIELD_COLLECTION] = self::collectionName();
 
     $collection = array();
     Node::getAsync($filter, function($data) use(&$collection) {
@@ -294,7 +298,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    */
   function load($identity) {
     $filter = array(
-        Node::FIELD_COLLECTION => $this->_collectionName
+        Node::FIELD_COLLECTION => self::collectionName()
       , $this->_primaryKey => $identity
       );
 
@@ -336,7 +340,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       }
     }
     else {
-      $res = Node::set([Node::FIELD_COLLECTION => $this->_collectionName] + $this->data);
+      $res = Node::set([Node::FIELD_COLLECTION => self::collectionName()] + $this->data);
       if ( is_numeric($res) ) {
         $result['action'] = 'insert';
         $this->identity($res);
@@ -363,7 +367,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    */
   function delete(&$isDeleted = false) {
     $filter =
-      [ Node::FIELD_COLLECTION => $this->_collectionName
+      [ Node::FIELD_COLLECTION => self::collectionName()
       , '@limit' => 1
       ] + $this->data;
 
