@@ -240,7 +240,7 @@ class Response {
     }
 
     // Normalize capitalization of header keys
-    $key = str_replace(' ', '-', ucwords(str_replace('-', ' ', trim($key))));
+    $key = implode('-', array_map(compose('ucfirst', 'strtolower'), explode('-', trim($key))));
 
     if ( $value ) {
       $this->headers[$key] = array_values(array_unique(array_merge((array) @$this->headers[$key], (array) $value)));
