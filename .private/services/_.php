@@ -61,6 +61,8 @@ class _ extends \framework\WebService {
     $model = "models\\$model";
     $this->modelClass = new $model();
 
+    $this->modelClass->__request = $this->request();
+
     // Remove model name
     $args = array_slice(func_get_args(), 1);
 
@@ -72,7 +74,14 @@ class _ extends \framework\WebService {
       $method = array($this, $this->resolveMethodName($args));
     }
 
-    return call_user_func_array($method, $args);
+    $ret = call_user_func_array($method, $args);
+
+    // remove it before encode
+    unset($this->modelClass->__request);
+
+    return $ret;
+  }
+
   //----------------------------------------------------------------------------
   //
   //  HTTP Methods
