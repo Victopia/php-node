@@ -5,6 +5,16 @@ namespace framework;
 
 abstract class WebService implements interfaces\IWebService {
 
+	/**
+	 * @constructor
+	 *
+	 * The new WebService class must be called with request and response context.
+	 */
+	public function __construct(Request $request, Response $response) {
+		$this->request = $request;
+		$this->response = $response;
+	}
+
 	//----------------------------------------------------------------------------
 	//
 	//  Properties
@@ -40,16 +50,6 @@ abstract class WebService implements interfaces\IWebService {
 	//----------------------------------------------------------------------------
 
 	/**
-	 * @constructor
-	 *
-	 * The new WebService class must be called with request and response context.
-	 */
-	public function __construct(Request $request, Response $response) {
-		$this->request = $request;
-		$this->response = $response;
-	}
-
-	/**
 	 * New service classes are allowed to be invoked directly, functions of request
 	 * methods are then called accordingly.
 	 *
@@ -69,21 +69,9 @@ abstract class WebService implements interfaces\IWebService {
 		}
 	}
 
-	protected function resolveMethodName(&$args = array()) {
+	protected function resolveMethodName(array &$args = array()) {
 		if ( isset($args[0]) && method_exists($this, $args[0]) ) {
 			return array_shift($args);
-		}
-
-		// Default method depending on request method
-		switch ( $this->request()->method() ) {
-			case 'get':
-				if ( !$args ) {
-					return 'let';
-				}
-				return 'get';
-
-			case 'post':
-				return 'set';
 		}
 
 		return $this->request()->method();

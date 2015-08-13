@@ -73,6 +73,23 @@ class _ extends \framework\WebService {
     }
 
     return call_user_func_array($method, $args);
+  //----------------------------------------------------------------------------
+  //
+  //  HTTP Methods
+  //
+  //----------------------------------------------------------------------------
+
+  protected function get($identity = null) {
+    if ( $identity === null ) {
+      return $this->find();
+    }
+    else {
+      return $this->findOne($identity);
+    }
+  }
+
+  protected function post() {
+    return $this->upsert();
   }
 
   //----------------------------------------------------------------------------
@@ -84,7 +101,7 @@ class _ extends \framework\WebService {
   /**
    * Gets a list of data from target collection.
    */
-  protected function let() {
+  protected function find() {
     return $this->modelClass->find(
       $this->createFilter()
       );
@@ -93,18 +110,17 @@ class _ extends \framework\WebService {
   /**
    * Gets a data object with specified entity id from target collection.
    */
-  protected function get($identity) {
+  protected function findOne($identity) {
     $this->modelClass->load($identity);
     if ( !$this->modelClass->identity() ) {
       $this->response()->status(404);
     }
-    else {
-      return $this->modelClass;
-    }
+
+    return $this->modelClass;
   }
 
   /*! Note
-   *  This should work just like let() and get(), that it passes the whole thing
+   *  This should work just like find() and findOne(), that it passes the whole thing
    *  into Node::set() instead. Inherited classes can make modifications to
    *  parameter values before passing down to this.
    *
@@ -114,7 +130,7 @@ class _ extends \framework\WebService {
    *  A problem is that it assumes the primary key is already named "ID", should
    *  tackle of this.
    */
-  protected function set() {
+  protected function upsert() {
     $data = (array) $this->request()->param();
     if ( $data ) {
       // This will append the existing data to the submitted one.
@@ -140,6 +156,7 @@ class _ extends \framework\WebService {
       }
 
       $this->modelClass->save($result);
+
       switch ( @$result['action'] ) {
         case 'insert':
           $this->response()->status(201); // Created
@@ -178,8 +195,8 @@ class _ extends \framework\WebService {
    *  or calls this method for appropriate headers.
    *
    *  This method should be able to independently serve headers for standard methods,
-   *  1. let (collection)
-   *  2. get (single data)
+   *  1. find (collection)
+   *  2. findOne (single data)
    *  3. set (no body)
    *  4. delete (no body)
    *
