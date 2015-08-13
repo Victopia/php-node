@@ -177,8 +177,10 @@ class Node {
 
   /**
    * New cursor approach, invokes $dataCallback the moment we found a matching row.
+   *
+   * @return An array of return values from every invokes to $dataCallback, works like array_map().
    */
-  static /* void */ function getAsync($filter, $dataCallback) {
+  static function getAsync($filter, $dataCallback) {
     if ( !self::ensureConnection() ) {
       return false;
     }
@@ -187,6 +189,8 @@ class Node {
     if ( !$context ) {
       return false;
     }
+
+    $result = array();
 
     // Simple SQL statment when all filtering fields are real column.
     if ( !$context['filter'] ) {
@@ -204,7 +208,7 @@ class Node {
 
       $res->setFetchMode(\PDO::FETCH_ASSOC);
 
-      $decodesContent = function(&$row) use($context) {
+      $decodesContent = function($row) use($context) {
         if ( isset($row[self::FIELD_VIRTUAL]) ) {
           $contents = (array) json_decode($row[self::FIELD_VIRTUAL], true);
 
@@ -223,9 +227,7 @@ class Node {
       };
 
       foreach ( $res as $row ) {
-        if ( $dataCallback($decodesContent($row)) === false ) {
-          break;
-        }
+        $result[] = $dataCallback($decodesContent($row));
       }
 
       unset($res, $row, $decodesContent);
@@ -290,7 +292,7 @@ class Node {
                 $row[self::FIELD_COLLECTION] = $context['table'];
               }
 
-              $dataCallback($row);
+              $result[] = $dataCallback($row);
 
               // Result size is less than specified size, it means end of data.
               if ( !--$context['limits'][1] ) {
@@ -301,6 +303,8 @@ class Node {
         }
       } unset($fetchOffset, $fetchLength, $res);
     }
+
+    return $result;
   }
 
   private static function composeQuery($filter) {
