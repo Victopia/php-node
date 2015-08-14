@@ -85,19 +85,19 @@ class System {
     if ( !$domain ) {
       switch ( strtolower($type) ) {
         case 'secure':
-          $domain = conf::get('system.domains::secure');
+          $domain = conf::get('system::domains.secure');
           break;
 
         case 'service':
-          $domain = conf::get('system.domains::service');
+          $domain = conf::get('system::domains.service');
           break;
 
         case 'local':
-          $domain = conf::get('system.domains::local', 'localhost');
+          $domain = conf::get('system::domains.local', 'localhost');
           break;
 
         default:
-          $domain = conf::get('system.domains::default', gethostname());
+          $domain = conf::get('system::domains.default', gethostname());
           break;
       }
     }
