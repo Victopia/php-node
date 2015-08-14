@@ -44,12 +44,12 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   /**
    * @private
    *
-   * Collection name of this data model
+   * (Read-only) Collection name of this data model
    */
   protected static $_collectionName;
 
   static function collectionName() {
-    // Note: Inherited classes can define the static property to override this.
+    // Note: Inheriting classes can define the property to override this.
     if ( !self::$_collectionName ) {
       self::$_collectionName = explode('\\', get_called_class());
       self::$_collectionName = end(self::$_collectionName);
@@ -149,9 +149,17 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     return $this->data[$name];
   }
 
+  /**
+   * Property names starts with "@" or "__" will be assigned directly to the
+   * class instance instead of internal data array, this enables some dynamic
+   * contextual assignment and avoid polluting the data.
+   */
   function __set($name, $value) {
-    if ( $name[0] != '@' ) {
+    if ( !preg_match('/^(@|__)/', $name) ) {
       $this->data[$name] = $value;
+    }
+    else {
+      $this->$name = $value;
     }
   }
 
