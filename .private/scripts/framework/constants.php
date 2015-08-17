@@ -18,8 +18,6 @@ define('FRAMEWORK_COLLECTION_RELATION', 'NodeRelations');
 define('FRAMEWORK_COLLECTION_LOG', 'Logs');
 // Collection of processes
 define('FRAMEWORK_COLLECTION_PROCESS', 'Processes');
-// Collection of schedules process
-define('FRAMEWORK_COLLECTION_PROCESS_SCHEDULE', 'ProcessSchedules');
 // Collection of users
 define('FRAMEWORK_COLLECTION_USER', 'Users');
 // Collection of http user sessions

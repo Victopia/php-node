@@ -114,9 +114,6 @@ $opts = (new framework\Optimist)
 
     // Configuration based crontab
     array_map($scheduler, (array) conf::get('crontab::schedules'));
-
-    // Cron started worker also enqueues new process from the schdule table.
-    Node::getAsync(FRAMEWORK_COLLECTION_PROCESS_SCHEDULE, $scheduler);
   }
 
 // Avoid forking connection crash, renew the connection.
