@@ -87,7 +87,7 @@ class CssMinResolver implements \framework\interfaces\IRequestResolver {
       $srcPath = "./$srcPath$_srcPath";
 
       // compile when: target file not exists, or source is newer
-      if ( !file_exists($dstPath) || @filemtime($srcPath) > @filemtime($dstPath) ) {
+      if ( file_exists($srcPath) && (!file_exists($dstPath) || @filemtime($srcPath) > @filemtime($dstPath)) ) {
         // empty results are ignored
         $result = trim(@CssMin::minify(file_get_contents($srcPath)));
         if ( $result && !@file_put_contents($dstPath, $result) ) {
