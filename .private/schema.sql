@@ -86,8 +86,7 @@ CREATE TABLE `Processes` (
   `start_time` datetime NOT NULL COMMENT 'Scheduled Start Time',
   `@contents` longtext NOT NULL,
   `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `pid` (`pid`)
+  PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
