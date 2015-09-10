@@ -9,7 +9,7 @@ class IncludeRenderer extends AbstractRenderer {
    * The most simple way to implement a rendering logic.
    */
   public function render($path) {
-    $this->response()->header('Content-Type', 'text/html; charset=utf-8');
+    $this->response()->header('Content-Type', 'text/html; charset=utf-8', true);
 
     $bufferEnabled = $this->response()->useOutputBuffer();
     $bufferOptions = $this->response()->outputBufferOptions();
