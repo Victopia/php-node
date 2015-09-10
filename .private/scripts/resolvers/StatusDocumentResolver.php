@@ -69,6 +69,7 @@ class StatusDocumentResolver implements \framework\interfaces\IRequestResolver {
       case 'application/xhtml+xml':
       case 'text/html':
       default:
+        $ext = 'html';
         break;
 
       case 'application/json':
@@ -95,7 +96,7 @@ class StatusDocumentResolver implements \framework\interfaces\IRequestResolver {
       (new IncludeRenderer($context))->render("$basename.php");
     }
     // Fall back to HTML
-    else if ( file_exists("$basename.html") ) {
+    else if ( $ext != 'html' && file_exists("$basename.html") ) {
       readfile("$basename.html");
     }
   }
