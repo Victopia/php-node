@@ -46,16 +46,16 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    *
    * (Read-only) Collection name of this data model
    */
-  protected static $_collectionName;
+  protected $_collectionName;
 
-  static function collectionName() {
+  function collectionName() {
     // Note: Inheriting classes can define the property to override this.
-    if ( !self::$_collectionName ) {
-      self::$_collectionName = explode('\\', get_called_class());
-      self::$_collectionName = end(self::$_collectionName);
+    if ( !$this->_collectionName ) {
+      $this->_collectionName = explode('\\', get_called_class());
+      $this->_collectionName = end($this->_collectionName);
     }
 
-    return self::$_collectionName;
+    return $this->_collectionName;
   }
 
   /**
@@ -101,7 +101,13 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       return $this->data;
     }
     else {
-      $this->data = array_filter_keys((array) $value, compose('not', startsWith('@')));
+      $this->data = array();
+
+      // note: let __set() do the job.
+      foreach ( $value as $key => $val ) {
+        $this->$key = $val;
+      }
+
       return $this;
     }
   }
@@ -145,7 +151,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   //
   //----------------------------------------------------------------------------
 
-  function __get($name) {
+  function &__get($name) {
     return $this->data[$name];
   }
 
@@ -319,12 +325,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
 
     $this->beforeLoad($filter);
     if ( $filter !== false ) {
-      $data = (array) @Node::getOne($filter);
-      if ( !$data ) {
-        return false;
-      }
-
-      $this->data($data);
+      $this->data((array) @Node::getOne($filter));
 
       $this->afterLoad();
     }
@@ -339,7 +340,9 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    *                 $result[success] True on succeed, otherwise not set.
    */
   function save(array &$result = array()) {
-    $this->isCreate = !$this->identity() && !$this->get($this->identity());
+    $this->_isCreate = !$this->identity();
+
+    $errors = array();
 
     $this->beforeSave($errors);
     if ( $errors ) {
@@ -348,24 +351,37 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       }
     }
     else {
-      $res = Node::set([Node::FIELD_COLLECTION => self::collectionName()] + $this->data);
-      if ( is_numeric($res) ) {
-        $result['action'] = 'insert';
-        $this->identity($res);
+      try {
+        $res = array_filter($this->data, compose('not', 'is_null'));
+
+        $res[Node::FIELD_COLLECTION] = self::collectionName();
+
+        $res = Node::set($res);
+        if ( is_numeric($res) ) {
+          $result['action'] = 'insert';
+
+          // Primary keys other than auto_increment will return 0
+          if ( $res ) {
+            $this->identity($res);
+          }
+        }
+        else if ( $res ) {
+          $result['action'] = 'update';
+        }
       }
-      else if ( $res ) {
-        $result['action'] = 'update';
+      catch (\PDOException $e) {
+        $result['error'] = $e->getMessage();
       }
+
+      $this->afterSave();
 
       // Load again to reflect database level changes
       $this->load($this->identity());
 
-      $this->afterSave();
-
       $result['success'] = true;
     }
 
-    $this->isCreate = false;
+    $this->_isCreate = false;
 
     return $this;
   }
@@ -377,7 +393,14 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     $filter =
       [ Node::FIELD_COLLECTION => self::collectionName()
       , '@limit' => 1
-      ] + $this->data;
+      ];
+
+    if ( $this->identity() ) {
+      $filter[$this->_primaryKey] = $this->identity();
+    }
+    else {
+      $filter+= $this->data();
+    }
 
     $this->beforeDelete($filter);
     if ( $filter !== false ) {
