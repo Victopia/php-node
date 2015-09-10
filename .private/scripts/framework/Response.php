@@ -36,6 +36,10 @@ class Response {
         ob_start(null, (int) $options['outputBuffer']['size']);
       }
     }
+
+    if ( isset($options['autoOutput']) ) {
+      $this->_autoOutput = (bool) $options['autoOutput'];
+    }
   }
 
   //----------------------------------------------------------------------------
@@ -43,6 +47,13 @@ class Response {
   //  Properties
   //
   //----------------------------------------------------------------------------
+
+  /**
+   * @protected
+   *
+   * Automatically flushes the body to output upon destroy.
+   */
+  protected $_autoOutput = true;
 
   /**
    * @protected
@@ -224,8 +235,9 @@ class Response {
    *
    * @param {string} $key Either the whole header string, or the header key.
    * @param {?string} $value When value is specified, $key will be used as key.
+   * @param {?boolean} Replace previous headers with the same name.
    */
-  public function header($key = null, $value = null) {
+  public function header($key = null, $value = null, $replace = false) {
     if ( $key === null ) {
       return $this->headers;
     }
@@ -243,7 +255,12 @@ class Response {
     $key = implode('-', array_map(compose('ucfirst', 'strtolower'), explode('-', trim($key))));
 
     if ( $value ) {
-      $this->headers[$key] = array_values(array_unique(array_merge((array) @$this->headers[$key], (array) $value)));
+      if ( !$replace ) {
+        $this->headers[$key] = array_values(array_unique(array_merge((array) @$this->headers[$key], (array) $value)));
+      }
+      else {
+        $this->headers[$key] = (array) $value;
+      }
     }
     else if ( $value === null ) {
       return @$this->headers[$key];
@@ -283,7 +300,7 @@ class Response {
    * Appends string message to current body.
    */
   public function write($message) {
-    if ( !is_string($message) || !is_string($this->body) || is_file($this->body) ) {
+    if ( !is_string($message) || ( !is_string($this->body) && !is_null($this->body) ) || is_file($this->body) ) {
       throw new FrameworkException('Message body is not appendable, please clear before write.');
     }
 
@@ -382,6 +399,10 @@ class Response {
   }
 
   public function __destruct() {
+    if ( !$this->_autoOutput ) {
+      return;
+    }
+
     if ( !$this->useOutputBuffer ) {
       if ( !function_exists('headers_sent') || headers_sent() ) {
         return;
