@@ -117,11 +117,15 @@ Log::setLogger(new Logger('default'));
 
 // Log enabled
 if ( conf::get('log', true) ) {
+  $level = Logger::toMonologLevel(conf::get('system::log.level', 'debug'));
+
   Log::getLogger()
-    ->pushProcessor(new BacktraceProcessor())
-    ->pushProcessor(new SessionProcessor())
-    ->pushProcessor(new ProcessProcessor())
-    ->pushHandler(new NodeHandler());
+    ->pushProcessor(new BacktraceProcessor($level))
+    ->pushProcessor(new SessionProcessor($level))
+    ->pushProcessor(new ProcessProcessor($level))
+    ->pushHandler(new NodeHandler($level));
+
+  unset($level);
 }
 else {
   // This should not be necessary, no handlers will run nothing.
