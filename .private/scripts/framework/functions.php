@@ -210,11 +210,14 @@ function propHas($prop, array $values, $strict = false) {
 
 function invokes($name, array $args = array()) {
   return function ($object) use($name, $args) {
-    if ( is_array($object) ) {
+    if ( Utility::isAssoc($object) ) {
       $func = @$object[$name];
     }
-    else {
+    else if ( method_exists($object, $name) ) {
       $func = array($object, $name);
+    }
+    else {
+      trigger_error("Can neither invoke \$object[$name]() nor \$object->$name().", E_USER_WARNING);
     }
 
     return call_user_func_array($func, $args);
