@@ -131,12 +131,10 @@ class Node {
       $filter['@limits'] = 1;
     }
 
-    $data = array();
-    self::getAsync($filter, function($item) use(&$data) {
-      $data = $item;
-
-      return false;
-    });
+    $data = self::get($filter);
+    if ( $data ) {
+      $data = reset($data);
+    }
 
     return $data;
   }
