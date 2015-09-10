@@ -19,7 +19,8 @@ class BacktraceProcessor {
 
   public function __invoke(array $record) {
     if ( $record['level'] >= $this->level ) {
-      $backtrace = util::getCallee($this->backtraceLevel);
+      // note: file and line should be one level above the called class.
+      $backtrace = util::getCallee($this->backtraceLevel - 1);
 
       if ( isset($backtrace['file']) ) {
         $record['extra']['file'] = str_replace(getcwd(), '', basename($backtrace['file'], '.php'));;
@@ -28,6 +29,8 @@ class BacktraceProcessor {
       if ( isset($backtrace['line']) ) {
         $record['extra']['line'] = $backtrace['line'];
       }
+
+      $backtrace = util::getCallee($this->backtraceLevel);
 
       $action = @"$backtrace[class]$backtrace[type]$backtrace[function]";
       if ( $action ) {
