@@ -46,10 +46,11 @@ class ScssResolver implements \framework\interfaces\IRequestResolver {
 
     if ( !empty($options['output']) ) {
       if ( !is_string($options['output']) || !is_dir($options['output']) || !is_writable($options['output']) ) {
-        throw new ResolverException('Invalid output directory.');
+        Log::error('Invalid output directory for scss files.', (array) @$options['output']);
       }
-
-      $this->dstPath = $options['output'];
+      else {
+        $this->dstPath = $options['output'];
+      }
     }
   }
 
