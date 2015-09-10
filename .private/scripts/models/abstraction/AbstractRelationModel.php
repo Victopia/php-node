@@ -14,6 +14,12 @@ use framework\exceptions\FrameworkException;
  */
 abstract class AbstractRelationModel extends AbstractModel {
 
+  //----------------------------------------------------------------------------
+  //
+  //  Methods
+  //
+  //----------------------------------------------------------------------------
+
   /**
    * Accessor to parent relations.
    *
@@ -27,11 +33,11 @@ abstract class AbstractRelationModel extends AbstractModel {
       $collection = $this->collectionName();
     }
 
-    $return = Relation::getParents($collection, $this->identity());
+    $return = Relation::getParents($this->identity(), $collection);
 
     if ( $parents ) {
       if ( $replace ) {
-        $this->deleteParents($collection);
+        $this->deleteAncestors($collection);
       }
 
       if ( !is_array($parents) ) {
@@ -43,7 +49,7 @@ abstract class AbstractRelationModel extends AbstractModel {
           $parent = $parent->identity();
         }
 
-        Relation::set($collection, $parent, $this->identity());
+        Relation::set($parent, $this->identity(), $collection);
       }
     }
 
@@ -63,7 +69,7 @@ abstract class AbstractRelationModel extends AbstractModel {
       $collection = $this->collectionName();
     }
 
-    $return = Relation::getChildren($collection, $this->identity());
+    $return = Relation::getChildren($this->identity(), $collection);
 
     if ( $children ) {
       if ( $replace ) {
@@ -79,7 +85,7 @@ abstract class AbstractRelationModel extends AbstractModel {
           $child = $child->identity();
         }
 
-        Relation::set($collection, $this->identity(), $child);
+        Relation::set($this->identity(), $child, $collection);
       }
     }
 
@@ -96,7 +102,7 @@ abstract class AbstractRelationModel extends AbstractModel {
       $collection = $this->collectionName();
     }
 
-    return Relation::getAncestors($collection, $this->identity());
+    return Relation::getAncestors($this->identity(), $collection);
   }
 
   /**
@@ -109,7 +115,7 @@ abstract class AbstractRelationModel extends AbstractModel {
       $collection = $this->collectionName();
     }
 
-    return Relation::getDescendants($collection, $this->identity());
+    return Relation::getDescendants($this->identity(), $collection);
   }
 
   /**
@@ -118,13 +124,13 @@ abstract class AbstractRelationModel extends AbstractModel {
    * @param {?array|AbstractModel|int|string} $parents Target parents to delete, or all parents of omitted.
    * @param {?string} $collection Collection identifier of the relation, defaults to the model's collection name.
    */
-  protected function deleteParents($collection = null, $parents = null) {
+  protected function deleteAncestors($collection = '%', $parents = null) {
     if ( $collection === null ) {
       $collection = $this->collectionName();
     }
 
     if ( $parents === null ) {
-      return Relation::deleteParents($collection, $this->identity());
+      return Relation::deleteAncestors($this->identity(), $collection);
     }
     else {
       if ( !is_array($parents) ) {
@@ -136,7 +142,7 @@ abstract class AbstractRelationModel extends AbstractModel {
           $parent = $parent->identity();
         }
 
-        return $result && Relation::delete($collection, $parent, $this->identity());
+        return $result && Relation::delete($parent, $this->identity(), $collection);
       }, true);
     }
   }
@@ -147,13 +153,13 @@ abstract class AbstractRelationModel extends AbstractModel {
    * @param {?array|AbstractModel|int|string} $children Target children to delete, or all children of omitted.
    * @param {?string} $collection Collection identifier of the relation, defaults to the model's collection name.
    */
-  protected function deleteChildren($collection = null, $children = null) {
+  protected function deleteChildren($collection = '%', $children = null) {
     if ( $collection === null ) {
       $collection = $this->collectionName();
     }
 
     if ( $children === null ) {
-      return Relation::deleteParents($collection, $this->identity());
+      return Relation::deleteDescendants($this->identity(), $collection);
     }
     else {
       if ( !is_array($children) ) {
@@ -165,7 +171,7 @@ abstract class AbstractRelationModel extends AbstractModel {
           $child = $child->identity();
         }
 
-        return $result && Relation::delete($collection, $this->identity(), $child);
+        return $result && Relation::delete($this->identity(), $child, $collection);
       }, true);
     }
   }

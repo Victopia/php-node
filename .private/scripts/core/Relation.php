@@ -23,7 +23,7 @@ class Relation {
   //
   //--------------------------------------------------
 
-  static function getParents($collection, $children) {
+  static function getParents($children, $collection = '%') {
     $result = (array) $children;
 
     if ( $result ) {
@@ -31,7 +31,7 @@ class Relation {
 
       $result = Database::select(FRAMEWORK_COLLECTION_RELATION
         , 'parent'
-        , 'WHERE `@collection` = ? AND `child` IN ('. implode(',', array_fill(0, count($result), '?')) .')'
+        , 'WHERE `@collection` LIKE ? AND `child` IN ('. implode(',', array_fill(0, count($result), '?')) .')'
         , $params
         , \PDO::FETCH_COLUMN
         , 0
@@ -41,7 +41,7 @@ class Relation {
     return $result;
   }
 
-  static function getChildren($collection, $parents) {
+  static function getChildren($parents, $collection = '%') {
     $result = (array) $parents;
 
     if ( $result ) {
@@ -49,7 +49,7 @@ class Relation {
 
       $result = Database::select(FRAMEWORK_COLLECTION_RELATION
         , 'child'
-        , 'WHERE `@collection` = ? AND `parent` IN ('. Utility::fillArray($result) .')'
+        , 'WHERE `@collection` LIKE ? AND `parent` IN ('. Utility::fillArray($result) .')'
         , $params
         , \PDO::FETCH_COLUMN
         , 0
@@ -59,13 +59,13 @@ class Relation {
     return $result;
   }
 
-  static function getAncestors($collection, $children) {
+  static function getAncestors($children, $collection = '%') {
     $result = (array) $children;
 
     $ancestors = array();
 
     while ( $result ) {
-      $result = self::getParents($collection, $result);
+      $result = self::getParents($result, $collection);
 
       $ancestors = array_merge($ancestors, $result);
     }
@@ -77,13 +77,13 @@ class Relation {
     return $ancestors;
   }
 
-  static function getDescendants($collection, $parents) {
+  static function getDescendants($parents, $collection = '%') {
     $result = (array) $parents;
 
     $descendants = array();
 
     while ( $result ) {
-      $result = self::getChildren($collection, $result);
+      $result = self::getChildren($result, $collection);
 
       $descendants = array_merge($descendants, $result);
     }
@@ -96,17 +96,17 @@ class Relation {
   }
 
   /**
-   * Check whether a pair of parent and child is related.
+   * Check whether $child is descendant of $parent.
    */
-  static function isRelated($collection, $parent, $child, $direct = false) {
-    if ( $direct ) {
-      $children = self::getChildren($collection, $parent);
-    }
-    else {
-      $children = self::getDescendants($collection, $parent);
-    }
+  static function isRelated($parent, $child, $collection = '%') {
+    return in_array($child, self::getDescendants($parent, $collection));
+  }
 
-    return in_array($child, $children);
+  /**
+   * Check whether $child is direct descendant of $parent.
+   */
+  static function isDirectRelated($parent, $child, $collection = '%') {
+    return in_array($child, self::getChildren($parent, $collection));
   }
 
   //--------------------------------------------------
@@ -115,7 +115,7 @@ class Relation {
   //
   //--------------------------------------------------
 
-  static function set($collection, $parent, $child) {
+  static function set($parent, $child, $collection) {
     return Database::upsert(FRAMEWORK_COLLECTION_RELATION, array(
         Node::FIELD_COLLECTION => $collection
       , 'parent' => $parent
@@ -129,15 +129,18 @@ class Relation {
   //
   //--------------------------------------------------
 
-  static function deleteParents($collection, $child) {
-    return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `child` = ?', array($child))->rowCount();
+  static function deleteAncestors($child, $collection = '*') {
+    return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `@collection` LIKE ? AND `child` = ?',
+      array($collection, $child))->rowCount();
   }
 
-  static function deleteChildren($collection, $parent) {
-    return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `parent` = ?', array($parent))->rowCount();
+  static function deleteDescendants($parent, $collection = '%') {
+    return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `@collection` LIKE ? AND `parent` = ?',
+      array($collection, $parent))->rowCount();
   }
 
-  static function delete($collection, $parent, $child) {
-    return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `parent` = ? AND `child` = ?', array($parent, $child))->rowCount();
+  static function delete($parent, $child, $collection = '%') {
+    return Database::query('DELETE FROM ' . FRAMEWORK_COLLECTION_RELATION . ' WHERE `@collection` LIKE ? AND `parent` = ? AND `child` = ?',
+      array($collection, $parent, $child))->rowCount();
   }
 }
