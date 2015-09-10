@@ -20,9 +20,10 @@ class ProcessProcessor {
       return $record;
     }
 
-    // This indicated a background process
-    if ( Process::get('pid') ) {
-      $record['extra']['pid'] = $processData['pid'];
+    // pid indicates a background process
+    $pid = Process::get('pid');
+    if ( $pid ) {
+      $record['extra']['pid'] = $pid;
     }
 
     return $record;
