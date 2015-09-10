@@ -74,7 +74,7 @@ $opts = (new framework\Optimist)
     // $affectedRows+= $res->rowCount();
 
     if ( $affectedRows ) {
-      Log::info(sprintf('Process cleanup, %d processes removed.', $affectedRows));
+      Log::debug(sprintf('Process cleanup, %d processes removed.', $affectedRows));
     }
 
     die;
