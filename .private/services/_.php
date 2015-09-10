@@ -3,8 +3,6 @@
 
 namespace services;
 
-use core\Node;
-
 use framework\exceptions\ServiceException;
 
 /**
@@ -62,22 +60,23 @@ class _ extends \framework\WebService {
     $this->modelClass = new $model();
 
     $this->modelClass->__request = $this->request();
+    $this->modelClass->__response = $this->response();
 
     // Remove model name
     $args = array_slice(func_get_args(), 1);
 
-    // Exposed model methods: public function _*() { }
-    if ( $args && method_exists($this->modelClass, "_$args[0]") ) {
-      $method = array($this->modelClass, '_' . array_shift($args));
+    $method = @$args[0];
+    $reservedMethods = array('get', 'set', 'unset', 'isset', 'invoke', 'call', 'callStatic');
+
+    // Exposed model methods: public function __*() { }
+    if ( $args && !in_array($method, $reservedMethods) && method_exists($this->modelClass, "__$method") ) {
+      $method = array($this->modelClass, '__' . array_shift($args));
     }
     else {
       $method = array($this, $this->resolveMethodName($args));
     }
 
     $ret = call_user_func_array($method, $args);
-
-    // remove it before encode
-    unset($this->modelClass->__request);
 
     return $ret;
   }
@@ -97,8 +96,8 @@ class _ extends \framework\WebService {
     }
   }
 
-  protected function post() {
-    return $this->upsert();
+  protected function post($identity = null) {
+    return $this->upsert($identity);
   }
 
   //----------------------------------------------------------------------------
@@ -124,8 +123,9 @@ class _ extends \framework\WebService {
     if ( !$this->modelClass->identity() ) {
       $this->response()->status(404);
     }
-
-    return $this->modelClass;
+    else {
+      return $this->modelClass;
+    }
   }
 
   /*! Note
@@ -139,7 +139,7 @@ class _ extends \framework\WebService {
    *  A problem is that it assumes the primary key is already named "ID", should
    *  tackle of this.
    */
-  protected function upsert() {
+  protected function upsert($identity) {
     $data = (array) $this->request()->param();
     if ( $data ) {
       // This will append the existing data to the submitted one.
@@ -149,7 +149,7 @@ class _ extends \framework\WebService {
         }
 
         $this->modelClass->load(
-          $data[$this->modelClass->primaryKey()]
+          $identity ? $identity : $data[$this->modelClass->primaryKey()]
           );
 
         $this->modelClass->appendData($data);
@@ -158,15 +158,21 @@ class _ extends \framework\WebService {
         $this->modelClass->data($data);
       }
 
-      $this->modelClass->validate($errors);
-      if ( $errors ) {
-        $this->response()->send($errors, 400);
+      // errors
+      $res = array();
+
+      $this->modelClass->validate($res);
+      if ( $res ) {
+        $this->response()->send($res, 400);
         return;
       }
 
-      $this->modelClass->save($result);
+      // result
+      $res = array();
 
-      switch ( @$result['action'] ) {
+      $this->modelClass->save($res);
+
+      switch ( @$res['action'] ) {
         case 'insert':
           $this->response()->status(201); // Created
           break;
@@ -175,7 +181,7 @@ class _ extends \framework\WebService {
           break;
 
         default:
-          return $result; // $result['errors']
+          return $res; // $res['errors']
       }
 
       return $this->modelClass;
@@ -191,7 +197,7 @@ class _ extends \framework\WebService {
    * @param {int} $identity ID of target data object.
    */
   protected function delete($identity = null) {
-    $model = $this->get($identity);
+    $model = $this->findOne($identity);
     if ( $model ) {
       $model->delete($isDeleted);
 
