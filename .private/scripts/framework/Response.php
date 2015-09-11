@@ -437,10 +437,10 @@ class Response {
   /**
    * Translation shorthand
    */
-  public function __($key) {
+  public function __(/* $key, ... $args */) {
     $translation = $this->translation;
     if ( is_callable($translation) ) {
-      return $translation($key);
+      return call_user_func_array($translation, func_get_args());
     }
   }
 

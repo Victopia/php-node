@@ -7,24 +7,43 @@ use core\Node;
 
 use framework\exceptions\FrameworkException;
 
+
 class Translation {
 
-  private $localeChain;
-
+  /**
+   * @protected
+   *
+   * Cache for loaded translations.
+   */
   private $localeCache = array();
 
-  //----------------------------------------------------------------------------
-  //
-  //  Constructor
-  //
-  //----------------------------------------------------------------------------
+  /**
+   * @protected
+   *
+   * Language bundle key to search with.
+   */
+  private $bundle;
 
-  public function __construct($localeChain = 'en_US') {
+  /**
+   * @protected
+   *
+   * Chain of locale for fall back.
+   */
+  private $localeChain;
+
+  /**
+   * @constructor
+   *
+   * @param {string|array} $localeChain Locale chain for this instance.
+   * @param {?string} $bundle Language bundle name, defaults to "default".
+   */
+  public function __construct($localeChain = 'en_US', $bundle = 'default') {
     if ( !is_array($localeChain) ) {
       $localeChain = preg_split('/\s*,\s*/', trim($localeChain));
     }
 
-    $this->localeChain = $localeChain;
+    $this->localeChain = (array) $localeChain;
+    $this->bundle = $bundle;
   }
 
   //----------------------------------------------------------------------------
@@ -35,27 +54,36 @@ class Translation {
 
   /**
    * Shorthand to get()
+   *
+   * @param {string} $string The string to be translated.
+   * @param {... array} $args Extra parameters for sprintf()
+   *
+   * @return {string} Translated string.
    */
-  public function __invoke($string, $key = 'default') {
-    return $this->get($string, $key);
+  public function __invoke(/* $string, ... $args */) {
+    return call_user_func_array(array($this, 'get'), func_get_args());
   }
 
   /**
    * Set a locale object.
    */
-  public function set($string, $key = 'default', $locale = null) {
+  public function set($string, $bundle = null, $locale = null) {
     // Use the last one as default
     if ( $locale === null ) {
       $locale = end($this->localeChain);
     }
 
+    if ( $bundle === null ) {
+      $bundle = $this->bundle;
+    }
+
     $contents = array(
-      Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_TRANSLATION
-    , 'identifier' => md5($string)
-    , 'value' => $string
-    , 'key' => $key
-    , 'locale' => $locale
-    );
+        Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_TRANSLATION
+      , 'identifier' => md5($string)
+      , 'value' => $string
+      , 'key' => $bundle
+      , 'locale' => $locale
+      );
 
     if ( empty($contents['locale']) ) {
       throw new FrameworkException('Invalid locale specified.');
@@ -81,7 +109,7 @@ class Translation {
   /**
    * Retrieve a translation with a key preference.
    */
-  public function get($string, $key = 'default') {
+  public function get($string) {
     $localeChain = (array) $this->localeChain;
 
     // Map translations with the hash of $string.
@@ -93,7 +121,7 @@ class Translation {
       $cache = array_filter($cache, propIn('locale', $localeChain));
 
       // Search by preferred key, if nothing is found just fall back to the whole cache.
-      $_cache = array_filter($cache, propIs('key', $key));
+      $_cache = array_filter($cache, propIs('key', $this->bundle));
       if ( $_cache ) {
         $cache = $_cache;
       }
@@ -102,21 +130,26 @@ class Translation {
 
       /*! Note
        *  For anything survives the search, return the first one. This allows
-       *  $key fall back mechanism, because the specified $key could be of
+       *  $bundle fall back mechanism, because the specified bundle could be of
        *  inexistance.
        */
       if ( $cache ) {
-        $value = reset($cache);
-        return @$value['value'];
+        $string = reset($cache);
+        $string = @$string['value'];
       }
     }
     // Otherwise, insert it into database for future translation.
     else {
-      $this->set($string, $key);
+      $this->set($string, $this->bundle);
     }
 
-    // When everything fails, return as-is.
-    return $string;
+    // note: sprintf() only when there are more arguments
+    if ( func_num_args() > 1 ) {
+      return sprintf($string, array_slice(func_get_args(), 1));
+    }
+    else {
+      return $string;
+    }
   }
 
   //----------------------------------------------------------------------------
