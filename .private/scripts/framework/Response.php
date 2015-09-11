@@ -439,9 +439,11 @@ class Response {
    */
   public function __(/* $key, ... $args */) {
     $translation = $this->translation;
-    if ( is_callable($translation) ) {
-      return call_user_func_array($translation, func_get_args());
+    if ( !is_callable($translation) ) {
+      $translation = 'sprintf';
     }
+
+    return call_user_func_array($translation, func_get_args());
   }
 
   /**
