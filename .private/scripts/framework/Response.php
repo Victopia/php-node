@@ -161,10 +161,10 @@ class Response {
    *
    * The main difference is that with the same url we still do redirection.
    *
-   * @param {string|array} $target The redirection target, can be either relative
-   *                               or absolute. If an array of URIs are given,
-   *                               the first truthy value will be used, this is
-   *                               handy for a list of fallback URI.
+   * @param {string} $target The redirection target, can be either relative
+   *                         or absolute. If an array of URIs are given,
+   *                         the first truthy value will be used, this is
+   *                         handy for a list of fallback URI.
    * @param {int}     $options['status'] The status code used for redirection, defaults to 302 Found.
    * @param {boolean} $options['secure'] Use secure connection when available.
    */
@@ -174,22 +174,10 @@ class Response {
         'status' => 302
       );
 
-    // Array of uri
-    if ( is_array($target) && !util::isAssoc($target) ) {
-      $target = array_filter($target);
-      $target = array_reduce($target, function($result, $target) {
-        if ( $result ) {
-          return $result;
-        }
-
-        if ( $target ) {
-          return $target;
-        }
-      });
-    }
-
     // Normalize redirection target
-    $target = parse_url($target);
+    if ( is_string($target) ) {
+      $target = parse_url($target);
+    }
 
     if ( @$options['secure'] && System::getHostname('secure') ) {
       $target['scheme'] = 'https';
