@@ -193,7 +193,10 @@ class Response {
 
     if ( @$options['secure'] && System::getHostname('secure') ) {
       $target['scheme'] = 'https';
-      $target['host'] = System::getHostname('secure');
+
+      if ( empty($target['host']) ) {
+        $target['host'] = System::getHostname('secure');
+      }
     }
 
     // Fallback to normal hostname
