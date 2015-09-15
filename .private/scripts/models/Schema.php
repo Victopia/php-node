@@ -1,5 +1,5 @@
 <?php
-/*! Schemas.php | Defines JSON Schemas for other JsonSchemaModels to use. */
+/*! Schema.php | Defines JSON Schemas for other JsonSchemaModels to use. */
 
 namespace models;
 
@@ -7,7 +7,7 @@ use framework\Configuration as conf;
 
 use framework\exceptions\ServiceException;
 
-class Schemas extends abstraction\JsonSchemaModel {
+class Schema extends abstraction\JsonSchemaModel {
 
   protected $confObj;
 

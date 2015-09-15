@@ -3,6 +3,8 @@
 
 namespace resolvers;
 
+use models\User;
+
 use framework\Request;
 use framework\Response;
 use framework\Process;
@@ -28,7 +30,7 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
   }
 
   public function resolve(Request $req, Response $res) {
-    $req->user = new \models\Users();
+    $req->user = new User();
 
     // User from CLI
     switch ( $req->client('type') ) {
@@ -70,11 +72,11 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
           }
           else {
             // Success, proceed.
-            $req->user->load(Session::current('UserID'));
+            $req->user->load(Session::current('UserId'));
           }
         }
         // When no user is set, add a default user
-        else if ( $this->setupSession && !@$req->user->get() ) {
+        else if ( $this->setupSession && !@\core\Node::get('User') ) {
           $req->user->data(
             [ 'id' => 0
             , 'groups' => ['Administrators']

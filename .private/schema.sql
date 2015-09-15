@@ -117,12 +117,20 @@ CREATE TABLE `Translations` (
   PRIMARY KEY (`identifier`,`key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
+
+/*! Note: Model tables
+ *  Do not use plural when naming model tables, because data model class makes
+ *  more sense in singular. On Earth we have no reliable way to convert from
+ *  singular to plural in any language, let's keep it singular before we go to
+ *  Mars.
+ */
+
 --
 -- Table structure for table `Users`
 --
 
-DROP TABLE IF EXISTS `Users`;
-CREATE TABLE `Users` (
+DROP TABLE IF EXISTS `User`;
+CREATE TABLE `User` (
   `id` bigint(20) unsigned zerofill NOT NULL AUTO_INCREMENT,
   `username` char(255) NOT NULL,
   `password` char(119) NOT NULL,

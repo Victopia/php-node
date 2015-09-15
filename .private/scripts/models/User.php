@@ -1,9 +1,9 @@
 <?php
-/*! Users.php | The user data model. */
+/*! User.php | The user data model. */
 
 namespace models;
 
-class Users extends abstraction\JsonSchemaModel {
+class User extends abstraction\JsonSchemaModel {
 
   /**
    * @private
