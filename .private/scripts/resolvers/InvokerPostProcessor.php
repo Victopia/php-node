@@ -38,31 +38,29 @@ class InvokerPostProcessor implements \framework\interfaces\IRequestResolver {
 
     foreach ( (array) $request->meta('output') as $outputFilter ) {
       // format: func([param1[,param2[,param3 ...]]])
-      if ( preg_match('/(\w+)\(([\w\s,]+)\)/', $outputFilter, $matches) ) {
+      if ( preg_match('/(\w+)\(([\w\s,]*)\)/', $outputFilter, $matches) ) {
         $func = @$this->funcMap[$matches[1]];
         if ( is_callable($func) ) {
-          $func = call_user_func_array(
-            $func,
-            explode(',', $matches[2]) // note: preserve whitespace
-            );
+          if ( @$matches[2] ) {
+            $func = call_user_func_array(
+              $func,
+              explode(',', $matches[2]) // note: preserve whitespace
+              );
+          }
 
           if ( is_callable($func) ) {
-            $_handler = set_error_handler(function($num, $str, $file = null, $line = null, $ctx = null) use($response) {
-              if ( !error_reporting() ) {
-                return;
-              }
-
-              Log::warning($str, $ctx);
-
-              $response->clearHeaders();
-              $response->header('Content-Type: text/plain');
-              $response->send('An error occurred during post process, please check API usage.', 500);
-              die;
-            }, E_ALL);
-
-            $response->send($func($response->body()));
-
-            set_error_handler($_handler);
+            try {
+              $response->send(
+                call_user_func_array($func, array($response->body()))
+                );
+            }
+            catch(\Exception $e) {
+              $response->send(array(
+                  'error' => sprintf('[InvokerPostProcessor] exception thrown when calling "%s": %s',
+                    $matches[1], $e->getMessage()),
+                  'code' => $e->getCode()
+                ));
+            }
           }
         }
       }
