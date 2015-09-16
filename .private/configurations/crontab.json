@@ -1,0 +1,10 @@
+{
+  "schedules": [
+    {
+      "$comment": "Sweeps ancient sessions every 5 mins.",
+      "schedule": "*/5 * * * *",
+      "command": "php .private/crons/SessionSweeper.php",
+      "name": "session_sweeper"
+    }
+  ]
+}

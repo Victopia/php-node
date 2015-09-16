@@ -95,12 +95,12 @@ CREATE TABLE `Processes` (
 
 DROP TABLE IF EXISTS `Sessions`;
 CREATE TABLE `Sessions` (
-  `UserId` bigint(20) unsigned zerofill NOT NULL,
-  `sid` varchar(40) NOT NULL,
-  `token` varchar(40),
-  `timestamp` timestamp,
-  PRIMARY KEY (`UserId`),
-  UNIQUE KEY `sid` (`sid`)
+  `sid` binary(16) NOT NULL COMMENT 'UUID',
+  `username` varchar(255) COLLATE utf8_unicode_ci NOT NULL COMMENT 'Username',
+  `token` varchar(40) CHARACTER SET utf8 DEFAULT NULL,
+  `fingerprint` varchar(255) COLLATE utf8_unicode_ci DEFAULT NULL,
+  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`sid`)
 ) ENGINE=MEMORY DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --

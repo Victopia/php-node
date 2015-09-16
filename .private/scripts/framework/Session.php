@@ -26,6 +26,10 @@ namespace framework;
 use core\Database;
 use core\Node;
 use core\Log;
+use core\Utility as util;
+
+use models\User;
+use models\TaskInstance;
 
 class Session {
 
@@ -48,6 +52,12 @@ class Session {
   // Returned when one-time token mismatch.
   const ERR_TOKEN_INVALID = 4;
 
+  // Session expire time relative to current time.
+  const EXPIRE_TIME = '-30 min';
+
+  // Sessions this old will be deleted.
+  const DELETE_TIME = '-1 week';
+
   /**
    * @private
    *
@@ -56,75 +66,51 @@ class Session {
   private static $currentSession = null;
 
   /**
-   * @private
-   *
-   * User cache
-   */
-  protected static $currentUser = null;
-
-  /**
    * Login function, application commencement point.
    *
    * @param $username Username of the user.
    * @param $password SHA1 hash of the password.
-   * @param $overrideExist Specify whether to override existing session.
-   *        i.e. User not logged out or logged in from elsewhere.
+   * @param $fingerprint Fingerprint extracted from current request, identifies
+   *                     a requesting host as uniquely as possible.
    *
    * @return Possible return values are:
    *         1. Session identifier string on success,
    *         2. Empty string on session exists without override, or
    *         3. false on login mismatch.
    */
-  static function validate($username, $password, $overrideExist = false) {
-    // Username
-    $res = array(
-        Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_USER
-      , 'username' => $username
-      );
-
-    $res = Node::get($res);
-
-    if ( !is_array($res) || count($res) == 0 ) {
+  static function validate($username, $password, $fingerprint = null) {
+    // Search by username
+    $user = (new User)->load($username);
+    if ( !$user->identity() ) {
       return static::ERR_MISMATCH;
     }
-
-    $res = $res[0];
 
     // Password crypt matching
-    if ( crypt($password, $res['password']) !== $res['password'] ) {
+    if ( crypt($password, $user->password) !== $user->password ) {
       return static::ERR_MISMATCH;
-    }
-
-    $session = Database::fetchRow('SELECT `sid`, `timestamp` >= ? AS \'valid\'
-      FROM `'.FRAMEWORK_COLLECTION_SESSION.'` WHERE `UserID` = ?',
-      array(date('Y-m-d H:i:s', static::EXPIRE_TIME), $res['ID']));
-
-    // Session exists and not overriding, return error.
-    if ( is_array($session) && $session['valid'] ) {
-      if ( $overrideExist === false ) {
-        return static::ERR_EXISTS;
-      }
     }
 
     // Can login, generate sid and stores to PHP session.
-    $sid = sha1($username . (microtime(1) * 1000) . $password);
+    $session = array(
+        Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION,
+        'sid' => Database::fetchField("SELECT UNHEX(REPLACE(UUID(), '-', ''))"),
+        'username' => $user->identity(),
+      );
 
-    Node::set($res);
+    if ( $fingerprint ) {
+      $session['fingerprint'] = $fingerprint;
+    }
 
-    // Inserts the session.
-    Database::upsert(FRAMEWORK_COLLECTION_SESSION, array(
-        'UserID' => $res['ID'],
-        'sid' => $sid,
-        'timestamp' => null
-      ));
+    // Store session into database
+    Node::set($session);
 
-    /* Reference to current session. */
-    static::$currentSession = $sid;
+    // Reference to current session
+    static::$currentSession = $session;
 
     // Log the sign in action.
-    Log::info(sprintf('Session validated: %s', $sid));
+    Log::debug('Session validated', $session);
 
-    return $sid;
+    return util::unpackUuid($session['sid']);
   }
 
   /**
@@ -132,12 +118,19 @@ class Session {
    */
   static function invalidate($sid = null) {
     if ( $sid === null ) {
-      $sid = static::$currentSession;
+      $sid = static::$currentSession['sid'];
     }
+
+    $sid = util::packUuid($sid);
+
+    $session = Node::getOne(array(
+        Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION,
+        'sid' => $sid
+      ));
 
     Database::query('DELETE FROM `'.FRAMEWORK_COLLECTION_SESSION.'` WHERE `sid` = ?', array($sid));
 
-    Log::info(sprintf('Session invalidated: %s', $sid));
+    Log::info(sprintf('Session invalidated', $session));
 
     /* Clear reference */
     static::$currentSession = null;
@@ -155,93 +148,39 @@ class Session {
    *
    * @return true on access permitted, false otherwise.
    */
-  static function ensure($sid, $token = null) {
+  static function ensure($sid, $token = null, $fingerprint = null) {
     if ( !$sid ) {
       return static::ERR_INVALID;
     }
 
-    $res = Database::fetchRow('SELECT `UserID`, `token`,
-      `timestamp` + INTERVAL 30 MINUTE >= CURRENT_TIMESTAMP as \'valid\'
-      FROM `'.FRAMEWORK_COLLECTION_SESSION.'` WHERE `sid` = ?', array($sid));
-
-    // Session validation
-    if ( $res ) {
-      // Token validation
-      if ( ($token || $res['token']) && $token != $res['token'] ) {
-        return false;
-      }
-
-      if ( !$res['valid'] ) {
-        return static::ERR_EXPIRED;
-      }
-
-      /* Session keep-alive update. */
-      Database::upsert(FRAMEWORK_COLLECTION_SESSION, array(
-        'UserID' => $res['UserID'],
-        'token' => null,
-        'timestamp' => null
+    $res = Node::getOne(array(
+        Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION,
+        'sid' => util::packUuid($sid),
+        'fingerprint' => $fingerprint
       ));
 
-      /* Reference to current session. */
-      static::$currentSession = $sid;
-
-      return true;
-    }
-
-    else {
+    if ( !$res ) {
       return static::ERR_INVALID;
     }
 
-    return false;
-  }
-
-  /**
-   * Restore a persistant session, updates session timestamp directly to
-   * emulate a wake-up action.
-   *
-   * This function does the same thing as ensure($sid), but didn't check for timeout.
-   *
-   * @param $sid Session identifier string returned by the validate() method.
-   *
-   * @return true on access permitted, false otherwise.
-   */
-  static function restore($sid) {
-    if ( !isset($sid) || !$sid ) {
-      return static::ERR_INVALID;
+    // One-time token mismatch
+    if ( ($token || $res['token']) && util::packUuid($token) != $res['token'] ) {
+      return false;
     }
 
-    $res = Database::select(FRAMEWORK_COLLECTION_SESSION
-      , array('UserID', 'token')
-      , 'WHERE `sid` = ?', array($sid));
-
-    /* Session validation. */
-    if ( $res !== false && count($res) > 0 ) {
-      /* Session keep-alive update. */
-      $res = Database::upsert(FRAMEWORK_COLLECTION_SESSION, array(
-          'UserID' => $res[0]['UserID']
-        , 'token' => null
-        , 'timestamp' => null
-        ));
-
-      if ( $res !== false ) {
-        // Store to PHP session.
-        $sid = $sid;
-
-        // Retrieve current user.
-        $sessionUser = static::getUser($sid);
-
-        // Reference to current session.
-        static::$currentSession = $sid;
-
-        return $sid;
-      }
+    // Session expired
+    if ( strtotime($res['timestamp']) < strtotime(static::EXPIRE_TIME) ) {
+      return static::ERR_EXPIRED;
     }
 
-    else {
-      return static::ERR_INVALID;
-    }
+    unset($res['timestamp'], $res['token']);
 
-    return false;
+    // Update timestamp
+    Node::set($res);
+
+    static::$currentSession = $res;
+
+    return true;
   }
 
   /**
@@ -253,21 +192,22 @@ class Session {
    * @return One-time token string, or null on invalid session.
    */
   static function generateToken($sid = null) {
-    if ( !$sid ) {
-      $sid = static::current();
+    $res = static::ensure($sid);
+    if ( $res !== true ) {
+      return $res;
     }
 
-    static::ensure($sid);
+    $res = &static::$currentSession;
 
-    $token = SHA1($sid . (microtime(1) * 1000));
+    $res['token'] = Database::fetchField("SELECT UNHEX(REPLACE(UUID(),'-',''));");
 
-    $res = Database::upsert(FRAMEWORK_COLLECTION_SESSION, array('UserID' => $res, 'token' => $token));
+    unset($res['timestamp']);
 
-    if ( $res === false ) {
+    if ( Node::set($res) === false ) {
       return null;
     }
 
-    return $token;
+    return util::unpackUuid($res['token']);
   }
 
   /**
@@ -275,35 +215,14 @@ class Session {
    *
    * This will only be set on first call of validate(), ensure() or restore().
    */
-  static function current($property = 'sid') {
-    $session = (array) @Node::getOne(array(
-        Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION
-      , 'sid' => static::$currentSession
-      ));
-
+  static function current($property = null) {
+    $session = static::$currentSession;
     if ( $property === null ) {
       return $session;
     }
     else {
       return @$session[$property];
     }
-  }
-
-  /**
-   * Check if current user has specified status.
-   *
-   * See constants with USR_ prefix.
-   */
-  static function checkStatus($status) {
-    $res = static::currentUser();
-
-    if ( !$res ) {
-      return $status === static::USR_PUBLIC;
-    }
-
-    $res = @$res['status'];
-
-    return ($res & $status) === $status;
   }
 
 }
