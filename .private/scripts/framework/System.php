@@ -78,7 +78,7 @@ class System {
   /**
    * Returns a designated type of hostname from configuration.
    */
-  public static function getHostname($type = null) {
+  public static function getHostname($type = 'default') {
     static $domains = array();
 
     $domain = &$domains[$type];
@@ -97,7 +97,7 @@ class System {
           break;
 
         default:
-          $domain = conf::get('system::domains.default', gethostname());
+          $domain = conf::get("system::domains.$type", gethostname());
           break;
       }
     }
