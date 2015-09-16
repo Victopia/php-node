@@ -8,6 +8,7 @@ use models\User;
 use framework\Request;
 use framework\Response;
 use framework\Process;
+use framework\Session;
 
 /**
  * Assigns a user context to the request object when a user is authenticated
@@ -58,21 +59,23 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
         // Session ID provided, validate it.
         $sid = $req->param('__sid');
         if ( $sid ) {
-          $res = Session::ensure($sid, $req->param('__token'));
-          if ( $res === false || $res === Session::ERR_EXPIRED ) {
-            // Session doesn't exists, delete exsting cookie.
+          $ret = Session::ensure($sid, $req->param('__token'), $req->fingerprint());
+
+          // Session doesn't exist, delete the cookie.
+          if ( $ret === false || $ret === Session::ERR_EXPIRED ) {
             $res->cookie('__sid', '', time() - 3600);
           }
-          else if ( is_integer($res) ) {
-            switch ( $res ) {
-              // Treat as public user.
+          else if ( is_integer($ret) ) {
+            switch ( $ret ) {
+              // note: System should treat as public user.
               case Session::ERR_INVALID:
                 break;
             }
           }
           else {
             // Success, proceed.
-            $req->user->load(Session::current('UserId'));
+            $req->user->load(Session::current('username'));
+            unset($req->user->password);
           }
         }
         // When no user is set, add a default user
