@@ -3,6 +3,8 @@
 
 namespace services;
 
+use core\Node;
+
 use framework\Session;
 
 use framework\exceptions\ServiceException;
@@ -11,8 +13,14 @@ use framework\exceptions\ServiceException;
  * This class act as a sample service, further demonstrates how to write RESTful functions.
  */
 class sessions extends \framework\WebService {
-	function validate($username, $password, $overrideExists = false) {
-		$res = Session::validate($username, $password, $overrideExists);
+
+	function validate($username, $password) {
+		$session = Node::getOne(array(
+				Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION,
+				'username' => $username
+			));
+
+		$res = Session::validate($username, $password, $this->__request->fingerprint());
 		if ( is_int($res) ) {
 			switch ( $res ) {
 				case Session::ERR_MISMATCH:
@@ -29,7 +37,7 @@ class sessions extends \framework\WebService {
 	}
 
 	function ensure($sid, $token = null) {
-		$res = Session::ensure($sid, $token);
+		$res = Session::ensure($sid, $token, $this->__request->fingerprint());
 		if ( is_int($res) ) {
 			switch ( $res ) {
 				case Session::ERR_INVALID:
@@ -49,20 +57,8 @@ class sessions extends \framework\WebService {
 		return Session::current();
 	}
 
-	function user($property = null) {
-		return $this->request()->user;
-	}
-
 	function token() {
 		return Session::generateToken();
-	}
-
-	function restore($sid = null) {
-		if ( $sid === null ) {
-			$sid = $this->request()->param('__sid');
-		}
-
-		return Session::restore($sid);
 	}
 
 	function invalidate($sid = null) {
@@ -72,4 +68,5 @@ class sessions extends \framework\WebService {
 
 		return Session::invalidate($sid);
 	}
+
 }

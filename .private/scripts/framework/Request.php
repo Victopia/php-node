@@ -426,6 +426,26 @@ class Request {
   }
 
   //-------------------------------------
+  //  fingerprint
+  //-------------------------------------
+
+  /**
+   * (read-only) Create fingerprint from the info available in HTTP request.
+   *
+   * note: The algorithm is supposed to change from time to time.
+   *
+   * @return {string} Fingerprint hash from current request, or null when no such info is available.
+   */
+  public function fingerprint() {
+    $res = array_select($this->client, array('address', 'userAgent'));
+    $res = array_filter($res);
+    $res = implode(':', $res);
+    if ( $res ) {
+      return sha1($res);
+    }
+  }
+
+  //-------------------------------------
   //  timestamp
   //-------------------------------------
 

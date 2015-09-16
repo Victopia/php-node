@@ -29,13 +29,14 @@ use core\Log;
 use core\Utility as util;
 
 use models\User;
-use models\TaskInstance;
 
 class Session {
 
-  //------------------------------
+  //----------------------------------------------------------------------------
+  //
   //  Constants
-  //------------------------------
+  //
+  //----------------------------------------------------------------------------
 
   // Returned when extended security is requested, and current session is expired
   const ERR_EXPIRED       = 0;
@@ -58,12 +59,39 @@ class Session {
   // Sessions this old will be deleted.
   const DELETE_TIME = '-1 week';
 
+  //----------------------------------------------------------------------------
+  //
+  //  Properties
+  //
+  //----------------------------------------------------------------------------
+
   /**
    * @private
    *
    * Session ID is stored upon successful calls to validate(), ensure(), or restore().
    */
   private static $currentSession = null;
+
+  /**
+   * Get current session ID.
+   *
+   * This will only be set on first call of validate(), ensure() or restore().
+   */
+  static function current($property = null) {
+    $session = static::$currentSession;
+    if ( $property === null ) {
+      return $session;
+    }
+    else {
+      return @$session[$property];
+    }
+  }
+
+  //----------------------------------------------------------------------------
+  //
+  //  Methods
+  //
+  //----------------------------------------------------------------------------
 
   /**
    * Login function, application commencement point.
@@ -98,6 +126,11 @@ class Session {
       );
 
     if ( $fingerprint ) {
+      Node::delete(array(
+          Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION,
+          'fingerprint' => $fingerprint
+        ));
+
       $session['fingerprint'] = $fingerprint;
     }
 
@@ -208,21 +241,6 @@ class Session {
     }
 
     return util::unpackUuid($res['token']);
-  }
-
-  /**
-   * Get current session ID.
-   *
-   * This will only be set on first call of validate(), ensure() or restore().
-   */
-  static function current($property = null) {
-    $session = static::$currentSession;
-    if ( $property === null ) {
-      return $session;
-    }
-    else {
-      return @$session[$property];
-    }
   }
 
 }
