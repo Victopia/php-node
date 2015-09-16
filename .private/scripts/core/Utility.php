@@ -958,6 +958,29 @@ class Utility {
   }
 
   /**
+   * Pack Uuid in hex to binary string for storage.
+   */
+  static function packUuid($value) {
+    if ( ctype_print($value) ) {
+      $value = pack('H*', str_replace('-', '', $value));
+    }
+
+    return $value;
+  }
+
+  /**
+   * Unpack UUID from binary into HEX string.
+   */
+  static function unpackUuid($value) {
+    if ( !ctype_print($value) ) {
+      $value = unpack('H*', $value);
+      $value = reset($value);
+    }
+
+    return $value;
+  }
+
+  /**
    * Generate a alphabetically sequencial HTML compatible ID.
    */
   static function generateHtmlId($prefix = ':') {
