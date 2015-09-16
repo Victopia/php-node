@@ -141,9 +141,9 @@ class Configuration implements \Iterator, \ArrayAccess {
 			// Database support
 			if ( Database::isConnected() ) {
 				$res = (array) @Node::getOne(array(
-					Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_CONFIGURATION
-				, '@key' => $this->key
-				));
+						Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_CONFIGURATION
+					, '@key' => $this->key
+					));
 
 				unset($res['@key'], $res[Node::FIELD_COLLECTION]);
 

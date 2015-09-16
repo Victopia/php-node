@@ -528,7 +528,7 @@ class Node {
 
         unset($inValues, $notInValues, $_inValues, $_notInValues);
 
-        $subQuery = array_map(prepends(Database::escape($field, $tableName) . ' '), $subQuery);
+        $subQuery = array_map(prepends(Database::escapeField($field, $tableName) . ' '), $subQuery);
 
         /* Note by Vicary @ 4 Dec, 2012
            Inclusive search in real columns, within the same column.
@@ -567,7 +567,7 @@ class Node {
               $direction = true;
             }
 
-            $query[] = Database::escape($field, $tableName) . ($direction ? ' ASC' : ' DESC');
+            $query[] = Database::escapeField($field, $tableName) . ($direction ? ' ASC' : ' DESC');
           });
 
         if ( $query ) {
@@ -980,7 +980,7 @@ class Node {
       throw new CoreException('You must specify $fieldDesc when adding physical column.', 306);
     }
 
-    $field = Database::escape($fieldName);
+    $field = Database::escapeField($fieldName);
 
     $res = Database::query( 'ALTER TABLE ' . $collection . ' ADD COLUMN '
                           . $field . ' ' . str_replace(';', '', $fieldDesc)
@@ -994,7 +994,7 @@ class Node {
 
     array_push($fields, self::FIELD_VIRTUAL, $fieldName);
 
-    $fields = Database::escape($fields);
+    $fields = Database::escapeField($fields);
 
     // Data migration.
     $migrated = true;

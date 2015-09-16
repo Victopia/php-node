@@ -61,7 +61,7 @@ final class Database {
   /**
    * @private
    */
-  private static /* PDO */
+  protected static /* PDO */
   function getConnection() {
     if ( self::$con === null ) {
       if ( self::$options === null ) {
@@ -108,20 +108,20 @@ final class Database {
    */
   public static /* null */
   function disconnect() {
-    if ( self::isConnected() ) {
+    if ( static::isConnected() ) {
       self::$con = null;
     }
   }
 
   public static /* Boolean */
   function isConnected() {
-    return @self::getConnection() !== null && self::ping();
+    return @static::getConnection() !== null && static::ping();
   }
 
   public static /* Boolean */
   function ping() {
     try {
-      $res = self::fetchField('SELECT 1');
+      $res = static::fetchField('SELECT 1');
     }
     catch (\PDOException $e) {
       return false;
@@ -146,7 +146,7 @@ final class Database {
       list($dbOptions, self::$options) = array(self::$options, $dbOptions);
     }
 
-    $con = self::getConnection();
+    $con = static::getConnection();
 
     // Swap them back afterwards
     if ( $dbOptions && $dbOptions instanceof DatabaseOptions ) {
@@ -161,13 +161,13 @@ final class Database {
    * and should only be used to quote table names and field names.
    */
   public static /* String */
-  function escape($value, $tables = null) {
+  function escapeField($value, $tables = null) {
     // Escape with column determination.
     if ( $tables !== null ) {
       // Force array casting.
       $values = (array) $value;
 
-      $sourceFields = self::getFields($tables);
+      $sourceFields = static::getFields($tables);
 
       $quotedFields = array_map(function($field) {
         return '`' . str_replace('`', '``', $field) . '`';
@@ -195,7 +195,7 @@ final class Database {
     // Direct value escape, but only on those without space and parentheses.
     if ( is_array($value) ) {
       return array_map(function($field) {
-        return Database::escape($field);
+        return static::escapeField($field);
       }, $value);
     }
     elseif ( preg_match('/^[^\s\(\)\*]*$/', $value) ) {
@@ -204,6 +204,16 @@ final class Database {
     else {
       return $value;
     }
+  }
+
+  /**
+   * Escape wildcard characters for exact string matching.
+   *
+   * @param {string} $value Input string containing wildcard characters.
+   * @return {string} String with all wildcard characters escaped.
+   */
+  public static function escapeValue($value) {
+    return preg_replace('/([\\@*_])/', '\\\$1', $value);
   }
 
   /**
@@ -224,7 +234,7 @@ final class Database {
     }
 
     if ( !isset($cache['collections']) ) {
-      $tables = (array) self::fetchArray('SHOW TABLES', null, \PDO::FETCH_COLUMN);
+      $tables = (array) static::fetchArray('SHOW TABLES', null, \PDO::FETCH_COLUMN);
 
       $cache['collections'] = array_fill_keys($tables, array());
     }
@@ -259,7 +269,7 @@ final class Database {
         return;
       }
 
-      $res = Database::fetchArray('SHOW COLUMNS FROM ' . Database::escape($tableName));
+      $res = Database::fetchArray('SHOW COLUMNS FROM ' . static::escapeField($tableName));
 
       $res = array_combine(
           array_map(prop('Field'), $res)
@@ -315,7 +325,7 @@ final class Database {
     $stmt = &$preparedStatments[$query][serialize($options)];
 
     if (!$stmt instanceof PDOStatement) {
-      $con = self::getConnection();
+      $con = static::getConnection();
 
       $stmt = $con->prepare($query, $options);
     }
@@ -328,7 +338,7 @@ final class Database {
    */
   public static /* PDOStatement */
   function query($query, $param = null, $options = array()) {
-    $stmt = self::prepare($query, $options);
+    $stmt = static::prepare($query, $options);
 
     $param = (array) $param;
 
@@ -365,7 +375,7 @@ final class Database {
                      , $param = null
                      , $fetch_type = \PDO::FETCH_ASSOC
                      , $fetch_argument = null ) {
-    $res = self::query($query, $param);
+    $res = static::query($query, $param);
 
     if ( $res === false ) {
       return false;
@@ -389,13 +399,13 @@ final class Database {
     /*! Note by Vicary @ 8.Nov.2012
      *  As of PHP 5.4.8, this shit is still not supported by SQLite and MySQL.
      *
-     * $res = self::query($query, $param, array(
+     * $res = static::query($query, $param, array(
      *   \PDO::ATTR_CURSOR => \PDO::CURSOR_SCROLL
      * ));
      *
      * $row = $res->fetch($fetch_type, \PDO::FETCH_ORI_ABS, $fetch_offset);
      */
-    $res = self::query($query, $param);
+    $res = static::query($query, $param);
 
     // fetch whatever I don't care.
     while ($fetch_offset-- > 0 && $res->fetch());
@@ -415,7 +425,7 @@ final class Database {
                      , $param = null
                      , $field_offset = 0
                      , $fetch_offset = 0 ) {
-    $res = self::query($query, $param);
+    $res = static::query($query, $param);
 
     // fetch whatever I don't care.
     while ( $fetch_offset-- > 0 && $res->fetch() );
@@ -432,9 +442,9 @@ final class Database {
    */
   public static /* Mixed */
   function truncateTable($tableName) {
-    $tableName = self::escape($tableName);
+    $tableName = static::escapeField($tableName);
 
-    return (bool) self::query("TRUNCATE TABLE $tableName");
+    return (bool) static::query("TRUNCATE TABLE $tableName");
   }
 
   /**
@@ -442,21 +452,21 @@ final class Database {
    */
   public static /* Boolean */
   function beginTransaction() {
-    $res = self::fetchRow('SHOW VARIABLES LIKE ?', ['autocommit']);
+    $res = static::fetchRow('SHOW VARIABLES LIKE ?', ['autocommit']);
 
     self::$transactionStore['autocommit'] = $res['Value'];
 
     // Must switch autocommit to off in transactions.
-    self::query('SET autocommit = ?', 0);
+    static::query('SET autocommit = ?', 0);
 
-    return self::getConnection()->beginTransaction();
+    return static::getConnection()->beginTransaction();
   }
 
   /**
    * Returns of current connection is in the middle of a transaction.
    */
   public static /* boolean */ function inTransaction() {
-    return self::getConnection()->inTransaction();
+    return static::getConnection()->inTransaction();
   }
 
   /**
@@ -466,12 +476,12 @@ final class Database {
   function commit() {
     // Restore whatever value it was when transaction ends.
     if ( isset(self::$transactionStore['autocommit']) ) {
-      self::query('SET autocommit = ?', self::$transactionStore['autocommit']);
+      static::query('SET autocommit = ?', self::$transactionStore['autocommit']);
     }
 
     self::$transactionStore = [];
 
-    return self::getConnection()->commit();
+    return static::getConnection()->commit();
   }
 
   /**
@@ -481,12 +491,12 @@ final class Database {
   function rollback() {
     // Restore whatever value it was when transaction ends.
     if ( isset(self::$transactionStore['autocommit']) ) {
-      self::query('SET autocommit = ?', self::$transactionStore['autocommit']);
+      static::query('SET autocommit = ?', self::$transactionStore['autocommit']);
     }
 
     self::$transactionStore = [];
 
-    return self::getConnection()->rollBack();
+    return static::getConnection()->rollBack();
   }
 
   /**
@@ -505,14 +515,14 @@ final class Database {
                  , $fetch_type = \PDO::FETCH_ASSOC
                  , $fetch_argument = null ) {
     // Escape fields
-    $fields = self::escape($fields, $tables);
+    $fields = static::escapeField($fields, $tables);
 
     if ( is_array($fields) ) {
       $fields = implode($fields, ', ');
     }
 
     // Escape tables
-    $tables = self::escape( $tables );
+    $tables = static::escapeField( $tables );
 
     if ( is_array($tables) ) {
       $tables = implode($tables, ', ');
@@ -520,7 +530,7 @@ final class Database {
 
     $res = "SELECT $fields FROM $tables" . ($criteria ? " $criteria" : '');
 
-    return self::fetchArray($res, $param, $fetch_type, $fetch_argument);
+    return static::fetchArray($res, $param, $fetch_type, $fetch_argument);
   }
 
   /**
@@ -533,7 +543,7 @@ final class Database {
    */
   public static /* Mixed */
   function upsert($table, $fields = array()) {
-    $columns = self::getFields($table, 'PRI');
+    $columns = static::getFields($table, 'PRI');
 
     $keys = array();
 
@@ -546,9 +556,9 @@ final class Database {
       }
     }
 
-    $values = array_merge(array_values($keys), array_values($fields), array_values($fields));
+    $values = array_merge(array_values($keys), array_values($fields));
 
-    $keys = self::escape( array_merge(array_keys($keys), array_keys($fields)), $table );
+    $keys = static::escapeField( array_merge(array_keys($keys), array_keys($fields)), $table );
 
     // Setup fields.
     foreach ( $fields as $field => $value ) {
@@ -559,22 +569,10 @@ final class Database {
 
     unset($columns);
 
-    $res = 'INSERT INTO ' . self::escape( $table ) . ' (' . implode(', ', $keys) . ') VALUES (' .
-        implode(', ', array_fill(0, count($keys), '?')) . ') ON DUPLICATE KEY UPDATE ';
+    $res = 'REPLACE INTO ' . static::escapeField( $table ) . ' (' . implode(', ', $keys) . ') VALUES (' .
+        implode(', ', array_fill(0, count($keys), '?')) . ')';
 
-    /* Performs upsert here. */
-    if ( is_array($fields) && count($fields) > 0 ) {
-      $res.= implode(', ', array_keys($fields));
-    }
-    else {
-      foreach ( $keys as $key => $column ) {
-        $keys[$key] = "$column = $column";
-      }
-
-      $res.= implode($keys, ', ');
-    }
-
-    $res = self::query($res, $values);
+    $res = static::query($res, $values);
 
     if ( $res !== false ) {
       $res->closeCursor();
@@ -582,8 +580,8 @@ final class Database {
       // Inserted, return the new ID.
       if ( $res->rowCount() == 1 ) {
         // Note: mysql_insert_id() doesn't do UNSIGNED ZEROFILL!
-        $res = (int) self::getConnection()->lastInsertId();
-        //$res = self::fetchField("SELECT MAX(ID) FROM `$table`;");
+        $res = (int) static::getConnection()->lastInsertId();
+        //$res = static::fetchField("SELECT MAX(ID) FROM `$table`;");
       }
       // Updated, return true.
       // rowCount() should be 2 here as long as it stays in MySQL driver.
@@ -608,7 +606,7 @@ final class Database {
    */
   public static /* null */
   function delete($table, $keySets) {
-    $columns = self::getFields($table, array('PRI', 'UNI'));
+    $columns = static::getFields($table, array('PRI', 'UNI'));
 
     $keySets = Utility::wrapAssoc($keySets);
 
@@ -622,7 +620,7 @@ final class Database {
 
       foreach ( $keySet as $key => $value ) {
         if ( in_array($key, $columns) ) {
-          $key = self::escape($key, $table);
+          $key = static::escapeField($key, $table);
 
           // Apply appropriate equality operators: =, IS
           if ( is_null($value) ) {
@@ -644,14 +642,14 @@ final class Database {
       }
     });
 
-    $table = self::escape($table);
+    $table = static::escapeField($table);
 
     // Execute queries and accumulate affected rows.
     return array_reduce($keySets, function($result, $keySet) use($table) {
       if ( $keySet ) {
         $res = sprintf('DELETE FROM %s WHERE ', $table) . implode(' AND ', array_keys($keySet));
 
-        $res = self::query($res, array_values($keySet));
+        $res = static::query($res, array_values($keySet));
 
         if ( $res !== false ) {
           $result+= $res->rowCount();
@@ -664,12 +662,12 @@ final class Database {
 
   public static /* int */
   function lastInsertId() {
-    return self::getConnection()->lastInsertId();
+    return static::getConnection()->lastInsertId();
   }
 
   public static /* Array */
   function lastError() {
-    return self::getConnection()->errorInfo();
+    return static::getConnection()->errorInfo();
   }
 
   public static function lockTables($tables) {
@@ -683,7 +681,7 @@ final class Database {
       }
     }
 
-    return (bool) self::query('LOCK TABLES ' . implode(', ', $tables));
+    return (bool) static::query('LOCK TABLES ' . implode(', ', $tables));
   }
 
   /**
@@ -709,14 +707,14 @@ final class Database {
 
       $i = 0;
 
-      while ( false === ( $ret = self::query('UNLOCK TABLES') && $i++ < $autoRetry['count'] ) ) {
+      while ( false === ( $ret = static::query('UNLOCK TABLES') && $i++ < $autoRetry['count'] ) ) {
         usleep(@$autoRetry['interval'] * 1000000);
       }
 
       return $ret;
     }
     else {
-      return (bool) self::query('UNLOCK TABLES');
+      return (bool) static::query('UNLOCK TABLES');
     }
   }
 }

@@ -6,6 +6,7 @@ namespace models\abstraction;
 use Reflection;
 use ReflectionMethod;
 
+use core\Database;
 use core\EventEmitter;
 use core\Node;
 use core\Utility as util;
@@ -311,6 +312,8 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    *                                      array types will be used as is.
    */
   function load($identity) {
+    $identity = Database::escapeValue($identity);
+
     $filter = array(
         Node::FIELD_COLLECTION => self::collectionName()
       , $this->_primaryKey => $identity
