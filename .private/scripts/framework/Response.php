@@ -3,6 +3,7 @@
 
 namespace framework;
 
+use core\ContentEncoder;
 use core\Utility as util;
 
 use framework\Configuration as conf;
@@ -451,16 +452,16 @@ class Response {
     $contentTypes = (array) @$this->headers['Content-Type'];
 
     if ( preg_grep('/json/i', $contentTypes) ) {
-      $message = ResponseEncoder::jsonp($message);
+      $message = ContentEncoder::jsonp($message);
     }
     else if ( preg_grep('/xml/i', $contentTypes) ) {
-      $message = ResponseEncoder::xml($message);
+      $message = ContentEncoder::xml($message);
     }
     else if ( preg_grep('/php.serialized/i', $contentTypes) ) {
-      $message = ResponseEncoder::serialize($message);
+      $message = ContentEncoder::serialize($message);
     }
     else if ( preg_grep('/php.var_dump/i', $contentTypes) ) {
-      $message = ResponseEncoder::dump($message);
+      $message = ContentEncoder::dump($message);
     }
 
     return $message;

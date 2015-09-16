@@ -3,6 +3,7 @@
 
 namespace framework;
 
+use core\ContentEncoder;
 use core\Database;
 use core\Log;
 use core\Node;
@@ -181,7 +182,7 @@ class Process {
     $env = (array) @$options['$env'];
 
     if ( $env ) {
-      $env = array('env' => json_encode($env));
+      $env = array('env' => ContentEncoder::json($env));
     }
 
     unset($options['$env']);

@@ -1,11 +1,27 @@
 <?php
-/*! ResponseEncoder.php | Array encoders for the response object. */
+/*! ContentEncoder.php | Array encoders for the response object. */
 
-namespace framework;
+namespace core;
 
-class ResponseEncoder {
+class ContentEncoder {
 
   public static function json($value) {
+    // note: binary strings will fuck up the encoding process, remove them.
+    $maskBinary = function(&$value) {
+      if ( is_string($value) && !ctype_print($value) ) {
+        $value = '[binary string]';
+      }
+    };
+
+    if ( is_array($value) ) {
+      array_walk_recursive($value, $maskBinary);
+    }
+    else {
+      $maskBinary($value);
+    }
+
+    unset($maskBinary);
+
     return json_encode($value);
   }
 

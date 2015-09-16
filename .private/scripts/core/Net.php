@@ -221,9 +221,9 @@ class Net {
         switch ( @$option['dataType'] ) {
           case 'json':
             $option['success'] = function($response, $curlOptions) use($option, $originalSuccess) {
-              $result = @json_encode($response, TRUE);
+              $result = @ContentEncoder::json($respons);
 
-              if ( $result === NULL && $response ) {
+              if ( $result === false && $response ) {
                 Utility::forceInvoke(@$option['failure'], array(
                     3
                   , 'Malformed JSON string returned.'

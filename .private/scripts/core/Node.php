@@ -826,8 +826,8 @@ class Node {
           }
         });
 
-        // Silently swallow json_encode() errors.
-        $data[self::FIELD_VIRTUAL] = @json_encode($row);
+        // Silently swallow encode errors.
+        $data[self::FIELD_VIRTUAL] = @ContentEncoder::json($row);
 
         // Defaults to be an empty object.
         if ( !$data[self::FIELD_VIRTUAL] || $data[self::FIELD_VIRTUAL] == '[]' ) {
@@ -1010,7 +1010,7 @@ class Node {
 
       unset($contents[$fieldName]);
 
-      $row[self::FIELD_VIRTUAL] = json_encode($contents);
+      $row[self::FIELD_VIRTUAL] = @ContentEncoder::json($contents);
       $row[self::FIELD_COLLECTION] = $collection;
 
       if ( self::set($row) === false ) {
