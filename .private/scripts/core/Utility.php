@@ -901,36 +901,6 @@ class Utility {
   }
 
   /**
-   * Get offset data from request headers.
-   *
-   * This HTTP header is a simplified version of the HTTP Range header.
-   * List-Range: (\d+)?(-\d+)?
-   *
-   * Unlike the Range header, only one range is allowed in this header.
-   */
-  static function getListRange($defaultLength = 20) {
-    $range = Resolver::getActiveInstance()->request()->header('List-Range');
-
-    if ( !preg_match('/^(\d*)?(?:-(\d*|\*))?$/', trim($range), $matches) ) {
-      return null;
-    }
-
-    if ( empty($matches[2]) ) {
-      list($matches[1], $matches[2]) = array(0, $matches[1]);
-    }
-
-    if ( @$matches[2] == '*' ) {
-      $matches[2] = $defaultLength;
-    }
-
-    if ( $matches[2] == 0 ) {
-      return null;
-    }
-
-    return array((int) $matches[1], (int) $matches[2]);
-  }
-
-  /**
    * Get a MustacheResource object in the context with current server configurations.
    */
   static function getResourceContext($locale = null) {
