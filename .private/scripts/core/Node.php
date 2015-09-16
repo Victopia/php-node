@@ -477,7 +477,8 @@ class Node {
           if ( @preg_match(trim($content), null) !== false )
           {
             $subQuery[] = "REGEXP ?";
-            $params[] = $matches[1];
+            $params[] = preg_replace('/\\\b(.*?)\\\b/', '[[:<:]]$1[[:>:]]',
+              trim(rtrim(trim($content), 'igxmysADSUXJ'), '/'));
           }
           else
 
@@ -826,7 +827,7 @@ class Node {
           }
         });
 
-        // Silently swallow encode errors.
+        // Silently swallow json encode errors.
         $data[self::FIELD_VIRTUAL] = @ContentEncoder::json($row);
 
         // Defaults to be an empty object.
