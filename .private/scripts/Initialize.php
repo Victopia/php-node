@@ -116,7 +116,7 @@ unset($dbOptions);
 Log::setLogger(new Logger('default'));
 
 // Log enabled
-if ( conf::get('log', true) ) {
+if ( conf::get('system::log.enabled', true) ) {
   $level = Logger::toMonologLevel(conf::get('system::log.level', 'debug'));
 
   Log::getLogger()
