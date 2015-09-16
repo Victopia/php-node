@@ -43,6 +43,26 @@ class Node {
   const FIELD_RAWQUERY = '@raw';
 
   /**
+   * Regex pattern to match boolean filter expressions.
+   */
+  const PATTERN_BOOL = '/^(==|!=)\s*(true|false)\s*$/';
+
+  /**
+   * Regex pattern to match numeric filter expressions.
+   */
+  const PATTERN_NUMERIC = '/^(<|<=|==|!=|>=|>)?\s*(\d+)\s*$/';
+
+  /**
+   * Regex pattern to match date-time filter expressions.
+   */
+  const PATTERN_DATETIME = '/^(<|<=|==|!=|>=|>)?\s*\'([0-9- :TZ\+]+)\'\s*$/';
+
+  /**
+   * Regex pattern to match null type filter expressions.
+   */
+  const PATTERN_NULL_TYPE = '/^((?:==|!=)=?)\s*null\s*$/i';
+
+  /**
    * Number of rows to fetch when virtual column is in sight.
    */
   public static $fetchSize = 200;
@@ -409,7 +429,7 @@ class Node {
           if ( is_bool($content) ) {
             $inValues[] = $content;
           }
-          else if ( preg_match('/^(==|!=)(true|false$)/', trim($content), $matches) ) {
+          else if ( preg_match(static::PATTERN_BOOL, trim($content), $matches) ) {
             if ( $matches[1] == '==' ) {
               $inValues[] = $matches[2] == 'true';
             }
@@ -420,7 +440,7 @@ class Node {
           else
 
           // 2. Numeric comparison: 3, <10, >=20, ==3.5 ... etc.
-          if ( preg_match('/^(<|<=|==|!=|>=|>)?(\d+)$/', trim($content), $matches) && count($matches) > 2 )
+          if ( preg_match(static::PATTERN_NUMERIC, trim($content), $matches) && count($matches) > 2 )
           {
             if ( !$matches[1] || $matches[1] == '==' ) {
               // $matches[1] = '=';
@@ -437,7 +457,7 @@ class Node {
           else
 
           // 3. Datetime comparison: <'2010-07-31', >='1989-06-21' ... etc.
-          if ( preg_match('/^(<|<=|==|!=|>=|>)?\'([0-9- :TZ\+]+)\'$/', trim($content), $matches) &&
+          if ( preg_match(static::PATTERN_DATETIME, trim($content), $matches) &&
             count($matches) > 2 && strtotime($matches[2]) !== false )
           {
             if ( !$matches[1] || $matches[1] == '==' ) {
@@ -454,7 +474,7 @@ class Node {
           else
 
           // 4. Regexp matching: "/^AB\d+/"
-          if ( preg_match('/^\/([^\/]+)\/[\-gismx]*$/i', trim($content), $matches) && count($matches) > 1 )
+          if ( @preg_match(trim($content), null) !== false )
           {
             $subQuery[] = "REGEXP ?";
             $params[] = $matches[1];
@@ -462,7 +482,7 @@ class Node {
           else
 
           // 5. null types
-          if ( is_null($content) || preg_match('/^((?:==|!=)=?)\s*null$/i', trim($content), $matches) ) {
+          if ( is_null($content) || preg_match(static::PATTERN_NULL_TYPE, trim($content), $matches) ) {
             $content = 'IS ' . (@$matches[1][0] == '!' ? 'NOT ' : '') . 'null';
             $subQuery[] = "$content";
           }
@@ -472,14 +492,15 @@ class Node {
           if ( is_string($content) ) {
             $content = trim($content);
 
-            if ( preg_match('/[^\\][\\*%_]/', $content) ) {
+            // note: Unescaped *, % or _ characters
+            if ( ctype_print($content) && preg_match('/[^\\][\\*%_]/', $content) ) {
               $operator = 'LIKE';
             }
             else {
               $operator = '=';
             }
 
-            if ( preg_match('/^!\'([^\']+)\'$/', $content, $matches) ) {
+            if ( preg_match('/^!\'([^\']*)\'$/', $content, $matches) ) {
               $subQuery[] = "NOT $operator ?";
               $content = $matches[1];
             }
@@ -488,8 +509,6 @@ class Node {
             }
 
             $params[] = $content;
-
-            unset($operator);
           }
         });
 
@@ -605,39 +624,56 @@ class Node {
     else {
       // Normalize numeric values into exact match.
       if ( is_numeric($content) ) {
-        $content = "==$content";
+        if ( $content != $value ) {
+          return false;
+        }
       }
 
-      // For required fields.
-      if ($required && !isset($value) ||
-      // Boolean comparison: true, false
-          ( is_bool($content) && $content !== (bool) $value ) ||
-      // null type: null
-          ( is_null($content) && $value !== $content ) ||
-
-      /* Quoted by Vicary @ 1 Jan, 2013
-         This will make inconsistency between real and virtual columns.
-
-      // Array type: direct comparison
-          // ( is_array($content) && $value == $content ) ||
-      */
-
-      // Numeric comparison: <10, >=20, ==3.5 ... etc
-          ( preg_match('/^(<|<=|==|>=|>)\s*\d+$/', $content, $matches) && !eval('return $value' . $content . ';') ) ||
-      // Datetime comparison: <'2010-07-31', >='1989-06-21' ... etc
-          ( preg_match('/^(<|<=|==|>=|>)\'([0-9- :]+)\'$/', $content, $matches ) &&
-            !eval('return strtotime($value)' . $matches[1] . strtotime($matches[2]) . ';')) ||
-      // Regexp matching: "/^AB\d+/"
-          ( preg_match('/^\/.+\/g?i?$/i', $content, $matches) ? preg_match( $content, $value ) == 0 :
-      // null type: ==null, !=null, ===null, !==null
-            ( preg_match('/^((?:==|!=)=?)\s*null\s*$/i', $content, $matches) && !eval('return $value' . $content . ';') ) ||
-      // Plain string
-      // This was "count($matches) > 0", find out why.
-            ( count($matches) == 0 && is_string($content) && false == preg_match('/^(<|<=|==|>=|>)/', $content) && $content !== $value )
-          ))
-      {
-        // $data['row'] = null;
+      // Required fields
+      else if ( $required && !isset($value) ) {
         return false;
+      }
+
+      // Boolean comparison: true, false
+      else if ( is_bool($content) ) {
+        if ( $content !== (bool) $value ) {
+          return false;
+        }
+      }
+
+      // null type: null
+      else if ( is_null($content) ) {
+        if ( !is_null($value) ) {
+          return false;
+        }
+      }
+
+      // Regexp matching: "/^AB\d+/"
+      else if ( @preg_match($content, null) !== false ) {
+        if ( preg_match($content, $value) == 0 ) {
+          return false;
+        }
+      }
+
+      // Numeric or null type comparison: direct evals;
+      else if ( preg_match(static::PATTERN_NUMERIC, $content, $matches) || preg_match(static::PATTERN_NULL_TYPE, $content, $matches) ) {
+        if ( !eval("return \$value$content;") ) {
+          return false;
+        }
+      }
+
+      // Datetime comparison: <'2010-07-31', >='1989-06-21' ... etc
+      else if ( preg_match(static::PATTERN_DATETIME, $content, $matches) ) {
+        if ( !eval("return strtotime(\$value)$matches[1]strtotime($matches[2]);") ) {
+          return false;
+        }
+      }
+
+      // Plain string
+      else if ( !$matches && is_string($content) && !preg_match('/^(<|<=|==|>=|>)/', $content) ) {
+        if ( $content !== $value ) {
+          return false;
+        }
       }
 
       return true;
