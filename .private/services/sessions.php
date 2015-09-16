@@ -3,6 +3,7 @@
 
 namespace services;
 
+use core\Database;
 use core\Node;
 
 use framework\Session;
@@ -17,10 +18,10 @@ class sessions extends \framework\WebService {
 	function validate($username, $password) {
 		$session = Node::getOne(array(
 				Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION,
-				'username' => $username
+				'username' => Database::escapeValue($username)
 			));
 
-		$res = Session::validate($username, $password, $this->__request->fingerprint());
+		$res = Session::validate($username, $password, $this->request()->fingerprint());
 		if ( is_int($res) ) {
 			switch ( $res ) {
 				case Session::ERR_MISMATCH:
@@ -37,7 +38,7 @@ class sessions extends \framework\WebService {
 	}
 
 	function ensure($sid, $token = null) {
-		$res = Session::ensure($sid, $token, $this->__request->fingerprint());
+		$res = Session::ensure($sid, $token, $this->request()->fingerprint());
 		if ( is_int($res) ) {
 			switch ( $res ) {
 				case Session::ERR_INVALID:
