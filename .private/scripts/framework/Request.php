@@ -10,46 +10,11 @@ use core\Utility as util;
 
 use framework\exceptions\FrameworkException;
 
-/*! Note
- *  The request object is a wrapper of the current request.
- *  All values are readonly and should not be changed.
+/**
+ * Wrapper class of the current request.
  *
- *  1. Request
- *    method // GET, POST, PUT, DELETE, OPTION, HEADER
- *    uri = $_SERVER['REQUEST_URI']
- *      scheme
- *      protocol = scheme
- *      host
- *      domain = host
- *      port
- *      user
- *      pass
- *      path
- *      query
- *      fragment
- *      hash = fragment
- *    headers
- *    params // params($name) = $_REQUEST
- *      get = $_GET
- *      post = $_POST
- *    files // function to get a stream object, and fixes the ugly post names
- *    client
- *      type // HTTP
- *      address = $_SERVER['REMOTE_ADDR']
- *      host = $_SERVER['REMOTE_HOST']
- *      domain = host
- *      port = $_SERVER['REMOTE_PORT']
- *      user = $_SERVER['REMOTE_USER']
- *
- *      type // CLI
- *      address = null
- *      host = gethostname()
- *      domain = host
- *      port = null
- *      user = get_current_user()
- *    timestamp = $_SERVER['REQUEST_TIME_FLOAT']
+ * Normalize reading interface for various request related information.
  */
-
 class Request {
 
   //----------------------------------------------------------------------------
