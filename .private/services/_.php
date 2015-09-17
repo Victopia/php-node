@@ -260,17 +260,17 @@ class _ extends \framework\WebService {
    */
   protected function createFilter() {
     $filter = [
-        '@limit' => $this->listRange()
+        '@limits' => $this->listRange(),
       ];
 
     return $filter + $this->request()->param();
   }
 
   /**
-   * Parse List-Range headers for collection retrieval.
+   * Parse "@limit" parameter or "List-Range" header for collection retrieval.
    */
   private function listRange() {
-    $listRange = $this->request()->get('@limit');
+    $listRange = $this->request()->meta('limits');
     if ( !$listRange ) {
       $listRange = $this->request()->header('List-Range');
     }
