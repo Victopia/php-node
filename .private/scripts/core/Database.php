@@ -537,42 +537,61 @@ final class Database {
    * Upsert function.
    *
    * @param $table Target table name.
-   * @param $fields Key-value pairs of field names and values.
+   * @param $data Key-value pairs of field names and values.
    *
    * @returns True on update succeed, insertId on a row inserted, false on failure.
    */
   public static /* Mixed */
-  function upsert($table, $fields = array()) {
-    $columns = static::getFields($table, 'PRI');
+  function upsert($table, array $data, $update = null) {
+    $fields = static::escapeField(array_keys($data), $table);
 
-    $keys = array();
+    $values = array_values($data);
 
-    // Setup keys.
-    foreach ( $fields as $field => $value ) {
-      if ( in_array($field, $columns) ) {
-        $keys[$field] = $value;
+    $query = sprintf('INSERT INTO %s (%s) VALUES (%s)',
+      static::escapeField($table),
+      implode(', ', $fields),
+      implode(', ', array_fill(0, count($fields), '?'))
+      );
 
-        unset($fields[$field]);
+    // append "ON DUPLICATE KEY UPDATE ..."
+    $keys = static::getFields($table, 'PRI');
+
+    $fields = array_intersect($fields, static::escapeField($keys, $table));
+
+    if ( $fields ) {
+      // selective update
+      if ( $update !== null ) {
+        $data = array_select($data, (array) $update);
+      }
+
+      foreach ( $data as $field => $value ) {
+        $data["`$field` = ?"] = $value;
+
+        unset($data[$field]);
+      }
+
+      // full dataset appended with non-key fields
+      $values = array_merge($values,
+        array_values(array_filter_keys($data, notIn($keys))));
+
+      $query.= ' ON DUPLICATE KEY UPDATE ';
+
+      if ( $data ) {
+        $query.= implode(', ', array_keys($data));
+      }
+      else {
+      // note: key1 = key1; We do not use INSERT IGNORE because it'll ignore other errors.
+        $value = reset($fields);
+        $query.= "$value = $value";
+        unset($value);
       }
     }
 
-    $values = array_merge(array_values($keys), array_values($fields));
+    unset($keys, $fields);
 
-    $keys = static::escapeField( array_merge(array_keys($keys), array_keys($fields)), $table );
+    $res = static::query($query, $values);
 
-    // Setup fields.
-    foreach ( $fields as $field => $value ) {
-      $fields["`$field` = ?"] = $value;
-
-      unset($fields[$field]);
-    }
-
-    unset($columns);
-
-    $res = 'REPLACE INTO ' . static::escapeField( $table ) . ' (' . implode(', ', $keys) . ') VALUES (' .
-        implode(', ', array_fill(0, count($keys), '?')) . ')';
-
-    $res = static::query($res, $values);
+    unset($query, $values);
 
     if ( $res !== false ) {
       $res->closeCursor();
