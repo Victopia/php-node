@@ -261,6 +261,7 @@ class _ extends \framework\WebService {
   protected function createFilter() {
     $filter = [
         '@limits' => $this->listRange(),
+        '@sorter' => $this->listOrder()
       ];
 
     return $filter + $this->request()->param();
@@ -291,4 +292,11 @@ class _ extends \framework\WebService {
     return $listRange;
   }
 
+  /**
+   * Parse "@sorter" parameter for a collection ordering.
+   */
+  private function listOrder() {
+    $listOrder = $this->request()->meta('order');
+    return (array) $listOrder;
+  }
 }
