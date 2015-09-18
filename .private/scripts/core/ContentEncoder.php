@@ -7,20 +7,25 @@ class ContentEncoder {
 
   public static function json($value) {
     // note: binary strings will fuck up the encoding process, remove them.
-    $maskBinary = function(&$value) {
-      if ( is_string($value) && !ctype_print($value) ) {
+    $maskBinary = function(&$value) use(&$maskBinary) {
+      if ( $value instanceof \JsonSerializable ) {
+        $value = $value->jsonSerialize();
+      }
+
+      if ( is_object($value) ) {
+        foreach ( get_object_vars($value) as $key => $_value ) {
+          $maskBinary($value->$key);
+        } unset($_value);
+      }
+      else if ( is_array($value) ) {
+        array_walk($value, $maskBinary);
+      }
+      else if ( is_string($value) && $value && !ctype_print($value) ) {
         $value = '[binary string]';
       }
     };
 
-    if ( is_array($value) ) {
-      array_walk_recursive($value, $maskBinary);
-    }
-    else {
-      $maskBinary($value);
-    }
-
-    unset($maskBinary);
+    $maskBinary($value);
 
     return json_encode($value);
   }
