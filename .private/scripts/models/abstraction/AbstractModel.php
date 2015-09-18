@@ -152,8 +152,16 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   //
   //----------------------------------------------------------------------------
 
+  /**
+   * Property names starts with "@" or "__" will be treated directly as object
+   * properties and does not proxy into internal data.
+   */
   function &__get($name) {
-    return $this->data[$name];
+    if ( !preg_match('/^(@|__)/', $name) ) {
+      return $this->data[$name];
+    }
+
+    return $this->$name;
   }
 
   /**
