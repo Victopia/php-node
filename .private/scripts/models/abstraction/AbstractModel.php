@@ -324,7 +324,6 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
 
     $filter = array(
         Node::FIELD_COLLECTION => self::collectionName()
-      , $this->_primaryKey => $identity
       );
 
     if ( is_scalar($identity) ) {
