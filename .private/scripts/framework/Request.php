@@ -640,6 +640,29 @@ class Request {
 
   //----------------------------------------------------------------------------
   //
+  //  Overloading
+  //
+  //----------------------------------------------------------------------------
+
+  public function __call($name, $args) {
+    if ( stripos($name, 'is') === 0 ) {
+      $classname = 'Is' . ucfirst(substr($name, 2));
+
+      $authenticator = '\authenticators\\' . $classname;
+      if ( class_exists($authenticator) ) {
+        if ( !isset($this->$classname) ) {
+          $this->$classname = call_user_func("$authenticator::authenticate", $this);
+        }
+
+        return $this->$classname;
+      }
+    }
+
+    throw new \BadMethodCallException(sprintf('Method %s::%s() does not exists.', get_called_class(), $name));
+  }
+
+  //----------------------------------------------------------------------------
+  //
   //  Methods
   //
   //----------------------------------------------------------------------------
