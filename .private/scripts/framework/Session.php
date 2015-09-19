@@ -125,13 +125,8 @@ class Session {
         'username' => $user->identity(),
       );
 
-    if ( $fingerprint ) {
-      Node::delete(array(
-          Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION,
-          'fingerprint' => $fingerprint
-        ));
-
-      $session['fingerprint'] = $fingerprint;
+    if ( trim($fingerprint) ) {
+      $session['fingerprint'] = trim($fingerprint);
     }
 
     // Store session into database
