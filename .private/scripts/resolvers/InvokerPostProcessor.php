@@ -56,10 +56,10 @@ class InvokerPostProcessor implements \framework\interfaces\IRequestResolver {
             }
             catch(\Exception $e) {
               $response->send(array(
-                  'error' => sprintf('[InvokerPostProcessor] exception thrown when calling "%s": %s',
+                  'error' => sprintf('[InvokerPostProcessor] Error calling "%s()": %s',
                     $matches[1], $e->getMessage()),
                   'code' => $e->getCode()
-                ));
+                ), 500);
             }
           }
         }
