@@ -307,7 +307,10 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       // force invoke internal function
       util::forceInvoke(array($model, 'afterLoad'));
 
-      $collection[] = $model;
+      // add if model still has data
+      if ( $model->data() ) {
+        $collection[] = $model;
+      }
     });
 
     return $collection;
