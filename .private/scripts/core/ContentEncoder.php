@@ -20,7 +20,7 @@ class ContentEncoder {
       else if ( is_array($value) ) {
         array_walk($value, $maskBinary);
       }
-      else if ( is_string($value) && $value && !ctype_print($value) ) {
+      else if ( is_string($value) && $value && !ctype_print($value) && json_encode($value) === false ) {
         $value = '[binary string]';
       }
     };
