@@ -1,17 +1,21 @@
 <?php
-/*  ExternalResolver.php \ IRequestResolver
- *
+/*! ExternalResolver.php \ IRequestResolver | Proxy to an external file and keep a local cache. */
+
+namespace resolvers;
+
+use core\Utility as util;
+
+use framework\Cache;
+use framework\Request;
+use framework\Response;
+
+/*! Note:
  *  Resolve *.url files, it can be a plain URL string or
  *  the standard format of *.url files in Microsoft Windows.
  */
 
-namespace resolvers;
-
-use core\Utility;
-
-use framework\Cache;
-
 class ExternalResolver implements \framework\interfaces\IRequestResolver {
+
 	//--------------------------------------------------
 	//
 	//  Methods: IPathResolver
@@ -19,224 +23,265 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
 	//--------------------------------------------------
 
 	public
-	/* Boolean */ function resolve($path) {
-		$url = $this->getURL("$_SERVER[DOCUMENT_ROOT]$path");
+	/* Boolean */ function resolve(Request $request, Response $response) {
+		$path = $request->uri('path');
 
-		if ( $url === false ) {
-			// Use case of 500 Internal Server Error
-			return $path;
-		}
-
-		// Check cached resource
-		if ( $this->cacheExpired($url) ) {
-			$this->updateCache($url);
-		}
-
-		$cache = Cache::get($url);
-
-		$cHead = &$cache['headers'];
-
-		// 1. If-Modified-Since from client
-		if ( isset($_SERVER['HTTP_IF_MODIFIED_SINCE']) &&
-			isset($cHead['last-modified']) ) {
-			$mtime = strtotime($_SERVER['HTTP_IF_MODIFIED_SINCE']);
-			$cmtime = strtotime($cHead['last-modified']);
-
-			if ( $mtime <= $cmtime ) {
-				header('HTTP/1.1 304 Not Modified', true, 304);
-
-				$this->outputHeaders($cache['headers']);
-
-				return;
-			}
-		}
-
-		// 2. If-None-Match from client
-		if ( isset($_SERVER['HTTP_IF_NONE_MATCH']) && isset($cHead['etag']) &&
-			preg_match('/^"?(.+)(:?+gzip)?"?/i', $_SERVER['HTTP_IF_NONE_MATCH'], $matches) &&
-			$matches[1] === $cHead['etag'] ) {
-			header('HTTP/1.1 304 Not Modified', true, 304);
-
-			$this->outputHeaders($cache['headers']);
-
+		// Check if target file is a proxy.
+		if ( !is_file("./$path.url") ) {
 			return;
 		}
 
-		unset($matches);
+		// todo; target url might be configurable in some way.
 
-		$this->outputHeaders($cache['headers']);
+		$cacheTarget = parse_ini_file("./$path.url");
+		$cacheTarget = @$cacheTarget['URL'];
 
-		echo $cache['body'];
-	}
+		if ( !$cacheTarget ) {
+			Log::warning('Proxy file has not URL parameter.', array(
+					'requestUri' => $request->uri(),
+					'proxyFile' => $request->uri('path') . '.uri'
+				));
 
-	//--------------------------------------------------
-	//
-	//  Methods
-	//
-	//--------------------------------------------------
-
-	private function getURL($path) {
-		if ( !is_file($path) ) {
-			return false;
+			$response->status(502); // Bad Gateway
+			return;
 		}
 
-		$content = file_get_contents($path);
+		/*! Cache Header Notes
+		 *
+		 *  # Cache-Control
+		 *  [public | private] Cacheable when public, otherwise the client is responsible for caching.
+		 *  [no-cache( \w+)?]  When no fields are specified, the whole thing must revalidate everytime,
+		 *                     otherwise cache it except specified fields.
+		 *  [no-store] 				 Ignore caching and pipe into output.
+		 *  [max-age=\d+] 		 Seconds before this cache is meant to expire, this overrides Expires header.
+		 *  [s-maxage=\d+] 		 Overrides max-age and Expires header, behaves just like max-age.
+		 *                 	   (This is for CDN and we are using it.)
+		 *  [must-revalidate]  Tells those CDNs which are intended to serve stale contents to revalidate every time.
+		 *  [proxy-revalidate] Like the "s-" version of max-age, a "must-revalidate" override only for CDN.
+		 *  [no-transform]     Some CDNs will optimize images and other formats, this "opt-out" of it.
+		 *
+		 *  # Expires
+		 *  RFC timestamp for an absolute cache expiration, overridden by Cache-Control header.
+		 *
+		 *  # ETag
+		 *  Hash of anything, weak ETags is not supported at this moment.
+		 *
+		 *  # vary
+		 *  Too much fun inside and we are too serious about caching, ignore this.
+		 *
+		 *  # pragma
+		 *  This guy is too old to recognize.
+		 *  [no-cache] Only this is known nowadays and is already succeed by Cache-Control: no-cache.
+		 *
+		 */
 
-		$res = @parse_ini_string($content);
+		// 1. Check if cache exists.
+		$cache = Cache::get("cache://$cacheTarget");
 
-		if ( $res && count($res) && isset($res['URL']) ) {
-			$content = $res['URL'];
-		}
-		else {
-			$pos = strpos($content, "\n");
-
-			if ( $pos ) {
-				$content = substr($content, 0, $pos);
-			}
-		}
-
-		if ( !Utility::isURL($content) ) {
-			return false;
-		}
-
-		return $content;
-	}
-
-	/**
-	 * @private
-	 */
-	private function cacheExpired($url) {
-		$cacheInfo = Cache::getInfo($url);
-
-		return $cacheInfo === null ||
-			($cacheInfo->getMTime() + FRAMEWORK_EXTERNAL_UPDATE_DELAY > time());
-	}
-
-	/**
-	 * @private
-	 */
-	private function updateCache($url) {
-		$cacheData = Cache::get($url);
-
-		$cHead = &$cacheData['headers'];
-
-		// Request headers
-		$reqHeaders = array();
-
-		if ( isset($cHead['last-modified']) ) {
-			$reqHeaders[] = 'If-Modified-Since: ' . $cHead['last-modified'];
+		// Cache expiration, in seconds.
+		// expires = ( s-maxage || max-age || Expires );
+		if ( @$cache['expires'] && time() > $cache['expires'] ) {
+			Cache::delete("cache:://$cacheTarget");
+			$cache = null;
 		}
 
-		if ( isset($cHead['etag']) ) {
-			$reqHeaders[] = 'If-None-Match: ' . $cHead['etag'];
-		}
+		// - If not exists, make normal request to remote server.
+		// - If exists, make conditional request to remote server.
+		//   - Revalidation, we can skip this request and serve the content if false.
+		//     revalidates = ( Cache-Control:proxy-revalidate || Cache-Control:must-revalidate )
+		if ( !$cache || @$cache['revalidates'] ) {
+			$_request = array(
+					'uri' => $cacheTarget
+				);
 
-		// HEADER request before processing.
-		$ch = curl_init($url);
+			if ( $cache ) {
+				// Last-Modified
+				if ( @$cache['headers']['Last-Modified'] ) {
+					$_request['headers']['If-Modified-Since'] = $cache['Last-Modified'];
+				}
 
-		curl_setopt_array($ch, Array(
-			CURLOPT_HTTPHEADER => $reqHeaders,
-			CURLOPT_HEADER => true,
-			CURLOPT_NOBODY => true,
-			CURLOPT_RETURNTRANSFER => true
-		));
-
-		$resHeaders = curl_exec($ch);
-
-		curl_close($ch);
-
-		$resHeaders = $this->parseConditionalHeaders($resHeaders);
-
-		// Last Modified time check against http headers,
-		// only when we already have a body cached.
-		if ( @$cacheData['body'] ) {
-			$cmtime = $rmtime = null;
-
-			if ( isset($cHead['last-modified']) )
-				$cmtime = strtotime($cHead['last-modified']);
-
-			if ( isset($resHeaders['last-modified']) )
-				$rmtime = strtotime($resHeaders['last-modified']);
-
-			// Output the cache if not modified.
-			if ( $cmtime && $rmtime && $cmtime >= $rmtime ) {
-				$cacheInfo = Cache::getInfo($url);
-
-				touch($cacheInfo->getRealPath());
-
-				return false;
-			}
-
-			unset($cmtime, $rmtime, $interval);
-		}
-
-		// Store response headers
-		$cacheData['headers'] = $cHead = $resHeaders;
-
-		// HTTP GET target contents
-		$ch = curl_init($url);
-
-		curl_setopt_array($ch, array(
-			CURLOPT_HTTPHEADER => $reqHeaders,
-			CURLOPT_RETURNTRANSFER => true
-		));
-
-		$res = curl_exec($ch);
-
-		curl_close($ch); unset($ch);
-
-		$cacheData['body'] = $res;
-
-		Cache::delete($url);
-
-		Cache::set($url, $cacheData);
-
-		return true;
-	}
-
-	/**
-	 * @private
-	 */
-	private function parseConditionalHeaders($headers) {
-		$patterns = array(
-			'/^(Last\-Modified):\s*(.+)/i',
-			'/^(ETag):\s*("?[^"]+(:?\+gzip)?"?)/i',
-			'/^(Expires):\s*(.+)/i',
-			'/^(Cache-Control):\s*(.+)/i',
-			'/^(Content-Type):\s*(.+)/i'
-		);
-
-		$result = array();
-		$headers = explode("\n", $headers);
-
-		foreach ( $headers as $header ) {
-			foreach ($patterns as $pattern) {
-				if (preg_match($pattern, $header, $matches)) {
-					$result[strtolower($matches[1])] = $matches[2];
-					break;
+				// Entity-Tag
+				if ( @$cache['headers']['ETag'] && strpos($cache['headers']['ETag'], 'W\\') !== 0 ) {
+					$_request['headers']['If-None-Match'] = $cache['ETag'];
 				}
 			}
+			else {
+				$cache = array();
+			}
+
+			// Make the request
+			$_response = new Response(array('autoOutput' => false));
+
+			(new Request($_request))->send(null, $_response);
+
+			unset($_request);
+
+			// parse headers into cache settings.
+			if ( in_array($_response->status(), array(200, 304)) ) {
+				$res = preg_split('/\s*,\s*/', util::unwrapAssoc($_response->header('Cache-Control')));
+
+				$res = array_reduce($res, function($res, $value) {
+					// todo; Take care of no-cache with field name.
+
+					if ( strpos($value, '=') > 0 ) {
+						$value = explode('=', $value);
+						$res[$value[0]] = $value[1];
+					}
+					else {
+						$res[$value] = true;
+					}
+
+					return $res;
+				}, array());
+
+				// private, no-store, no-cache
+				if ( @$res['private'] || @$res['no-store'] || @$res['no-cache'] ) {
+					// in case the upstream server change this to uncacheable
+					Cache::delete("cache://$cacheTarget");
+					unset($cacheTarget);
+				}
+
+				// expires = ( s-maxage || max-age || Expires );
+				if ( @$res['s-maxage'] ) {
+					$cache['expires'] = time() + $res['s-maxage'];
+				}
+				elseif ( @$res['max-age'] ) {
+					$cache['expires'] = time() + $res['max-age'];
+				}
+				else {
+					$res = util::unwrapAssoc($_response->header('Expires'));
+					if ( $res ) {
+						$cache['expires'] = strtotime($res);
+					}
+				}
+
+				// revalidates = ( Cache-Control:proxy-revalidate || Cache-Control:must-revalidate )
+				if ( @$res['proxy-revalidate'] || @$res['must-revalidate'] ) {
+					$cache['revalidates'] = true;
+				}
+
+				unset($res);
+			}
+
+			$cache['headers'] = array_map('core\Utility::unwrapAssoc', $_response->header());
+
+			// PHP does not support chunked, skip this one.
+			unset($cache['headers']['Transfer-Encoding']);
+
+			if ( $_response->status() == 200 ) {
+				$cache['contents'] = $_response->body();
+			}
+
+			// note; If cache is to be ignored, the $cacheTarget variable will be already unset().
+			if ( isset($cacheTarget) ) {
+				Cache::set("cache://$cacheTarget", $cache);
+			}
+
+			unset($_response);
 		}
 
-		return $result;
-	}
-
-	private function updateAndOutputCache($cache, $url) {
-		Cache::delete($url);
-
-		Cache::set($url, $cache);
-
-		$this->outputHeaders($cache);
-
-		echo $cache['body'];
-	}
-
-	private function outputHeaders($headers) {
-		foreach ( $headers as $key => $header ) {
-			// Ignoring the status code parameter, seems not necessary.
-			header("$key: $header", true);
+		// note; Send cache headers regardless of the request condition.
+		if ( @$cache['headers'] ) {
+			$response->clearHeaders();
+			foreach ( $cache['headers'] as $name => $value ) {
+				$response->header($name, $value, true);
+			} unset($name, $value);
 		}
 
-		header('Cache-Control: private, max-age=' . FRAMEWORK_RESPONSE_CACHE_AGE . ', must-revalidate', true);
+		// note; Handles conditional request
+
+		$ch = array_map('core\Utility::unwrapAssoc', (array) @$cache['headers']);
+
+		$mtime = @$ch['Last-Modified'] ? strtotime($ch['Last-Modified']) : false;
+
+		// Request headr: If-Modified-Since
+		if ( @$ch['Last-Modified'] && $mtime ) {
+			if ( strtotime($request->header('If-Modified-Since')) >= $mtime ) {
+	      return $response->status(304);
+	    }
+		}
+
+    // Request header: If-Range
+    if ( $request->header('If-Range') ) {
+      // Entity tag
+      if ( strpos(substr($request->header('If-Range'), 0, 2), '"') !== false && @$ch['ETag']) {
+        if ( $this->compareETags(@$ch['ETag'], $request->header('If-Range')) ) {
+          return $this->response()->status(304);
+        }
+      }
+      // Http date
+      elseif ( strtotime($request->header('If-Range')) === $mtime ) {
+        return $this->response()->status(304);
+      }
+    }
+
+    unset($mtime);
+
+    // Request header: If-None-Match
+    if ( !$request->header('If-Modified-Since') && $request->header('If-None-Match') ) {
+      // Exists but not GET or HEAD
+      switch ( $request->method() ) {
+        case 'get': case 'head':
+          break;
+
+        default:
+          return $this->response()->status(412);
+      }
+
+      /*! Note by Vicary @ 24 Jan, 2013
+       *  If-None-Match means 304 when target resources exists.
+       */
+      if ( $request->header('If-None-Match') === '*' && @$ch['ETag'] ) {
+        return $this->response()->status(304);
+      }
+
+      if ( $this->compareETags(@$ch['ETag'], preg_split('/\s*,\s*/', $request->header('If-None-Match'))) ) {
+        return $this->response()->status(304);
+      }
+    }
+
+    // Request header: If-Match
+    if ( !$request->header('If-Modified-Since') && $request->header('If-Match') ) {
+      // Exists but not GET or HEAD
+      switch ( $request->method() ) {
+        case 'get': case 'head':
+          break;
+
+        default:
+          return $this->response()->status(412);
+      }
+
+      if ( $request->header('If-Match') === '*' && !@$ch['ETag'] ) {
+        return $this->response()->status(412);
+      }
+
+      preg_match_all('/(?:^\*$|(:?"([^\*"]+)")(?:\s*,\s*(:?"([^\*"]+)")))$/', $request->header('If-Match'), $eTags);
+
+      // 412 Precondition Failed when nothing matches.
+      if ( @$eTags[1] && !in_array($eTag, (array) $eTags[1]) ) {
+        return $this->response()->status(412);
+      }
+    }
+
+    // Output the cahce content
+    $response->send($cache['contents'], 200);
 	}
+
+  /**
+   * @private
+   *
+   * Weak $needles will strip all weak tags in $haystack before matching,
+   * otherwise it will invoke in_array() search as-is.
+   */
+  private function compareETags($needle, $haystack) {
+    $haystack = (array) $haystack;
+
+    // Weak entity-tag, strip all weak tags in $haystack
+    if ( strpos($needle, 'W/') === 0 ) {
+      $needle = substr($needle, 2);
+      $haystack = array_map(unshiftsArg('preg_replace', '/^W\//', ''), $haystack);
+    }
+
+    return in_array($needle, $haystack);
+  }
 }
