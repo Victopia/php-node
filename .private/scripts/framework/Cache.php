@@ -55,7 +55,7 @@ class Cache {
 	 * @param {mixed} $content Serialized contents to be stored.
 	 * @param {?string} $hash Overwrites target revision.
 	 */
-	public static function set($key, $content, $hash = false) {
+	public static function set($key, $content, $hash = '*') {
 		if ( $hash && $hash instanceof SplFileInfo ) {
 			$hash = $hash->getFilename();
 		}
@@ -144,7 +144,7 @@ class Cache {
 	 * @param {string} $key Identifier of target cache.
 	 * @param {?string} $hash Target revision to delete, all revisions will be deleted if omitted.
 	 */
-	public static function delete($key, $hash = null) {
+	public static function delete($key, $hash = '*') {
 		$res = self::resolve($key, $hash);
 
 		// Skip the delete if nothing is found.
@@ -193,13 +193,19 @@ class Cache {
 	 *
 	 * 1. Mimics tmp directory
 	 * 2. Find latest cache if $hash is null
-	 * 3. Return directory if $hash is false
+	 * 3. Return directory if $hash is '*'
 	 */
-	private static /* SplFileInfo */ function resolve($key, $hash = false) {
-		$target = sys_get_temp_dir() . DIRECTORY_SEPARATOR . md5($key);
+	private static /* SplFileInfo */ function resolve($key, $hash = null) {
+		$target = sys_get_temp_dir();
+
+		if ( strrpos($target, DIRECTORY_SEPARATOR) !== strlen($target) - 1 ) {
+			$target.= DIRECTORY_SEPARATOR;
+		}
+
+		$target.= md5($key);
 
 		if ( !file_exists($target) ) {
-			if ( $hash !== false ) {
+			if ( $hash !== '*' ) {
 				return null;
 			}
 
@@ -214,7 +220,7 @@ class Cache {
 
 		$target.= DIRECTORY_SEPARATOR;
 
-		if ( $hash === false ) {
+		if ( $hash === '*' ) {
 			return new \RecursiveDirectoryIterator($target,
 				\FilesystemIterator::KEY_AS_PATHNAME | \FilesystemIterator::CURRENT_AS_FILEINFO | \FilesystemIterator::SKIP_DOTS);
 		}
