@@ -100,7 +100,7 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
     // Cache expiration, in seconds.
     // expires = ( s-maxage || max-age || Expires );
     if ( @$cache['expires'] && time() > $cache['expires'] ) {
-      Cache::delete("cache-meta:://$cacheTarget");
+      Cache::delete("cache-meta://$cacheTarget");
       Cache::delete("cache://$cacheTarget");
       $cache = null;
     }
