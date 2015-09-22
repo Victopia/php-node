@@ -73,7 +73,7 @@ abstract class AbstractRelationModel extends AbstractModel {
 
     if ( $children ) {
       if ( $replace ) {
-        $this->deleteChildren($collection);
+        $this->deleteDescendants($collection);
       }
 
       if ( !is_array($children) ) {
