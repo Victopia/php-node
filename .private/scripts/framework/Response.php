@@ -384,7 +384,7 @@ class Response {
     else if ( is_resource($body) ) {
       fpassthru($body);
     }
-    else if ( is_string($body) && is_file($body) ) {
+    else if ( is_string($body) && @is_file($body) ) {
       $path = realpath(System::getPathname() . '/' . $body);
 
       if ( $path && is_readable($path) ) {
