@@ -92,13 +92,16 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
      *
      */
 
+    // note; Use "cache-meta://" scheme for header and cache meta info, for performance.
+
     // 1. Check if cache exists.
-    $cache = Cache::get("cache://$cacheTarget");
+    $cache = (array) Cache::get("cache-meta://$cacheTarget");
 
     // Cache expiration, in seconds.
     // expires = ( s-maxage || max-age || Expires );
     if ( @$cache['expires'] && time() > $cache['expires'] ) {
-      Cache::delete("cache:://$cacheTarget");
+      Cache::delete("cache-meta:://$cacheTarget");
+      Cache::delete("cache://$cacheTarget");
       $cache = null;
     }
 
@@ -153,9 +156,15 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
 
         // private, no-store, no-cache
         if ( @$res['private'] || @$res['no-store'] || @$res['no-cache'] ) {
-          // in case the upstream server change this to uncacheable
+          // note; in case the upstream server change this to uncacheable
+          Cache::delete("cache-meta://$cacheTarget");
           Cache::delete("cache://$cacheTarget");
-          unset($cacheTarget);
+
+          $_response->clearBody();
+        }
+
+        if ( $_response->status() == 200 && $_response->body() ) {
+          $cache['contents'] = $_response->body();
         }
 
         // expires = ( s-maxage || max-age || Expires );
@@ -185,16 +194,20 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
       // PHP does not support chunked, skip this one.
       unset($cache['headers']['Transfer-Encoding']);
 
-      if ( $_response->status() == 200 ) {
-        $cache['contents'] = $_response->body();
-      }
-
       // note; If cache is to be ignored, the $cacheTarget variable will be already unset().
       if ( isset($cacheTarget) ) {
-        Cache::set("cache://$cacheTarget", $cache);
+        if ( @$cache['contents'] ) {
+          Cache::set("cache://$cacheTarget", $cache['contents']);
+        }
+
+        Cache::set("cache-meta://$cacheTarget", array_filter_keys($cache, isNot('contents')));
       }
 
       unset($_response);
+    }
+
+    if ( $cacheTarget && empty($cache['contents']) ) {
+      $cache['contents'] = Cache::get("cache://$cacheTarget");
     }
 
     // note; Send cache headers regardless of the request condition.
