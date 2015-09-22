@@ -122,7 +122,7 @@ class Session {
     $session = array(
         Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION,
         'sid' => Database::fetchField("SELECT UNHEX(REPLACE(UUID(), '-', ''))"),
-        'username' => $user->identity(),
+        'username' => $user->username,
       );
 
     if ( trim($fingerprint) ) {
