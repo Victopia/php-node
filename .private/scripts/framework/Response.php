@@ -239,7 +239,13 @@ class Response {
         $value = $matches[2];
       }
       else {
-        return; // Unsupported headers.
+        $value = @$this->headers[$key];
+        if ( is_array($value) && count($value) == 1 ) {
+          return $value[0];
+        }
+        else {
+          return $value;
+        }
       }
     }
 
