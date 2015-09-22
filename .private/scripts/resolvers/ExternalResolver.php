@@ -1,5 +1,5 @@
 <?php
-/*! ExternalResolver.php \ IRequestResolver | Proxy to an external file and keep a local cache. */
+/*! ExternalResolver.php \ IRequestResolver | Simple CDN for remote files. */
 
 namespace resolvers;
 
@@ -16,190 +16,207 @@ use framework\Response;
 
 class ExternalResolver implements \framework\interfaces\IRequestResolver {
 
-	//--------------------------------------------------
-	//
-	//  Methods: IPathResolver
-	//
-	//--------------------------------------------------
+  /**
+   * @protected
+   *
+   * Base directory of URL pointer files.
+   */
+  protected $srcPath = './';
 
-	public
-	/* Boolean */ function resolve(Request $request, Response $response) {
-		$path = $request->uri('path');
+  /**
+   * @constructor
+   *
+   * @param {array} $options['source'] Source directory of URL file pointers, defaults to current working directory.
+   */
+  public function __construct(array $options = array()) {
+    if ( !empty($options['source']) ) {
+      $this->srcPath = (string) $options['source'] . DIRECTORY_SEPARATOR;
+    }
+  }
 
-		// Check if target file is a proxy.
-		if ( !is_file("./$path.url") ) {
-			return;
-		}
+  //----------------------------------------------------------------------------
+  //
+  //  Methods: IRequestResolver
+  //
+  //----------------------------------------------------------------------------
 
-		// todo; target url might be configurable in some way.
+  public function resolve(Request $request, Response $response) {
+    $path = $this->srcPath . $request->uri('path') . '.url';
 
-		$cacheTarget = parse_ini_file("./$path.url");
-		$cacheTarget = @$cacheTarget['URL'];
+    // Check if target file is a proxy.
+    if ( !is_file($path) ) {
+      return;
+    }
 
-		if ( !$cacheTarget ) {
-			Log::warning('Proxy file has not URL parameter.', array(
-					'requestUri' => $request->uri(),
-					'proxyFile' => $request->uri('path') . '.uri'
-				));
+    $cacheTarget = parse_ini_file($path);
+    $cacheTarget = @$cacheTarget['URL'];
 
-			$response->status(502); // Bad Gateway
-			return;
-		}
+    unset($path);
 
-		/*! Cache Header Notes
-		 *
-		 *  # Cache-Control
-		 *  [public | private] Cacheable when public, otherwise the client is responsible for caching.
-		 *  [no-cache( \w+)?]  When no fields are specified, the whole thing must revalidate everytime,
-		 *                     otherwise cache it except specified fields.
-		 *  [no-store] 				 Ignore caching and pipe into output.
-		 *  [max-age=\d+] 		 Seconds before this cache is meant to expire, this overrides Expires header.
-		 *  [s-maxage=\d+] 		 Overrides max-age and Expires header, behaves just like max-age.
-		 *                 	   (This is for CDN and we are using it.)
-		 *  [must-revalidate]  Tells those CDNs which are intended to serve stale contents to revalidate every time.
-		 *  [proxy-revalidate] Like the "s-" version of max-age, a "must-revalidate" override only for CDN.
-		 *  [no-transform]     Some CDNs will optimize images and other formats, this "opt-out" of it.
-		 *
-		 *  # Expires
-		 *  RFC timestamp for an absolute cache expiration, overridden by Cache-Control header.
-		 *
-		 *  # ETag
-		 *  Hash of anything, weak ETags is not supported at this moment.
-		 *
-		 *  # vary
-		 *  Too much fun inside and we are too serious about caching, ignore this.
-		 *
-		 *  # pragma
-		 *  This guy is too old to recognize.
-		 *  [no-cache] Only this is known nowadays and is already succeed by Cache-Control: no-cache.
-		 *
-		 */
+    if ( !$cacheTarget ) {
+      Log::warning('Proxy file has not URL parameter.', array(
+          'requestUri' => $request->uri(),
+          'proxyFile' => $request->uri('path') . '.uri'
+        ));
 
-		// 1. Check if cache exists.
-		$cache = Cache::get("cache://$cacheTarget");
+      $response->status(502); // Bad Gateway
+      return;
+    }
 
-		// Cache expiration, in seconds.
-		// expires = ( s-maxage || max-age || Expires );
-		if ( @$cache['expires'] && time() > $cache['expires'] ) {
-			Cache::delete("cache:://$cacheTarget");
-			$cache = null;
-		}
+    /*! Cache Header Notes
+     *
+     *  # Cache-Control
+     *  [public | private] Cacheable when public, otherwise the client is responsible for caching.
+     *  [no-cache( \w+)?]  When no fields are specified, the whole thing must revalidate everytime,
+     *                     otherwise cache it except specified fields.
+     *  [no-store]         Ignore caching and pipe into output.
+     *  [max-age=\d+]      Seconds before this cache is meant to expire, this overrides Expires header.
+     *  [s-maxage=\d+]     Overrides max-age and Expires header, behaves just like max-age.
+     *                     (This is for CDN and we are using it.)
+     *  [must-revalidate]  Tells those CDNs which are intended to serve stale contents to revalidate every time.
+     *  [proxy-revalidate] Like the "s-" version of max-age, a "must-revalidate" override only for CDN.
+     *  [no-transform]     Some CDNs will optimize images and other formats, this "opt-out" of it.
+     *
+     *  # Expires
+     *  RFC timestamp for an absolute cache expiration, overridden by Cache-Control header.
+     *
+     *  # ETag
+     *  Hash of anything, weak ETags is not supported at this moment.
+     *
+     *  # vary
+     *  Too much fun inside and we are too serious about caching, ignore this.
+     *
+     *  # pragma
+     *  This guy is too old to recognize.
+     *  [no-cache] Only this is known nowadays and is already succeed by Cache-Control: no-cache.
+     *
+     */
 
-		// - If not exists, make normal request to remote server.
-		// - If exists, make conditional request to remote server.
-		//   - Revalidation, we can skip this request and serve the content if false.
-		//     revalidates = ( Cache-Control:proxy-revalidate || Cache-Control:must-revalidate )
-		if ( !$cache || @$cache['revalidates'] ) {
-			$_request = array(
-					'uri' => $cacheTarget
-				);
+    // 1. Check if cache exists.
+    $cache = Cache::get("cache://$cacheTarget");
 
-			if ( $cache ) {
-				// Last-Modified
-				if ( @$cache['headers']['Last-Modified'] ) {
-					$_request['headers']['If-Modified-Since'] = $cache['Last-Modified'];
-				}
+    // Cache expiration, in seconds.
+    // expires = ( s-maxage || max-age || Expires );
+    if ( @$cache['expires'] && time() > $cache['expires'] ) {
+      Cache::delete("cache:://$cacheTarget");
+      $cache = null;
+    }
 
-				// Entity-Tag
-				if ( @$cache['headers']['ETag'] && strpos($cache['headers']['ETag'], 'W\\') !== 0 ) {
-					$_request['headers']['If-None-Match'] = $cache['ETag'];
-				}
-			}
-			else {
-				$cache = array();
-			}
+    // - If not exists, make normal request to remote server.
+    // - If exists, make conditional request to remote server.
+    //   - Revalidation, we can skip this request and serve the content if false.
+    //     revalidates = ( Cache-Control:proxy-revalidate || Cache-Control:must-revalidate )
+    if ( !$cache || @$cache['revalidates'] ) {
+      $_request = array(
+          'uri' => $cacheTarget
+        );
 
-			// Make the request
-			$_response = new Response(array('autoOutput' => false));
+      if ( $cache ) {
+        // Last-Modified
+        if ( @$cache['headers']['Last-Modified'] ) {
+          $_request['headers']['If-Modified-Since'] = $cache['Last-Modified'];
+        }
 
-			(new Request($_request))->send(null, $_response);
+        // Entity-Tag
+        if ( @$cache['headers']['ETag'] && strpos($cache['headers']['ETag'], 'W\\') !== 0 ) {
+          $_request['headers']['If-None-Match'] = $cache['ETag'];
+        }
+      }
+      else {
+        $cache = array();
+      }
 
-			unset($_request);
+      // Make the request
+      $_response = new Response(array('autoOutput' => false));
 
-			// parse headers into cache settings.
-			if ( in_array($_response->status(), array(200, 304)) ) {
-				$res = preg_split('/\s*,\s*/', util::unwrapAssoc($_response->header('Cache-Control')));
+      (new Request($_request))->send(null, $_response);
 
-				$res = array_reduce($res, function($res, $value) {
-					// todo; Take care of no-cache with field name.
+      unset($_request);
 
-					if ( strpos($value, '=') > 0 ) {
-						$value = explode('=', $value);
-						$res[$value[0]] = $value[1];
-					}
-					else {
-						$res[$value] = true;
-					}
+      // parse headers into cache settings.
+      if ( in_array($_response->status(), array(200, 304)) ) {
+        $res = preg_split('/\s*,\s*/', util::unwrapAssoc($_response->header('Cache-Control')));
 
-					return $res;
-				}, array());
+        $res = array_reduce($res, function($res, $value) {
+          // todo; Take care of no-cache with field name.
 
-				// private, no-store, no-cache
-				if ( @$res['private'] || @$res['no-store'] || @$res['no-cache'] ) {
-					// in case the upstream server change this to uncacheable
-					Cache::delete("cache://$cacheTarget");
-					unset($cacheTarget);
-				}
+          if ( strpos($value, '=') > 0 ) {
+            $value = explode('=', $value);
+            $res[$value[0]] = $value[1];
+          }
+          else {
+            $res[$value] = true;
+          }
 
-				// expires = ( s-maxage || max-age || Expires );
-				if ( @$res['s-maxage'] ) {
-					$cache['expires'] = time() + $res['s-maxage'];
-				}
-				elseif ( @$res['max-age'] ) {
-					$cache['expires'] = time() + $res['max-age'];
-				}
-				else {
-					$res = util::unwrapAssoc($_response->header('Expires'));
-					if ( $res ) {
-						$cache['expires'] = strtotime($res);
-					}
-				}
+          return $res;
+        }, array());
 
-				// revalidates = ( Cache-Control:proxy-revalidate || Cache-Control:must-revalidate )
-				if ( @$res['proxy-revalidate'] || @$res['must-revalidate'] ) {
-					$cache['revalidates'] = true;
-				}
+        // private, no-store, no-cache
+        if ( @$res['private'] || @$res['no-store'] || @$res['no-cache'] ) {
+          // in case the upstream server change this to uncacheable
+          Cache::delete("cache://$cacheTarget");
+          unset($cacheTarget);
+        }
 
-				unset($res);
-			}
+        // expires = ( s-maxage || max-age || Expires );
+        if ( @$res['s-maxage'] ) {
+          $cache['expires'] = time() + $res['s-maxage'];
+        }
+        elseif ( @$res['max-age'] ) {
+          $cache['expires'] = time() + $res['max-age'];
+        }
+        else {
+          $res = util::unwrapAssoc($_response->header('Expires'));
+          if ( $res ) {
+            $cache['expires'] = strtotime($res);
+          }
+        }
 
-			$cache['headers'] = array_map('core\Utility::unwrapAssoc', $_response->header());
+        // revalidates = ( Cache-Control:proxy-revalidate || Cache-Control:must-revalidate )
+        if ( @$res['proxy-revalidate'] || @$res['must-revalidate'] ) {
+          $cache['revalidates'] = true;
+        }
 
-			// PHP does not support chunked, skip this one.
-			unset($cache['headers']['Transfer-Encoding']);
+        unset($res);
+      }
 
-			if ( $_response->status() == 200 ) {
-				$cache['contents'] = $_response->body();
-			}
+      $cache['headers'] = array_map('core\Utility::unwrapAssoc', $_response->header());
 
-			// note; If cache is to be ignored, the $cacheTarget variable will be already unset().
-			if ( isset($cacheTarget) ) {
-				Cache::set("cache://$cacheTarget", $cache);
-			}
+      // PHP does not support chunked, skip this one.
+      unset($cache['headers']['Transfer-Encoding']);
 
-			unset($_response);
-		}
+      if ( $_response->status() == 200 ) {
+        $cache['contents'] = $_response->body();
+      }
 
-		// note; Send cache headers regardless of the request condition.
-		if ( @$cache['headers'] ) {
-			$response->clearHeaders();
-			foreach ( $cache['headers'] as $name => $value ) {
-				$response->header($name, $value, true);
-			} unset($name, $value);
-		}
+      // note; If cache is to be ignored, the $cacheTarget variable will be already unset().
+      if ( isset($cacheTarget) ) {
+        Cache::set("cache://$cacheTarget", $cache);
+      }
 
-		// note; Handles conditional request
+      unset($_response);
+    }
 
-		$ch = array_map('core\Utility::unwrapAssoc', (array) @$cache['headers']);
+    // note; Send cache headers regardless of the request condition.
+    if ( @$cache['headers'] ) {
+      $response->clearHeaders();
+      foreach ( $cache['headers'] as $name => $value ) {
+        $response->header($name, $value, true);
+      } unset($name, $value);
+    }
 
-		$mtime = @$ch['Last-Modified'] ? strtotime($ch['Last-Modified']) : false;
+    // note; Handles conditional request
 
-		// Request headr: If-Modified-Since
-		if ( @$ch['Last-Modified'] && $mtime ) {
-			if ( strtotime($request->header('If-Modified-Since')) >= $mtime ) {
-	      return $response->status(304);
-	    }
-		}
+    $ch = array_map('core\Utility::unwrapAssoc', (array) @$cache['headers']);
+
+    $mtime = @$ch['Last-Modified'] ? strtotime($ch['Last-Modified']) : false;
+
+    // Request headr: If-Modified-Since
+    if ( @$ch['Last-Modified'] && $mtime ) {
+      if ( strtotime($request->header('If-Modified-Since')) >= $mtime ) {
+        return $response->status(304);
+      }
+    }
 
     // Request header: If-Range
     if ( $request->header('If-Range') ) {
@@ -265,7 +282,7 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
 
     // Output the cahce content
     $response->send($cache['contents'], 200);
-	}
+  }
 
   /**
    * @private
@@ -284,4 +301,5 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
 
     return in_array($needle, $haystack);
   }
+
 }
