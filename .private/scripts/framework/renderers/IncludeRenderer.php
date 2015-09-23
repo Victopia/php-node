@@ -18,7 +18,10 @@ class IncludeRenderer extends AbstractRenderer {
       ob_start(null, (int) @$bufferOptions['size']);
     }
 
-    include_once($path);
+    // isolate scope
+    call_user_func(function() {
+      include_once(func_get_arg(0));
+    }, $path);
 
     if ( $bufferEnabled ) {
       $output = trim(ob_get_clean());
