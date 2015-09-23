@@ -806,8 +806,10 @@ class Utility {
         break;
       case 'php':
       case 'phps':
-      case 'html':
         $mime = 'text/x-php';
+        break;
+      case 'html':
+        $mime = 'text/html';
         break;
       case 'cff':
         $mime = 'application/font-cff';
