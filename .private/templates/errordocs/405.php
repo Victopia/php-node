@@ -7,7 +7,7 @@
 	</head>
 
 	<body>
-		<h1>405 Forbidden</h1>
+		<h1>405 Method Not Allowed</h1>
 
 		<p>Method of request to target resources is not supported by the server.</p>
 
