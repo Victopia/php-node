@@ -166,13 +166,13 @@ class Response {
    *                         or absolute. If an array of URIs are given,
    *                         the first truthy value will be used, this is
    *                         handy for a list of fallback URI.
-   * @param {int}     $options['status'] The status code used for redirection, defaults to 302 Found.
+   * @param {int}     $options['status'] The status code used for redirection, defaults to 307 Temporary Redirect.
    * @param {boolean} $options['secure'] Use secure connection when available.
    */
   public function redirect($target, $options = array()) {
     // Default values
     $options+= array(
-        'status' => 302
+        'status' => 307
       );
 
     // Normalize redirection target
