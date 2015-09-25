@@ -220,7 +220,17 @@ function invokes($name, array $args = array()) {
       $func = $object->$name;
     }
     else {
-      trigger_error("Can neither invoke \$object[$name]() nor \$object->$name().", E_USER_WARNING);
+      if ( is_object($object) ) {
+        $object = get_class($object);
+      }
+
+      if ( is_array($object) ) {
+        $object = 'input array';
+      }
+
+      trigger_error("No callable $name() found in $object.", E_USER_WARNING);
+
+      unset($object);
     }
 
     return call_user_func_array($func, $args);
