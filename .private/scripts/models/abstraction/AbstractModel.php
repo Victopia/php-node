@@ -218,6 +218,8 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     else if ( isset($this->{"_$name"}) ) {
       return $this->{"_$name"};
     }
+
+    throw new \BadMethodCallException(sprintf('Method %s::%s() does not exists.', get_called_class(), $name));
   }
 
   //----------------------------------------------------------------------------
