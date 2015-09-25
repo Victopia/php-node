@@ -11,6 +11,8 @@ use core\EventEmitter;
 use core\Node;
 use core\Utility as util;
 
+use framework\exceptions\ValidatdionException;
+
 /**
  * Base class for all data models.
  *
@@ -361,6 +363,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     if ( $errors ) {
       if ( is_array($errors) ) {
         $result['errors'] = $errors;
+        throw new ValidatdionException('Error thrown during model validation.', 0, $errors);
       }
     }
     else {
