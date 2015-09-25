@@ -330,6 +330,10 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    *                                      array types will be used as is.
    */
   function load($identity) {
+    if ( !$identity ) {
+      return $this;
+    }
+
     $identity = Database::escapeValue($identity);
 
     $filter = array(
