@@ -216,6 +216,9 @@ function invokes($name, array $args = array()) {
     else if ( method_exists($object, $name) ) {
       $func = array($object, $name);
     }
+    else if ( isset($object->$name) && is_callable($object->$name) ) {
+      $func = $object->$name;
+    }
     else {
       trigger_error("Can neither invoke \$object[$name]() nor \$object->$name().", E_USER_WARNING);
     }
