@@ -213,6 +213,8 @@ class Response {
     else {
       unset($_COOKIE[$name]);
     }
+
+    return $this;
   }
 
   /**
@@ -275,6 +277,8 @@ class Response {
    */
   public function clearHeaders() {
     $this->headers = array();
+
+    return $this;
   }
 
   /**
@@ -292,6 +296,8 @@ class Response {
     }
 
     $this->body = $value;
+
+    return $this;
   }
 
   /**
@@ -303,6 +309,8 @@ class Response {
     }
 
     $this->body.= $message;
+
+    return $this;
   }
 
   /**
@@ -321,6 +329,8 @@ class Response {
     if ( $this->useOutputBuffer ) {
       @ob_clean();
     }
+
+    return $this;
   }
 
   /**
@@ -370,6 +380,8 @@ class Response {
         header("$key: $value", false);
       }
     }
+
+    return $this;
   }
 
   /**
@@ -394,6 +406,8 @@ class Response {
     else {
       echo $this->contentEncode($body);
     }
+
+    return $this;
   }
 
   public function __destruct() {
@@ -442,13 +456,6 @@ class Response {
     }
 
     return call_user_func_array($translation, func_get_args());
-  }
-
-  /**
-   * Cast body as string.
-   */
-  public function __toString() {
-    return $this->body();
   }
 
   /**
