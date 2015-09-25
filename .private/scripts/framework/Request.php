@@ -241,7 +241,7 @@ class Request {
           break;
 
         default:
-          $this->uri = array(
+          $uri = array(
               'scheme' => $this->client('secure') ? 'https' : 'http'
             , 'user' => @$_SERVER['REMOTE_USER']
             , 'host' => @$_SERVER['SERVER_NAME']
@@ -250,11 +250,11 @@ class Request {
             , 'query' => $_GET
             );
 
-          if ( empty($this->uri['user']) ) {
-            $this->uri['user'] = @$_SERVER['PHP_AUTH_USER'];
+          if ( empty($uri['user']) ) {
+            $uri['user'] = @$_SERVER['PHP_AUTH_USER'];
           }
 
-          $this->uri = parse_url(http_build_url($this->uri));
+          $this->setUri(array_filter($uri));// = parse_url(http_build_url($this->uri));
           break;
       }
 
@@ -348,12 +348,12 @@ class Request {
     if ( is_string($uri) ) {
       $uri = parse_url($uri);
 
-      // Fallback to normal hostname
-      if ( empty($uri['host']) ) {
-        $uri['host'] = System::getHostname();
-      }
-
       $uri = parse_url(http_build_url($uri));
+    }
+
+    // note; fallback to system default hostname
+    if ( empty($uri['host']) ) {
+      $uri['host'] = System::getHostname();
     }
 
     $this->uri = $uri;
