@@ -491,8 +491,6 @@ class Node {
 
           // 6. Plain string.
           if ( is_string($content) ) {
-            $content = trim($content);
-
             // note: Unescaped *, % or _ characters
             if ( ctype_print($content) && preg_match('/[^\\][\\*%_]/', $content) ) {
               $operator = 'LIKE';
