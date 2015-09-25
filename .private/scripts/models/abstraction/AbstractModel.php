@@ -76,7 +76,10 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    */
   function identity($value = null) {
     if ( $value === null ) {
-      return @$this[$this->_primaryKey];
+      // note; This check would prevent __get() from creating a null value in data array.
+      if ( isset($this[$this->_primaryKey]) ) {
+        return $this[$this->_primaryKey];
+      }
     }
     else {
       $this[$this->_primaryKey] = $value;
