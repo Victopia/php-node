@@ -5,6 +5,8 @@ namespace framework\renderers;
 
 use core\Utility as util;
 
+use framework\System;
+
 class StaticFileRenderer extends CacheableRenderer {
 
   public function render($path) {
@@ -19,6 +21,11 @@ class StaticFileRenderer extends CacheableRenderer {
       $res->header('Content-Type', $mime);
     }
     unset($mime);
+
+    // note; during developement everything must be revalidated
+    if ( System::environment() == System::ENV_DEVELOPMENT ) {
+      $res->isVirtual = true;
+    }
 
     parent::render($path);
 
