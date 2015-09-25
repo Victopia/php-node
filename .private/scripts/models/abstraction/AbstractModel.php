@@ -447,7 +447,9 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     if ( $filter !== false ) {
       $isDeleted = (bool) Node::delete($filter);
 
-      $this->afterDelete();
+      if ( $isDeleted ) {
+        $this->afterDelete();
+      }
     }
 
     return $this;
