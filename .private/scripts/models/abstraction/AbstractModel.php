@@ -359,15 +359,23 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * @param {&array} $result[errors] Array of validation errors.
    *                 $result[success] True on succeed, otherwise not set.
    */
-  function save(array &$result = array()) {
+  function save(array &$result = null) {
     $this->_isCreate = !$this->identity();
 
     $errors = array();
 
+    if ( $result !== null ) {
+      $_result = &$result;
+    }
+    else {
+      $_result = array();
+    }
+
     $this->beforeSave($errors);
     if ( $errors ) {
-      if ( is_array($errors) ) {
-        $result['errors'] = $errors;
+      $_result['errors'] = $errors;
+
+      if ( $result === null ) {
         throw new ValidatdionException('Error thrown during model validation.', 0, $errors);
       }
     }
@@ -379,7 +387,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
 
         $res = Node::set($res);
         if ( is_numeric($res) ) {
-          $result['action'] = 'insert';
+          $_result['action'] = 'insert';
 
           // Primary keys other than auto_increment will return 0
           if ( $res ) {
@@ -387,19 +395,27 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
           }
         }
         else if ( $res ) {
-          $result['action'] = 'update';
+          $_result['action'] = 'update';
         }
+
+        $_result['success'] = true;
       }
       catch (\PDOException $e) {
-        $result['error'] = $e->getMessage();
+        if ( $result === null ) {
+          throw $e;
+        }
+
+        $_result['error'] = $e->getMessage();
+        $_result['success'] = false;
+        unset($_result['action']);
+      }
+
+      // Load again to reflect database level changes
+      if ( $_result['success'] ) {
+        $this->load($this->identity());
       }
 
       $this->afterSave();
-
-      // Load again to reflect database level changes
-      $this->load($this->identity());
-
-      $result['success'] = true;
     }
 
     $this->_isCreate = false;
