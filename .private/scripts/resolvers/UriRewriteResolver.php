@@ -44,10 +44,6 @@ class UriRewriteResolver implements \framework\interfaces\IRequestResolver {
     $this->rules = array_reduce($rules, function($result, $rule) {
       $rule = array_select($rule, array('source', 'target', 'method'));
 
-      if ( empty($rule['target']) ) {
-        throw new InvalidArgumentException('Must specify redirect target as string.');
-      }
-
       // note: make sure source is callback
       if ( is_string($rule['source']) ) {
         // regex
@@ -87,18 +83,23 @@ class UriRewriteResolver implements \framework\interfaces\IRequestResolver {
 
     foreach ( $this->rules as $rule ) {
       if ( $rule['source']($path) ) {
-        if ( is_callable($rule['target']) ) {
+        if ( is_callable(@$rule['target']) ) {
           $path = $rule['target']($request);
         }
         else {
-          $path = $rule['target'];
+          $path = @$rule['target'];
         }
 
         if ( is_numeric(@$rule['method']) ) {
-          $response->redirect($path, array(
-              'status' => $rule['method'],
-              'secure' => $request->client('secure')
-            ));
+          if ( $path ) {
+            $response->redirect($path, array(
+                'status' => $rule['method'],
+                'secure' => $request->client('secure')
+              ));
+          }
+          else {
+            $response->status($rule['method']);
+          }
         }
         else {
           $_uri = $request->uri();
