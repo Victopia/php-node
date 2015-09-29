@@ -65,13 +65,15 @@ require_once('scripts/Initialize.php');
         'default' => conf::get('system::i18n.localeDefault', 'en_US')
       )), 70);
 
+  // JSONP Headers
+    $resolver->registerResolver(new resolvers\JsonpResolver(array(
+        'defaultCallback' => conf::get('web::resolvers.jsonp.defaultCallback', 'callback')
+      )), 60);
+
   // Web Services
     $resolver->registerResolver(new resolvers\WebServiceResolver(array(
         'prefix' => conf::get('web::resolvers.service.prefix', '/service')
-      )), 60);
-
-  // Markdown handling
-    $resolver->registerResolver(new resolvers\MarkdownResolver(), 50);
+      )), 50);
 
   /*! Note: These resolvers await rework
    * // Template resolver
@@ -99,6 +101,9 @@ require_once('scripts/Initialize.php');
    *   $resolver->registerResolver(new resolvers\ExternalResolver(), 30);
    */
 
+  // Markdown handling
+    $resolver->registerResolver(new resolvers\MarkdownResolver(), 30);
+
   // SCSS Compiler
     $resolver->registerResolver(new resolvers\ScssResolver(array(
         'source' => conf::get('system::paths.scss.src'),
@@ -109,7 +114,7 @@ require_once('scripts/Initialize.php');
     $resolver->registerResolver(new resolvers\LessResolver(array(
         'source' => conf::get('system::paths.less.src'),
         'output' => conf::get('system::paths.less.dst', 'assets/css')
-      )), 25);
+      )), 30);
 
   // Css Minifier
     $resolver->registerResolver(new resolvers\CssMinResolver(array(

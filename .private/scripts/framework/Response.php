@@ -9,7 +9,6 @@ use core\Utility as util;
 use framework\Configuration as conf;
 
 use framework\exceptions\FrameworkException;
-use framework\exceptions\ResolverException;
 
 /**
  * Response object that stores outputs from all resolvers.
@@ -473,16 +472,28 @@ class Response {
     $contentTypes = (array) @$this->headers['Content-Type'];
 
     if ( preg_grep('/json/i', $contentTypes) ) {
-      $message = ContentEncoder::jsonp($message);
+      $message = ContentEncoder::json($message);
+
+      // note; check if this is a JSONP request, convert the response if so.
+      $callback = $this->header('X-JSONP-CALLBACK');
+      if ( $callback ) {
+        $this->header('Content-Type', 'application/javascript', true);
+        $message = "$callback($message)";
+      }
+
+      unset($callback);
     }
     else if ( preg_grep('/xml/i', $contentTypes) ) {
       $message = ContentEncoder::xml($message);
     }
-    else if ( preg_grep('/php.serialized/i', $contentTypes) ) {
+    else if ( preg_grep('/php.serialize/i', $contentTypes) ) {
       $message = ContentEncoder::serialize($message);
     }
-    else if ( preg_grep('/php.var_dump/i', $contentTypes) ) {
+    else if ( preg_grep('/php.dump/i', $contentTypes) ) {
       $message = ContentEncoder::dump($message);
+    }
+    else if ( preg_grep('/php.export/i', $contentTypes) ) {
+      $message = ContentEncoder::export($message);
     }
 
     return $message;
