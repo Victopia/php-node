@@ -27,7 +27,7 @@ class UriRewriteResolver implements \framework\interfaces\IRequestResolver {
    * @param {array}  $rules Redirect rules
    * @param {callable|string} $rules[][source] Regex, plain string startsWith() or callback matcher func,
    * @param {string} $rules[][target] String for redirection, can use backreference on regex,
-   * @param {?int}   $rules[][method] Redirection status code, or internal by default,
+   * @param {?int}   $rules[][options] Redirection $options, or internal by default,
    * @param {?string} $options[source] Base path to match against requests, defaults to root.
    * @param {string|callable} $options[target] Redirects to a static target, or function($request) returns a string;
    */
@@ -42,7 +42,7 @@ class UriRewriteResolver implements \framework\interfaces\IRequestResolver {
     $rules = util::wrapAssoc($rules);
 
     $this->rules = array_reduce($rules, function($result, $rule) {
-      $rule = array_select($rule, array('source', 'target', 'method'));
+      $rule = array_select($rule, array('source', 'target', 'options'));
 
       // note: make sure source is callback
       if ( is_string($rule['source']) ) {
@@ -84,27 +84,30 @@ class UriRewriteResolver implements \framework\interfaces\IRequestResolver {
     foreach ( $this->rules as $rule ) {
       if ( $rule['source']($path) ) {
         if ( is_callable(@$rule['target']) ) {
-          $path = $rule['target']($request);
+          $target = $rule['target']($request, $response);
         }
         else {
-          $path = @$rule['target'];
+          $target = @$rule['target'];
         }
 
-        if ( is_numeric(@$rule['method']) ) {
-          if ( $path ) {
-            $response->redirect($path, array(
-                'status' => $rule['method'],
-                'secure' => $request->client('secure')
-              ));
+        // do nothing
+        if ( empty($target) ) {
+          continue;
+        }
+
+        if ( is_string($target) ) {
+          $request->setUri($target);
+        }
+        else if ( is_array($target) ) {
+          if ( empty($target['uri']) && isset($target['options']['status']) ) {
+            $response->status($target['options']['status']);
+          }
+          else if ( isset($target['options']) ) {
+            $response->redirect($target['uri'], $target['options']);
           }
           else {
-            $response->status($rule['method']);
+            $request->setUri($target['uri'] + $request->uri());
           }
-        }
-        else {
-          $_uri = $request->uri();
-          $_uri['path'] = $path;
-          $request->setUri($_uri);
         }
         break;
       }
