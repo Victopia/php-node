@@ -120,7 +120,7 @@ class _ extends \framework\WebService {
    */
   protected function findOne($identity) {
     $this->modelClass->load($identity);
-    if ( !$this->modelClass->identity() ) {
+    if ( $this->modelClass->identity() === null ) {
       $this->response()->status(404);
     }
     else {
