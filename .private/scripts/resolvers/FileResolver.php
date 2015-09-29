@@ -202,6 +202,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     if ( strpos($mime, ';') !== false ) {
       $mime = substr($mime, 0, strpos($mime, ';'));
     }
+
     switch ( $mime ) {
       // note; special case, need content encoding header here. fall over to static file.
       case 'image/svg+xml':
@@ -226,7 +227,7 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
         $renderer = new StaticFileRenderer($context);
         break;
 
-      case 'text/x-php':
+      case 'application/x-php':
         $renderer = new IncludeRenderer($context);
         break;
     }
