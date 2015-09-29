@@ -145,8 +145,6 @@ $opts = (new framework\Optimist)
 
   // parent will die here
   if ( !$forked ) {
-    pcntl_wait($status);
-    sleep(1);
     exit(1);
   }
 
@@ -210,7 +208,7 @@ $opts = (new framework\Optimist)
     die;
   }
 
-  $processContents = (array) json_decode($process[Node::FIELD_VIRTUAL], 1);
+  $processContents = (array) ContentDecoder::json($process[Node::FIELD_VIRTUAL], 1);
 
   unset($process[Node::FIELD_VIRTUAL]);
 
@@ -239,7 +237,7 @@ $opts = (new framework\Optimist)
 
 // Check if $env specified in option
   if ( @$_SERVER['env'] ) {
-    $_SERVER['env'] = json_decode($_SERVER['env'], 1);
+    $_SERVER['env'] = ContentDecoder::json($_SERVER['env'], 1);
   }
 
 // More debug logs

@@ -228,7 +228,7 @@ class Node {
 
       $decodesContent = function($row) use($context) {
         if ( isset($row[self::FIELD_VIRTUAL]) ) {
-          $contents = (array) json_decode($row[self::FIELD_VIRTUAL], true);
+          $contents = (array) ContentDecoder::json($row[self::FIELD_VIRTUAL], true);
 
           unset($row[self::FIELD_VIRTUAL]);
 
@@ -264,7 +264,7 @@ class Node {
       // Row decoding function.
       $decodesContent = function(&$row) use($context) {
         if ( isset($row[self::FIELD_VIRTUAL]) ) {
-          $contents = (array) json_decode($row[self::FIELD_VIRTUAL], true);
+          $contents = (array) ContentDecoder::json($row[self::FIELD_VIRTUAL], true);
 
           unset($row[self::FIELD_VIRTUAL]);
 
@@ -1003,7 +1003,7 @@ class Node {
     $res->setFetchMode(\PDO::FETCH_ASSOC);
 
     foreach ( $res as $row ) {
-      $contents = json_decode($row[self::FIELD_VIRTUAL], true);
+      $contents = ContentDecoder::json($row[self::FIELD_VIRTUAL], true);
 
       $row[$fieldName] = $contents[$fieldName];
 

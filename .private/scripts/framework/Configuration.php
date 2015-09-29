@@ -11,7 +11,7 @@ use Symfony\Component\Yaml\Yaml;
 
 /* Usage:
 
-	Similar as SimpleXMLElement.
+	Similar to SimpleXMLElement.
 
 	// Read configuration values by key
 	$conf = new framework\Configuration('core.Net');
@@ -163,20 +163,18 @@ class Configuration implements \Iterator, \ArrayAccess {
 				$basename = self::FALLBACK_DIRECTORY . "/$this->key$basename";
 
 				// JSON Support
-				if ( function_exists('json_decode') ) {
-					$res = "$basename.json";
-					if ( is_readable($res) ) {
-						$res = (array) @json_decode(file_get_contents($res), 1);
-						if ( $res ) {
-							$confObj = $res + $confObj;
-						}
-						else {
-							throw new exceptions\FrameworkException('JSON file exists but decode failed.');
-						}
+				$res = "$basename.json";
+				if ( is_readable($res) ) {
+					$res = (array) @ContentDecoder::json(file_get_contents($res), 1);
+					if ( $res ) {
+						$confObj = $res + $confObj;
 					}
-
-					unset($res);
+					else {
+						throw new exceptions\FrameworkException('JSON file exists but decode failed.');
+					}
 				}
+
+				unset($res);
 
 				// YAML support (symfony/yaml)
 				if ( class_exists('Yaml') ) {

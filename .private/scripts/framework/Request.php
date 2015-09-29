@@ -180,7 +180,7 @@ class Request {
 
           // Request parameters POST
           if ( preg_match('/^application\/json/', $this->header('Content-Type')) ) {
-            $this->paramCache['post'] = json_decode(file_get_contents('php://input'), true);
+            $this->paramCache['post'] = ContentDecoder::json(file_get_contents('php://input'), true);
           }
           else {
             $this->paramCache['post'] = $_POST;
