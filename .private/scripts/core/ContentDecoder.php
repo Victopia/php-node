@@ -11,8 +11,6 @@ class ContentDecoder {
   public static function json($value, $assoc = false, $depth = 512, $options = 0) {
     // Compress script: single line comments
     $value = preg_replace('/\/\/.*/', '', $value);
-    // Compress value: whitespaces
-    $value = preg_replace('/[\s\n]+/', ' ', $value);
     // Compress value: multiline comments
     $value = preg_replace('/\/\*.*\*\//', '', $value);
 
