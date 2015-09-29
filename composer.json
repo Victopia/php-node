@@ -27,6 +27,7 @@
   ],
   "minimum-stability": "dev",
   "config": {
+    "notify-on-install": false,
     "vendor-dir": ".private/scripts/vendor/"
   }
 }
