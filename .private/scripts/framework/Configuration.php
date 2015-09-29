@@ -3,6 +3,7 @@
 
 namespace framework;
 
+use core\ContentDecoder;
 use core\Node;
 use core\Database;
 use core\Utility as util;
