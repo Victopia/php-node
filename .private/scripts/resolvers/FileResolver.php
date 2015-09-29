@@ -203,6 +203,12 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
       $mime = substr($mime, 0, strpos($mime, ';'));
     }
     switch ( $mime ) {
+      // note; special case, need content encoding header here. fall over to static file.
+      case 'image/svg+xml':
+        if ( pathinfo($path, PATHINFO_EXTENSION) == 'svgz' ) {
+          $response->header('Content-Encoding: gzip');
+        }
+
       // mime-types that we output directly.
       case 'application/pdf':
       case 'application/octect-stream':
@@ -267,5 +273,4 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
         break;
     }
   }
-
 }

@@ -799,14 +799,14 @@ class Utility {
         $mime = 'text/css; charset=utf-8';
         break;
       case 'js':
-        $mime = 'text/javascript; charset=utf-8';
+        $mime = 'application/javascript; charset=utf-8';
         break;
       case 'pdf':
         $mime = 'application/pdf';
         break;
       case 'php':
       case 'phps':
-        $mime = 'text/x-php';
+        $mime = 'application/x-php';
         break;
       case 'html':
         $mime = 'text/html';
@@ -827,7 +827,6 @@ class Utility {
         $mime = 'font/otf';
         break;
       case 'svgz':
-        header('Content-Encoding: gzip');
       case 'svg':
         $mime = 'image/svg+xml; charset=utf-8';
         break;
@@ -933,7 +932,7 @@ class Utility {
    * Pack Uuid in hex to binary string for storage.
    */
   static function packUuid($value) {
-    if ( ctype_print($value) ) {
+    if ( ctype_print($value) && strlen($value) == 32 ) {
       $value = pack('H*', str_replace('-', '', $value));
     }
 
@@ -944,7 +943,7 @@ class Utility {
    * Unpack UUID from binary into HEX string.
    */
   static function unpackUuid($value) {
-    if ( !ctype_print($value) ) {
+    if ( !ctype_print($value) && strlen($value) < 32 ) {
       $value = unpack('H*', $value);
       $value = reset($value);
     }
