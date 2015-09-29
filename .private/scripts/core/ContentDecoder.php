@@ -8,7 +8,7 @@ class ContentDecoder {
   /**
    * JSON decodes a string, this function strips comments.
    */
-  public static function json($value, $assoc = false, $depth = 512, $options = 0) {
+  public static function json($value, $assoc = true, $depth = 512, $options = 0) {
     // Compress script: single line comments
     $value = preg_replace('/\/\/.*/', '', $value);
     // Compress value: multiline comments
