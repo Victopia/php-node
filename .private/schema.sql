@@ -13,22 +13,6 @@ CREATE TABLE `Configurations` (
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
 --
--- Table structure for table `Files`
---
-
-DROP TABLE IF EXISTS `Files`;
-CREATE TABLE `Files` (
-  `id` bigint(20) unsigned zerofill NOT NULL AUTO_INCREMENT,
-  `UserId` bigint(20) unsigned zerofill NOT NULL,
-  `name` varchar(255) NOT NULL,
-  `mime` varchar(255) NOT NULL,
-  `@contents` longblob,
-  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uni_UserId_name` (`UserId`,`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
-
---
 -- Table structure for table `Logs`
 --
 
@@ -85,7 +69,7 @@ CREATE TABLE `Processes` (
   `pid` int(11) DEFAULT NULL,
   `start_time` datetime NOT NULL COMMENT 'Scheduled Start Time',
   `@contents` longtext NOT NULL,
-  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `timestamp` timestamp,
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8 COLLATE=utf8_unicode_ci;
 
@@ -113,20 +97,18 @@ CREATE TABLE `Translations` (
   `key` varchar(255) NOT NULL DEFAULT 'default' COMMENT 'Version key of the same identifier',
   `value` text NOT NULL COMMENT 'Translation content',
   `locale` varchar(255) NOT NULL DEFAULT '' COMMENT 'Locale of target translation',
-  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `timestamp` timestamp,
   PRIMARY KEY (`identifier`,`key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
-
-/*! Note: Model tables
- *  Do not use plural when naming model tables, because data model class makes
- *  more sense in singular. On Earth we have no reliable way to convert from
- *  singular to plural in any language, let's keep it singular before we go to
- *  Mars.
- */
+-- Note: Model tables
+-- Do not use plural when naming model tables, because data model class makes
+-- more sense in singular. On Earth we have no reliable way to convert from
+-- singular to plural in any language, let's keep it singular before we go to
+-- Mars.
 
 --
--- Table structure for table `Users`
+-- Table structure for table `User`
 --
 
 DROP TABLE IF EXISTS `User`;
