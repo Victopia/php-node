@@ -114,21 +114,21 @@ class Response {
    * Whenever a code is out of range or invalid, it will be set to 500.
    *
    * @param {?int} $code Desired HTTP status code.
-   * @return Returns the current status code.
+   * @return {?Response} Chainable accessor.
    */
   public function status($code = null) {
-    $status = $this->status;
-
-    if ( $code !== null ) {
-      $code = (int) $code;
-      if ( !$code || $code < 100 || $code > 599 ) {
-        $code = 500;
-      }
-
-      $this->status = $code;
+    if ( $code === null ) {
+      return $this->status;
     }
 
-    return $status;
+    $code = (int) $code;
+    if ( !$code || $code < 100 || $code > 599 ) {
+      $code = 500;
+    }
+
+    $this->status = $code;
+
+    return $this;
   }
 
   /**
@@ -180,23 +180,31 @@ class Response {
       $target = parse_url($target);
     }
 
-    if ( @$options['secure'] && System::getHostname('secure') ) {
-      $target['scheme'] = 'https';
+    // note; Ignore path building on relative redirections,
+    //       we don't know where the browser is.
+    if ( !preg_match('/^\.?\.\//', $target['path']) ) {
+      if ( @$options['secure'] && System::getHostname('secure') ) {
+        $target['scheme'] = 'https';
 
-      if ( empty($target['host']) ) {
-        $target['host'] = System::getHostname('secure');
+        if ( empty($target['host']) ) {
+          $target['host'] = System::getHostname('secure');
+        }
       }
+
+      // Fallback to normal hostname
+      if ( empty($target['host']) ) {
+        $target['host'] = System::getHostname();
+      }
+
+      $target = http_build_url($target);
+    }
+    else {
+      $target = $target['path'];
     }
 
-    // Fallback to normal hostname
-    if ( empty($target['host']) ) {
-      $target['host'] = System::getHostname();
-    }
-
-    $target = http_build_url($target);
-
-    $this->status($options['status']);
-    $this->header('Location', $target);
+    $this
+      ->header('Location', $target)
+      ->status($options['status']);
   }
 
   /**
