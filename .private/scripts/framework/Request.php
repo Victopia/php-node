@@ -246,7 +246,7 @@ class Request {
             , 'user' => @$_SERVER['REMOTE_USER']
             , 'host' => @$_SERVER['SERVER_NAME']
             , 'port' => @$_SERVER['SERVER_PORT']
-            , 'path' => urldecode(@$_SERVER['REQUEST_URI'])
+            , 'path' => @$_SERVER['REQUEST_URI']
             , 'query' => $_GET
             );
 

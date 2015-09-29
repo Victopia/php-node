@@ -92,6 +92,11 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
 
     $path = $request->uri('path');
 
+    // note; decode escaped URI characters into escaped shell path
+    $path = preg_replace_callback('/%([\dA-F]{2,2})/i', function($matches) {
+      return '\\' . chr(hexdec($matches[1]));
+    }, $path);
+
     // Store original request
     if ( empty($request->__directoryIndex) ) {
       $request->__uri = $request->uri();
