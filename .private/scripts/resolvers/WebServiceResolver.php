@@ -74,7 +74,6 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
 
     $res = substr($path, strlen($this->pathPrefix));
     $res = trim($res, '/');
-    $res = urldecode($res);
 
     // Resolve target service and apply appropiate parameters
     preg_match('/^([^\/]+)(?:\/([^\/\?,]+))?(\/[^\?]+)?\/?/', $res, $matches);
@@ -108,16 +107,18 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
         @$matches[3] = "/$function$matches[3]";
       }
 
-      $function = '~';
+      $function = $instance; // self invoke
     }
-    else
-    if ( !method_exists($classname, $function) && !is_callable(array($instance, $function)) ) {
+    else if ( is_callable(array($instance, $function)) ) {
+      $function = array($instance, $function);
+    }
+    else {
       $response->status(501); // Not implemented
       return;
     }
 
     if ( isset($matches[3]) ) {
-      $parameters = explode('/', trim($matches[3], '/'));
+      $parameters = array_map('rawurldecode', explode('/', trim($matches[3], '/')));
     }
     else {
       $parameters = array();
@@ -142,29 +143,21 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
       return $value;
     }, $parameters);
 
-    if ($request->client('type') != 'cli' &&
-      $instance instanceof \framework\interfaces\IAuthorizableWebService &&
-      !$instance instanceof \framework\AuthorizableWebService &&
-      $instance->authorizeMethod($function, $parameters) === false) {
-      $response->status(401);
-      return;
-    }
-
     // Access log
     if ( System::environment() == 'debug' || !@$request->__local ) {
-      Log::debug(sprintf('[WebService] %s %s->%s', $request->method(), $classname, $function),
+      Log::debug(sprintf('[WebService] %s %s->%s', $request->method(), $classname, is_array($function) ? end($function) : get_class($function)),
         array_filter(array('parameters' => $parameters)));
     }
 
     // Shooto!
-    $serviceResponse = call_user_func_array($function == '~' ? $instance : [$instance, $function], $parameters);
+    $serviceResponse = call_user_func_array($function, $parameters);
 
     // Return nothing when the service function returns nothing,
     // this favors file download and non-JSON outputs.
     if ( $serviceResponse !== null ) {
       // JSON encode the result and response to client.
       $response->header('Content-Type', 'application/json');
-      $response->send($serviceResponse, 200); // This sets repsonse code to 200
+      $response->send($serviceResponse, $response->status() ? null : 200);
     }
     else if ( !$response->status() ) {
       $response->status(204);
