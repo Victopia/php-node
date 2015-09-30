@@ -9,10 +9,11 @@ class ContentDecoder {
    * JSON decodes a string, this function strips comments.
    */
   public static function json($value, $assoc = true, $depth = 512, $options = 0) {
-    // Compress script: single line comments
-    $value = preg_replace('/\/\/.*/', '', $value);
-    // Compress value: multiline comments
-    $value = preg_replace('/\/\*.*\*\//', '', $value);
+    // Compress script: comments
+    $value = preg_replace_callback(
+      '/"(?:\\"|[^"])+"|(\/\/[^\n]*|\/\*.*?\*\/)/sm',
+      function($matches) { return @$matches[1] ? '' :  $matches[0]; },
+      $value);
 
     return json_decode($value, $assoc, $depth, $options);
   }
