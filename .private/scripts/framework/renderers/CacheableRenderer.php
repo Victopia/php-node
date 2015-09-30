@@ -13,7 +13,9 @@ class CacheableRenderer extends AbstractRenderer {
   //
   //----------------------------------------------------------------------------
 
-  const MAX_AGE_TEMPORARY = 604800; // 7 days
+  const HTTP_DATE = 'D, d M Y H:i:s \G\M\T';
+
+  const MAX_AGE_TEMPORARY = 300; // 5 mins
 
   const MAX_AGE_PERMANENT = 2592000; // 30 days
 
@@ -161,24 +163,23 @@ class CacheableRenderer extends AbstractRenderer {
    * @private
    */
   private function sendCacheHeaders($path) {
-    $req = $this->request();
     $res = $this->response();
-    $eTag = $this->generateETag($path);
 
     // Weak cache for virtual contents
-    if ( @$req->isVirtual ) {
-      $res->header('Cache-Control', 'private, max-age=' . self::MAX_AGE_TEMPORARY . ', must-revalidate');
+    if ( @$res->isVirtual ) {
+      $res->header('Cache-Control', 'public, must-revalidate, max-age=' . self::MAX_AGE_TEMPORARY . '');
+      $res->header('Expires', gmdate(static::HTTP_DATE, time() + self::MAX_AGE_TEMPORARY));
     }
     else {
       $res->header('Cache-Control', 'max-age=' . self::MAX_AGE_PERMANENT);
+      $res->header('Expires', gmdate(static::HTTP_DATE, time() + self::MAX_AGE_PERMANENT));
 
       // For backward compatibility
       header_remove('Pragma');
-      $res->header('Expires', gmdate(DATE_RFC1123, time() + self::MAX_AGE_PERMANENT));
     }
 
-    $res->header('ETag', $eTag);
-    $res->header('Last-Modified', gmdate(DATE_RFC1123, filemtime($path)));
+    $res->header('ETag', $this->generateETag($path));
+    $res->header('Last-Modified', gmdate(static::HTTP_DATE, filemtime($path)), true);
   }
 
   /**
