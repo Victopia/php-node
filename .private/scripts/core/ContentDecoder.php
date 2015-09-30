@@ -11,7 +11,7 @@ class ContentDecoder {
   public static function json($value, $assoc = true, $depth = 512, $options = 0) {
     // Compress script: comments
     $value = preg_replace_callback(
-      '/"(?:\\"|[^"])+"|(\/\/[^\n]*|\/\*.*?\*\/)/sm',
+      '/"(?:\\"|[^"])*?"|(\/\/[^\n]*|\/\*.*?\*\/)/sm',
       function($matches) { return @$matches[1] ? '' :  $matches[0]; },
       $value);
 
