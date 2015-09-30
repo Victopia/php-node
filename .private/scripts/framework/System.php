@@ -228,7 +228,7 @@ class System {
     /*! Note: This is due to an old bug when destructors are called, the working
      *  directory will change to the drive root.
      */
-    if ( getcwd() != System::getPathname() ) {
+    if ( strpos(System::getPathname(), getcwd()) === false ) {
       chdir(System::getPathname());
     }
 
