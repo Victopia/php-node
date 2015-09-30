@@ -28,7 +28,7 @@ class ContentDecoder {
    * Parse XML string into PHP value.
    */
   public static function xml($value) {
-    return \core\XMLConverter::fromXML($value);
+    return XMLConverter::fromXML($value);
   }
 
 }

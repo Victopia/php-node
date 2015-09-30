@@ -54,7 +54,7 @@ class ContentEncoder {
    * @return {string} XML version of specified PHP value.
    */
   public static function xml(array $value) {
-    return \core\XMLConverter::toXML($value);
+    return XMLConverter::toXML($value);
   }
 
   /**
