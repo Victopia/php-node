@@ -435,6 +435,16 @@ class Response {
       // No message body for redirections and mismatched conditional requests.
     }
     else {
+      // no content type, try to set defaults
+      if ( !$this->header('Content-Type') ) {
+        switch ( gettype($this->body) ) {
+          case 'array':
+          case 'object':
+            $this->header('Content-Type', 'application/json');
+            break;
+        }
+      }
+
       // Push the headers to output buffer
       $this->flushHeaders();
 
