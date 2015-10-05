@@ -801,6 +801,9 @@ class Utility {
       case 'js':
         $mime = 'application/javascript; charset=utf-8';
         break;
+      case 'json':
+        $mime = 'application/json';
+        break;
       case 'pdf':
         $mime = 'application/pdf';
         break;
