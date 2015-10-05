@@ -17,7 +17,6 @@ class StaticFileRenderer extends CacheableRenderer {
       $res->header('Content-Type', "$mime; charset=utf-8");
     }
     else {
-      $res->header('Content-Transfer-Encoding', 'binary');
       $res->header('Content-Type', $mime);
     }
     unset($mime);
