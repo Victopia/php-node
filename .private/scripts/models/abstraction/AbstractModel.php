@@ -385,7 +385,8 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     }
     else {
       try {
-        $res = array_filter($this->data, compose('not', 'is_null'));
+        // note; Conflicts here. Virutal fields would love to skip nulls, but real fields would not.
+        $res = $this->data;
 
         $res[Node::FIELD_COLLECTION] = self::collectionName();
 
