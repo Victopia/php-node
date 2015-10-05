@@ -54,7 +54,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   function collectionName() {
     // Note: Inheriting classes can define the property to override this.
     if ( !$this->_collectionName ) {
-      $this->_collectionName = explode('\\', get_called_class());
+      $this->_collectionName = explode('\\', get_class($this));
       $this->_collectionName = end($this->_collectionName);
     }
 
