@@ -46,11 +46,10 @@ class LessResolver implements \framework\interfaces\IRequestResolver {
 
     if ( !empty($options['output']) ) {
       if ( !is_string($options['output']) || !is_dir($options['output']) || !is_writable($options['output']) ) {
-        Log::error('Invalid output directory for less files.', (array) @$options['output']);
+        throw new ResolverException('Invalid output directory.');
       }
-      else {
-        $this->dstPath = $options['output'];
-      }
+
+      $this->dstPath = $options['output'];
     }
   }
 
@@ -83,10 +82,12 @@ class LessResolver implements \framework\interfaces\IRequestResolver {
 
       // compile when: target file not exists, or source is newer
       if ( !file_exists($dstPath) || @filemtime($srcPath) > @filemtime($dstPath) ) {
-        // empty results are ignored
-        $result = trim(@(new lessc)->compile(file_get_contents($srcPath)));
-        if ( $result && !@file_put_contents($dstPath, $result) ) {
-          Log::warn('Permission denied, unable to compile LESS.');
+        $result = @trim((new lessc)->compile(file_get_contents($srcPath)));
+        // note; write empty file if target exists
+        if ( $result || file_exists($dstPath) ) {
+          if ( !@file_put_contents($dstPath, $result) ) {
+            Log::warn('Permission denied, unable to compile LESS.');
+          }
         }
 
         break;
