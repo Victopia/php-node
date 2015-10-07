@@ -3,6 +3,7 @@
 
 require_once(__DIR__ . '/Initialize.php');
 
+use core\ContentDecoder;
 use core\Database;
 use core\Log;
 use core\Node;
