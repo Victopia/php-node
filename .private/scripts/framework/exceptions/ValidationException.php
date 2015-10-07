@@ -10,7 +10,12 @@ class ValidationException extends \DomainException {
     $this->errors = $errors;
   }
 
-  protected $errors;
+  /**
+   * @protected
+   *
+   * Validation errors.
+   */
+  protected $errors = array();
 
   public function getErrors() {
     return $this->errors;

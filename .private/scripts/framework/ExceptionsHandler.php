@@ -14,6 +14,7 @@ use framework\System;
 
 use framework\exceptions\GeneralException;
 use framework\exceptions\FrameworkException;
+use framework\exceptions\ValidationException;
 
 use Psr\Log\LogLevel;
 
@@ -151,6 +152,10 @@ class ExceptionsHandler {
       }
       else {
         $statusCode = 400;
+      }
+
+      if ( $e instanceof ValidationException ) {
+        $output['errors'] = $e->getErrors();
       }
 
       $response->clearHeaders();

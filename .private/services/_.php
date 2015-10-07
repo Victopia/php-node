@@ -4,6 +4,7 @@
 namespace services;
 
 use framework\exceptions\ServiceException;
+use framework\exceptions\ValidationException;
 
 /**
  * Inspired by sails.js, but the DataService is implemented as an abstract class.
@@ -163,7 +164,7 @@ class _ extends \framework\WebService {
 
       $this->modelClass->validate($res);
       if ( $res ) {
-        $this->response()->send($res, 400);
+        throw new ValidationException('Invalid user input.', 0, $res);
         return;
       }
 
