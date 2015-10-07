@@ -52,8 +52,8 @@ class LocaleResolver implements \framework\interfaces\IRequestResolver {
     }
 
     if ( !empty($locale) ) {
-      if ( !@$_COOKIE['locale'] == $locale ) {
-        setcookie('locale', $locale, FRAMEWORK_COOKIE_EXPIRE_TIME, '/');
+      if ( $request->meta('locale') != $locale ) {
+        $response->cookie('__locale', $locale, FRAMEWORK_COOKIE_EXPIRE_TIME, '/');
       }
 
       $response->translation(new Translation($locale));

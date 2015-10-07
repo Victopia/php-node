@@ -316,7 +316,7 @@ class Request {
    *
    * Parameters prefixed with this will be parsed as special.
    */
-  protected $metaPrefix = '@';
+  protected $metaPrefix = '__';
 
   //-------------------------------------
   //  Resolver
@@ -438,6 +438,11 @@ class Request {
    * @return {string} Fingerprint hash from current request, or null when no such info is available.
    */
   public function fingerprint() {
+    $fingerprint = $this->meta('fingerprint');
+    if ( $fingerprint ) {
+      return $fingerprint;
+    }
+
     $res = array_select($this->client, array('address', 'userAgent'));
     $res = array_filter($res);
     $res = implode(':', $res);

@@ -57,9 +57,9 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
 
       default:
         // Session ID provided, validate it.
-        $sid = $req->param('__sid');
+        $sid = $req->meta('sid');
         if ( $sid ) {
-          $ret = Session::ensure($sid, $req->param('__token'), $req->fingerprint());
+          $ret = Session::ensure($sid, $req->meta('token'), $req->fingerprint());
 
           // Session doesn't exist, delete the cookie.
           if ( $ret === false || $ret === Session::ERR_EXPIRED ) {
