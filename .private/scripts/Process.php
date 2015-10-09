@@ -69,11 +69,6 @@ $opts = (new framework\Optimist)
 
     unset($res, $pids);
 
-    // $res = Database::query('DELETE FROM `'.FRAMEWORK_COLLECTION_PROCESS.'`
-    //   WhERE `timestamp` < CURRENT_TIMESTAMP - INTERVAL 30 MIN');
-
-    // $affectedRows+= $res->rowCount();
-
     if ( $affectedRows ) {
       Log::debug(sprintf('Process cleanup, %d processes removed.', $affectedRows));
     }
@@ -192,7 +187,7 @@ $opts = (new framework\Optimist)
     LEFT JOIN ( SELECT `type`, SUM(`capacity`) as `occupation` FROM `' . FRAMEWORK_COLLECTION_PROCESS . '`
         WHERE `pid` IS NOT NULL GROUP BY `type` ) as `active`
       ON `active`.`type` = `inactive`.`type`
-    WHERE `inactive`.`timestamp` <= CURRENT_TIMESTAMP
+    WHERE `timestamp` <= CURRENT_TIMESTAMP
       AND `start_time` <= CURRENT_TIMESTAMP
       AND `inactive`.`pid` IS NULL
     ORDER BY `occupation`, `weight` DESC, `id`
