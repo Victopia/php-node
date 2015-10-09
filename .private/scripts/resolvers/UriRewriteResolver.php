@@ -79,10 +79,8 @@ class UriRewriteResolver implements \framework\interfaces\IRequestResolver {
   }
 
   public function resolve(Request $request, Response $response) {
-    $path = $request->uri('path');
-
     foreach ( $this->rules as $rule ) {
-      if ( $rule['source']($path) ) {
+      if ( $rule['source']($request->uri('path')) ) {
         if ( is_callable(@$rule['target']) ) {
           $target = $rule['target']($request, $response);
         }
