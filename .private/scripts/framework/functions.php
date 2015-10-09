@@ -168,7 +168,7 @@ function func($name) {
 }
 
 function propIs($prop, $value, $strict = false) {
-  return propIn($prop, (array) $value, $strict);
+  return propIn($prop, array($value), $strict);
 }
 
 function propIsNot($prop, $value, $strict = false) {
@@ -238,7 +238,7 @@ function invokes($name, array $args = array()) {
 }
 
 function funcEquals($name, $value, array $args = array(), $strict = false) {
-  return funcIn($name, (array) $value, $args, $strict);
+  return funcIn($name, array($value), $args, $strict);
 }
 
 function funcIn($name, array $values, array $args = array(), $strict = false) {
@@ -247,6 +247,22 @@ function funcIn($name, array $values, array $args = array(), $strict = false) {
 
     return in_array($ret, $values, $strict);
   };
+}
+
+/**
+ * Object compatible version of array_filter.
+ */
+function filter($input) {
+  $args = func_get_args();
+
+  if ( is_object($input) ) {
+    $args[0] = (array) $args[0];
+
+    return (object) call_user_func_array('filter', $args);
+  }
+  else {
+    return call_user_func_array('array_filter', $args);
+  }
 }
 
 function remove($names, &$object) {
@@ -260,22 +276,6 @@ function remove($names, &$object) {
       unset($object[$name]);
     }
   }
-}
-
-/**
- * This function allows these two patterns:
- * 1. remove($field1, $field2)
- * 2. remove(array($field1, $field2))
- */
-function removes($name) {
-  if ( !is_array($name) ) {
-    $name = func_get_args();
-  }
-
-  return function($object) use($name) {
-    remove($name, $object);
-    return $object;
-  };
 }
 
 //--------------------------------------------------
@@ -541,18 +541,16 @@ function endsWith($suffixes, $ignoreCase = false) {
 
 /**
  * Factory of array_filter($list, $filter);
+ *
+ * @param {?callable} $callback
+ * @param {?int} $flag
  */
-function filters(/* callable */ $filter = null) {
-  if ( is_null($filter) ) {
-    return function(array $list) {
-      return array_filter($list);
-    };
-  }
-  else {
-    return function(array $list) use($filter) {
-      return array_filter($list, $filter);
-    };
-  }
+function filters() {
+  $args = func_get_args();
+  return function($input) use(&$args) {
+    return call_user_func_array('filter',
+      array_merge(array($input), $args));
+  };
 }
 
 /**
@@ -563,6 +561,22 @@ function selects($keys) {
 
   return function($list) use($keys) {
     return array_select($list, $keys);
+  };
+}
+
+/**
+ * This function allows these two patterns:
+ * 1. remove($field1, $field2)
+ * 2. remove(array($field1, $field2))
+ */
+function removes($name) {
+  if ( !is_array($name) ) {
+    $name = func_get_args();
+  }
+
+  return function($object) use($name) {
+    remove($name, $object);
+    return $object;
   };
 }
 
@@ -709,19 +723,27 @@ if ( !function_exists('array_filter_keys') ) {
 //--------------------------------------------------
 
 function mapdef($list, /* callable */ $callback, /* callable */ $filter = null) {
-  $function = compose(
-      filters($filter)
-    , maps($callback)
-    );
+  if ( $filter === null ) {
+    $filter = filters();
+  }
+  else {
+    $filter = filters($filter);
+  }
+
+  $function = compose($filter, maps($callback));
 
   return $function($list);
 }
 
 function seldef(array $keys, $list, /* callable */ $filter = null) {
-  $function = compose(
-      filters($filter)
-    , selects($keys)
-    );
+  if ( $filter === null ) {
+    $filter = filters();
+  }
+  else {
+    $filter = filters($filter);
+  }
+
+  $function = compose($filter, selects($callback));
 
   return $function($list);
 }
