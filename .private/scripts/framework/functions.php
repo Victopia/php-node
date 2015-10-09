@@ -253,7 +253,12 @@ function remove($names, &$object) {
   $names = (array) $names;
 
   foreach ($names as $name) {
-    unset($object[$name]);
+    if ( is_object($object) ) {
+      unset($object->$name);
+    }
+    else {
+      unset($object[$name]);
+    }
   }
 }
 
