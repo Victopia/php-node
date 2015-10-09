@@ -164,7 +164,7 @@ class _ extends \framework\WebService {
 
       $this->modelClass->validate($res);
       if ( $res ) {
-        throw new ValidationException('Invalid user input.', 0, $res);
+        throw new ValidationException($res, 'Invalid user input.', 0);
         return;
       }
 
