@@ -3,6 +3,7 @@
 
 namespace framework;
 
+use Exception;
 use ErrorException;
 
 use core\Database;
@@ -166,6 +167,18 @@ class ExceptionsHandler {
       header('Content-Type: text/plain', true, 500);
 
       echo "$logString\n";
+
+      if ( $e instanceof ValidationException ) {
+        echo "Errors:\n";
+        foreach ( $e->getErrors() as $error ) {
+          if ( $error instanceof Exception ) {
+            echo $error->getMessage() . "\n";
+          }
+          else {
+            echo "$error\n";
+          }
+        }
+      }
 
       // Debug stack trace
       if ( System::environment(false) != System::ENV_PRODUCTION ) {
