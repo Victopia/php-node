@@ -343,10 +343,20 @@ final class Database {
     $param = (array) $param;
 
     array_walk($param, function($param, $index) use(&$stmt) {
-      $parmType = \PDO::PARAM_STR;
+      switch ( gettype($param) ) {
+        case 'integer':
+        case 'double':
+        case 'float':
+          $parmType = \PDO::PARAM_INT;
+          break;
 
-      if ( is_int($param) ) {
-        $parmType = \PDO::PARAM_INT;
+        case 'boolean':
+          $parmType = \PDO::PARAM_BOOL;
+          break;
+
+        default:
+          $parmType = \PDO::PARAM_STR;
+          break;
       }
 
       $stmt->bindValue($index + 1, $param, $parmType);
