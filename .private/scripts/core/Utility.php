@@ -946,7 +946,7 @@ class Utility {
    * Unpack UUID from binary into HEX string.
    */
   static function unpackUuid($value) {
-    if ( !ctype_print($value) && strlen($value) < 32 ) {
+    if ( $value && !ctype_print($value) && strlen($value) < 32 ) {
       $value = unpack('H*', $value);
       $value = reset($value);
     }
