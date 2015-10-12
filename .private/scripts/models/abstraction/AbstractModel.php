@@ -34,7 +34,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    *
    * @param {?array} $data Designated data to be set into this model object.
    */
-  function __construct(array $data = null) {
+  function __construct($data = null) {
     $this->data($data);
   }
 
@@ -92,26 +92,30 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    *
    * The data content.
    */
-  protected $data = array();
+  protected $data;
 
   /**
    * Retrieves and/or replaces internal data of current model.
    *
    * For additive updates please refer to appendData() or prependData().
    *
-   * @param {?array} $value The data to be replaced.
+   * @param {?array|object} $value The data to be replaced.
    * @return {array|AbstractModel} Data when read, $this when write.
    */
-  function data(array $value = null) {
+  function data($value = null) {
     if ( $value === null ) {
+      if ( !$this->data ) {
+        $this->data = new \stdClass;
+      }
+
       return $this->data;
     }
     else {
-      $this->data = array();
+      $this->data = new \stdClass;
 
       // note: let __set() do the job.
-      foreach ( $value as $key => $val ) {
-        $this->$key = $val;
+      foreach ( (array) $value as $key => $val ) {
+        $this->$key = util::arrayToObject($val);
       }
 
       return $this;
@@ -125,8 +129,8 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * @param {array} $data Array of data to be appended.
    * @return {AbstractModel} Chainable
    */
-  function appendData(array $data) {
-    $this->data($this->data + $data);
+  function appendData($data) {
+    $this->data((array) $this->data + (array) $data);
     return $this;
   }
 
@@ -176,7 +180,11 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    */
   function __set($name, $value) {
     if ( !preg_match('/^(@|__)/', $name) ) {
-      $this->data[$name] = $value;
+      if ( !$this->data ) {
+        $this->data = new \stdClass;
+      }
+
+      $this->data->$name = $value;
     }
     else {
       $this->$name = $value;
@@ -184,11 +192,11 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   }
 
   function __isset($name) {
-    return isset($this->data[$name]);
+    return isset($this->data->$name);
   }
 
   function __unset($name) {
-    unset($this->data[$name]);
+    unset($this->data->$name);
   }
 
   /**
@@ -261,7 +269,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   //----------------------------------------------------------------------------
 
   function count() {
-    return count($this->data);
+    return count((array) $this->data);
   }
 
   //----------------------------------------------------------------------------
@@ -271,7 +279,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   //----------------------------------------------------------------------------
 
   function jsonSerialize() {
-    return (object) $this->data;
+    return $this->data;
   }
 
   //----------------------------------------------------------------------------
@@ -286,11 +294,10 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * Data models should implement this method to validate before save, database
    * exceptions are not supposed to be thrown directly.
    *
-   * @param {array} An array of errors.
-   * @return {AbstractModel} Chainable.
+   * @return {array} Array of errors.
    */
-  function validate(array &$errors = array()) {
-    return $this;
+  function validate() {
+    return array();
   }
 
   /**
@@ -350,7 +357,6 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     $this->beforeLoad($filter);
     if ( $filter !== false ) {
       $this->data((array) @Node::getOne($filter));
-
       $this->afterLoad();
     }
 
@@ -360,7 +366,8 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   /**
    * Saves the current data into database.
    *
-   * @param {&array} $result[errors] Array of validation errors.
+   * @param {&array} $result Optional, if omitted exceptions will be thrown.
+   *                 $result[errors] Array of validation errors.3
    *                 $result[success] True on succeed, otherwise not set.
    */
   function save(array &$result = null) {
@@ -371,10 +378,10 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     if ( $result !== null ) {
       $_result = &$result;
     }
-    else {
-      $_result = array();
-    }
 
+    $_result = array();
+
+    $errors = array();
     $this->beforeSave($errors);
     if ( $errors ) {
       $_result['errors'] = $errors;
@@ -386,7 +393,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     else {
       try {
         // note; Conflicts here. Virutal fields would love to skip nulls, but real fields would not.
-        $res = $this->data;
+        $res = util::objectToArray($this->data);
 
         $res[Node::FIELD_COLLECTION] = self::collectionName();
 
@@ -420,7 +427,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
         $this->load($this->identity());
       }
 
-      $this->afterSave();
+      $this->afterSave($result);
     }
 
     $this->_isCreate = false;
@@ -441,7 +448,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       $filter[$this->_primaryKey] = $this->identity();
     }
     else {
-      $filter+= $this->data();
+      $filter+= util::objectToArray($this->data());
     }
 
     $this->beforeDelete($filter);
@@ -484,7 +491,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * @return {AbstractModel} Chainable.
    */
   protected function beforeSave(array &$errors = array()) {
-    $this->validate($errors);
+    $errors = $this->validate();
     return $this;
   }
 
@@ -493,7 +500,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    *
    * @return {AbstractModel} Chainable.
    */
-  protected function afterSave() {
+  protected function afterSave(array &$result = null) {
     return $this;
   }
 

@@ -340,6 +340,24 @@ class Utility {
   }
 
   /**
+   * Deep conversion from associative arrays to objects, numeric arrays will be kept as is.
+   *
+   * For values which is already objects, this function will not traverse inside.
+   */
+  static function arrayToObject($data) {
+    if ( !is_array($data) ) {
+      return $data;
+    }
+    else {
+      $data = array_map(array(__CLASS__, __FUNCTION__), $data);
+
+      if ( static::isAssoc($data) ) {
+        return (object) $data;
+      }
+    }
+  }
+
+  /**
    * Flatten an array, concatenating keys with specified delimiter.
    *
    * @param {array}   $input The array to be flattened
