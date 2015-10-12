@@ -247,9 +247,11 @@ class Request {
             , 'user' => @$_SERVER['REMOTE_USER']
             , 'host' => @$_SERVER['SERVER_NAME']
             , 'port' => @$_SERVER['SERVER_PORT']
-            , 'path' => @$_SERVER['REQUEST_URI']
             , 'query' => $_GET
             );
+
+          // note; REQUEST_URI may contains query string, we use $_GET instead of that.
+          $uri+= parse_url(@$_SERVER['REQUEST_URI']);
 
           if ( empty($uri['user']) ) {
             $uri['user'] = @$_SERVER['PHP_AUTH_USER'];
@@ -443,11 +445,11 @@ class Request {
       return $fingerprint;
     }
 
-    $res = array_select($this->client, array('address', 'userAgent'));
-    $res = array_filter($res);
-    $res = implode(':', $res);
-    if ( $res ) {
-      return sha1($res);
+    $fingerprint = array_select($this->client, array('address', 'userAgent'));
+    $fingerprint = array_filter($fingerprint);
+    $fingerprint = implode(':', $fingerprint);
+    if ( $fingerprint ) {
+      return sha1($fingerprint);
     }
   }
 
