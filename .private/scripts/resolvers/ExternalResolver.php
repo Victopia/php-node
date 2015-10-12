@@ -21,7 +21,7 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
    *
    * Base directory of URL pointer files.
    */
-  protected $srcPath = './';
+  protected $srcPath = '.';
 
   /**
    * @constructor
@@ -30,7 +30,7 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
    */
   public function __construct(array $options = array()) {
     if ( !empty($options['source']) ) {
-      $this->srcPath = (string) $options['source'] . DIRECTORY_SEPARATOR;
+      $this->srcPath = (string) $options['source'];
     }
   }
 
@@ -206,10 +206,6 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
       unset($_response);
     }
 
-    if ( $cacheTarget && empty($cache['contents']) ) {
-      $cache['contents'] = Cache::get("cache://$cacheTarget");
-    }
-
     // note; Send cache headers regardless of the request condition.
     if ( @$cache['headers'] ) {
       $response->clearHeaders();
@@ -291,6 +287,10 @@ class ExternalResolver implements \framework\interfaces\IRequestResolver {
       if ( @$eTags[1] && !in_array($eTag, (array) $eTags[1]) ) {
         return $this->response()->status(412);
       }
+    }
+
+    if ( $cacheTarget && empty($cache['contents']) ) {
+      $cache['contents'] = Cache::get("cache://$cacheTarget");
     }
 
     // Output the cahce content
