@@ -252,34 +252,42 @@ function funcIn($name, array $values, array $args = array(), $strict = false) {
 /**
  * Walks arrays and objects, optionally recursively.
  */
-function walk($input, $callback, $deep = false) {
+function walk(&$input, $callback, $deep = false) {
   if ( !is_array($input) && !is_object($input) ) {
     throw new \InvalidArgumentException(sprintf('walk() expects parameter 1 to be array or object, %s given.', gettype($value)));
   }
 
   if ( $deep ) {
     $walker = function(&$value, $key, &$parent) use(&$walker, &$callback) {
-      if ( is_array($value) ) {
-        foreach ( $vars as $k => &$v ) {
-          $walker($v, $k, $value);
+      if ( is_object($value) ) {
+        $_value = get_object_vars($value);
+        foreach ( $_value as $k => $v ) {
+          $walker($v, $k, $_value);
         }
-      }
-      else if ( is_object($value) ) {
-        foreach ( get_object_vars($value) as $k => &$v ) {
-          $walker($v, $k, $value);
-        }
-      }
+        $value = (object) $_value;
 
-      // note; invoke at the parent array and/or object to enable level collapse.
-      $callback($value, $key, $parent);
+        $callback($_value, $key, $parent);
+      }
+      else if ( is_array($value) ) {
+        foreach ( $value as $k => &$v ) {
+          $walker($v, $k, $value);
+        }
+
+        $callback($value, $key, $parent);
+      }
+      else {
+        $callback($value, $key, $parent);
+      }
     };
   }
   else {
     $walker = function(&$value) use(&$callback) {
       if ( is_object($value) ) {
-        foreach ( get_object_vars($value) as $k => &$v ) {
-          $callback($v, $k, $value);
+        $_value = get_object_vars($value);
+        foreach ( $_value as $k => $v ) {
+          $callback($v, $k, $_value);
         }
+        $value = (object) $_value;
       }
       else {
         foreach ( $value as $k => &$v ) {
@@ -289,7 +297,7 @@ function walk($input, $callback, $deep = false) {
     };
   }
 
-  return $walker($input, null, $input);
+  $walker($input, null, $input);
 }
 
 /**
