@@ -265,8 +265,9 @@ function walk(&$input, $callback, $deep = false) {
           $walker($v, $k, $_value);
         }
         $value = (object) $_value;
+        unset($_value);
 
-        $callback($_value, $key, $parent);
+        $callback($value, $key, $parent);
       }
       else if ( is_array($value) ) {
         foreach ( $value as $k => &$v ) {
