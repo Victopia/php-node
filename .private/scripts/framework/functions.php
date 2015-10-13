@@ -250,19 +250,78 @@ function funcIn($name, array $values, array $args = array(), $strict = false) {
 }
 
 /**
- * Object compatible version of array_filter.
+ * Walks arrays and objects, optionally recursively.
  */
-function filter($input) {
-  $args = func_get_args();
+function walk($input, $callback, $deep = false) {
+  if ( !is_array($input) && !is_object($input) ) {
+    throw new \InvalidArgumentException(sprintf('walk() expects parameter 1 to be array or object, %s given.', gettype($value)));
+  }
 
-  if ( is_object($input) ) {
-    $args[0] = (array) $args[0];
+  if ( $deep ) {
+    $walker = function(&$value, $key, &$parent) use(&$walker, &$callback) {
+      if ( is_array($value) ) {
+        foreach ( $vars as $k => &$v ) {
+          $walker($v, $k, $value);
+        }
+      }
+      else if ( is_object($value) ) {
+        foreach ( get_object_vars($value) as $k => &$v ) {
+          $walker($v, $k, $value);
+        }
+      }
 
-    return (object) call_user_func_array('filter', $args);
+      // note; invoke at the parent array and/or object to enable level collapse.
+      $callback($value, $key, $parent);
+    };
   }
   else {
-    return call_user_func_array('array_filter', $args);
+    $walker = function(&$value) use(&$callback) {
+      if ( is_object($value) ) {
+        foreach ( get_object_vars($value) as $k => &$v ) {
+          $callback($v, $k, $value);
+        }
+      }
+      else {
+        foreach ( $value as $k => &$v ) {
+          $callback($v, $k, $value);
+        }
+      }
+    };
   }
+
+  return $walker($input, null, $input);
+}
+
+/**
+ * Object compatible version of array_filter.
+ */
+function filter($input, $callback = null, $deep = false) {
+  if ( !is_array($input) && !is_object($input) ) {
+    throw new \InvalidArgumentException(sprintf('filter() expects parameter 1 to be array or object, %s given.', gettype($value)));
+  }
+
+  if ( $callback === null ) {
+    $callback = compose('not', 'blank');
+  }
+
+  walk($input, function($value, $key, &$parent) use(&$callback) {
+    if ( !$callback($value) ) {
+      remove($key, $parent);
+    }
+  }, $deep);
+
+  return $input;
+}
+
+/**
+ * Variation of empty() function that also counts for object emptiness (stdClass).
+ */
+function blank($value) {
+  if ( is_object($value) ) {
+    $value = get_object_vars($value);
+  }
+
+  return empty($value);
 }
 
 function remove($names, &$object) {
@@ -654,6 +713,16 @@ if ( !function_exists('array_some') ) {
 
     return false;
   }
+}
+
+// A version of sort() that it returns the result instead.
+if ( !function_exists('array_sort') ) {
+  function array_sort(array $list) {
+    $args = func_get_args();
+    $args[0] = &$list;
+    call_user_func_array('sort', $args);
+    return $args[0];
+  };
 }
 
 if ( !function_exists('array_select') ) {
