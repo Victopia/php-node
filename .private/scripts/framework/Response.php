@@ -352,6 +352,15 @@ class Response {
       return;
     }
 
+    // note; preseve Set-Cookie headers.
+    if ( function_exists('headers_list') ) {
+      foreach ( headers_list() as $header ) {
+        if ( preg_match('/^Set\-Cookie\s*:/', $header) ) {
+          $this->header($header);
+        }
+      }
+    }
+
     header_remove();
 
     // Status code and headers
