@@ -68,38 +68,44 @@ require_once('scripts/Initialize.php');
   // JSONP Headers
     $resolver->registerResolver(new resolvers\JsonpResolver(array(
         'defaultCallback' => conf::get('web::resolvers.jsonp.defaultCallback', 'callback')
-      )), 60);
+      )), 65);
 
   // Web Services
     $resolver->registerResolver(new resolvers\WebServiceResolver(array(
         'prefix' => conf::get('web::resolvers.service.prefix', '/service')
+      )), 60);
+
+  // Post Processers
+    $resolver->registerResolver(new resolvers\InvokerPostProcessor(array(
+        'invokes' => 'invokes',
+        'unwraps' => 'core\Utility::unwrapAssoc'
       )), 50);
 
-  /*! Note: These resolvers await rework
-   * // Template resolver
-   *   $templateResolver = new resolvers\TemplateResolver(array(
-   *       'render' => function($path) {
-   *           static $mustache;
-   *           if ( !$mustache ) {
-   *             $mustache = new Mustache_Engine();
-   *           }
-   *
-   *           $resource = util::getResourceContext();
-   *
-   *           return $mustache->render(file_get_contents($path), $resource);
-   *         }
-   *     , 'extensions' => 'mustache html'
-   *     ));
-   *
-   *      $templateResolver->directoryIndex('Home index');
-   *
-   *      $resolver->registerResolver($templateResolver, 50);
-   *
-   *      unset($templateResolver);
-   *
-   * // External URL
-   *   $resolver->registerResolver(new resolvers\ExternalResolver(), 30);
-   */
+  // Template resolver
+    // $templateResolver = new resolvers\TemplateResolver(array(
+    //     'render' => function($path) {
+    //         static $mustache;
+    //         if ( !$mustache ) {
+    //           $mustache = new Mustache_Engine();
+    //         }
+
+    //         $resource = util::getResourceContext();
+
+    //         return $mustache->render(file_get_contents($path), $resource);
+    //       }
+    //   , 'extensions' => 'mustache html'
+    //   ));
+
+    // $templateResolver->directoryIndex('Home index');
+
+    // $resolver->registerResolver($templateResolver, 50);
+
+    // unset($templateResolver);
+
+  // External URL
+    $resolver->registerResolver(new resolvers\ExternalResolver(array(
+        'source' => conf::get('system::paths.external.src')
+      )), 40);
 
   // Markdown handling
     $resolver->registerResolver(new resolvers\MarkdownResolver(), 30);
