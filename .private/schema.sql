@@ -90,22 +90,6 @@ CREATE TABLE `Processes` (
 
 
 
-# Dump of table ProcessSchedules
-# ------------------------------------------------------------
-
-DROP TABLE IF EXISTS `ProcessSchedules`;
-
-CREATE TABLE `ProcessSchedules` (
-  `name` varchar(255) NOT NULL,
-  `schedule` varchar(255) NOT NULL DEFAULT '* * * * *' COMMENT 'Cron expression',
-  `command` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `@contents` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  PRIMARY KEY (`name`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
-
-
-
 # Dump of table Sessions
 # ------------------------------------------------------------
 
@@ -150,8 +134,7 @@ CREATE TABLE `User` (
   `@contents` longtext NOT NULL,
   `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   PRIMARY KEY (`uuid`),
-  UNIQUE KEY `uni_username` (`username`),
-  KEY `idx_credentials` (`username`,`password`)
+  UNIQUE KEY `username` (`username`(191))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 
