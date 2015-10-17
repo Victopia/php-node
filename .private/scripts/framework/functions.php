@@ -289,6 +289,7 @@ function walk(&$input, $callback, $deep = false) {
           $callback($v, $k, $_value);
         }
         $value = (object) $_value;
+        unset($_value);
       }
       else {
         foreach ( $value as $k => &$v ) {
@@ -299,6 +300,28 @@ function walk(&$input, $callback, $deep = false) {
   }
 
   $walker($input, null, $input);
+}
+
+/**
+ * Object compatible version of array_reduce which also gives the key to callback.
+ *
+ * @param {array|object} $input The thing to be iterated.
+ * @param {callable} A callback with signature function($result, $value, $key); for iteration.
+ * @param {void*} Can be any value which will be passed as the $result parameter in the first iteration.
+ */
+function reduce($input, $callback, $initial = null) {
+  if ( is_object($input) ) {
+    $input = get_object_vars($input);
+  }
+  else {
+    $input = (array) $input;
+  }
+
+  foreach ( $input as $key => $value ) {
+    $initial = $callback($initial, $value, $key);
+  }
+
+  return $initial;
 }
 
 /**

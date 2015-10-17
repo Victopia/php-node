@@ -352,8 +352,10 @@ class Utility {
       $data = array_map(array(__CLASS__, __FUNCTION__), $data);
 
       if ( static::isAssoc($data) ) {
-        return (object) $data;
+        $data = (object) $data;
       }
+
+      return $data;
     }
   }
 

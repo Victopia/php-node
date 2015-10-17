@@ -20,22 +20,6 @@ class _ extends \framework\WebService {
 
   //----------------------------------------------------------------------------
   //
-  //  Constants
-  //
-  //----------------------------------------------------------------------------
-
-  /**
-   * Default length for lists without explicitly specifing lengths.
-   */
-  const DEFAULT_LIST_LENGTH = 20;
-
-  /**
-   * Maximum length for lists, hard limit.
-   */
-  const MAXIMUM_LIST_LENGTH = 100;
-
-  //----------------------------------------------------------------------------
-  //
   //  Properties
   //
   //----------------------------------------------------------------------------
@@ -71,6 +55,8 @@ class _ extends \framework\WebService {
 
     // Exposed model methods: public function __*() { }
     if ( $args && !in_array($method, $reservedMethods) && method_exists($this->modelClass, "__$method") ) {
+      // note; custom functions can writes directly into output buffer without taking care of 404.
+      $this->response()->status(200);
       $method = array($this->modelClass, '__' . array_shift($args));
     }
     else {
@@ -160,11 +146,9 @@ class _ extends \framework\WebService {
       }
 
       // errors
-      $res = array();
-
-      $this->modelClass->validate($res);
+      $res = $this->modelClass->validate();
       if ( $res ) {
-        throw new ValidationException($res, 'Invalid user input.', 0);
+        throw new ValidationException($res, 'Invalid user input.');
         return;
       }
 
@@ -268,36 +252,4 @@ class _ extends \framework\WebService {
     return $filter + $this->request()->param();
   }
 
-  /**
-   * Parse "__range" parameter or "List-Range" header for collection retrieval.
-   */
-  private function listRange() {
-    $listRange = $this->request()->meta('range');
-    if ( !$listRange ) {
-      $listRange = $this->request()->header('List-Range');
-    }
-
-    if ( preg_match('/\s*(\d+)(?:-(\d+))?\s*/', $listRange, $listRange) ) {
-      $listRange = [(int) $listRange[1], (int) @$listRange[2]];
-    }
-    else {
-      $listRange = [0];
-    }
-
-    if ( !@$listRange[1] ) {
-      $listRange[1] = self::DEFAULT_LIST_LENGTH;
-    }
-
-    $listRange[1] = min((int) $listRange[1], self::MAXIMUM_LIST_LENGTH);
-
-    return $listRange;
-  }
-
-  /**
-   * Parse "__order" parameter for a collection ordering.
-   */
-  private function listOrder() {
-    $listOrder = $this->request()->meta('order');
-    return (array) $listOrder;
-  }
 }

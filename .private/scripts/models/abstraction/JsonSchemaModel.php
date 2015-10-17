@@ -28,7 +28,9 @@ abstract class JsonSchemaModel extends AbstractRelationModel {
     parent::__construct($data);
   }
 
-  public function validate(array &$errors = array()) {
+  public function validate() {
+    $errors = parent::validate();
+
     if ( !Jsv4::isValid($this->data, $this->schema()) ) {
       // try to coerce on initial failure
       $result = Jsv4::coerce($this->data, $this->schema());
@@ -37,11 +39,15 @@ abstract class JsonSchemaModel extends AbstractRelationModel {
       }
       // return errors if exists
       else {
-        $errors = array_merge(util::objectToArray($result->errors));
+        $errors = array_merge($errors, array_reduce($result->errors, function($errors, $e) {
+          $errors[$e->getCode()] = $e->getMessage();
+
+          return $errors;
+        }, array()));
       }
     }
 
-    return parent::validate();
+    return $errors;
   }
 
   public function schema($type = 'data') {

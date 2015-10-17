@@ -15,6 +15,22 @@ abstract class WebService implements interfaces\IWebService {
 		$this->response = $response;
 	}
 
+  //----------------------------------------------------------------------------
+  //
+  //  Constants
+  //
+  //----------------------------------------------------------------------------
+
+  /**
+   * Default length for lists without explicitly specifing lengths.
+   */
+  const DEFAULT_LIST_LENGTH = 20;
+
+  /**
+   * Maximum length for lists, hard limit.
+   */
+  const MAXIMUM_LIST_LENGTH = 100;
+
 	//----------------------------------------------------------------------------
 	//
 	//  Properties
@@ -81,8 +97,36 @@ abstract class WebService implements interfaces\IWebService {
 		return @$this->request()->user;
 	}
 
-	protected function isLocal() {
-		return (bool) @$this->request()->__local;
-	}
+  /**
+   * Parse "__range" parameter or "List-Range" header for collection retrieval.
+   */
+  protected function listRange() {
+    $listRange = $this->request()->meta('range');
+    if ( !$listRange ) {
+      $listRange = $this->request()->header('List-Range');
+    }
+
+    if ( preg_match('/\s*(\d+)(?:-(\d+))?\s*/', $listRange, $listRange) ) {
+      $listRange = [(int) $listRange[1], (int) @$listRange[2]];
+    }
+    else {
+      $listRange = [0];
+    }
+
+    if ( !@$listRange[1] ) {
+      $listRange[1] = static::DEFAULT_LIST_LENGTH;
+    }
+
+    $listRange[1] = min((int) $listRange[1], static::MAXIMUM_LIST_LENGTH);
+
+    return $listRange;
+  }
+
+  /**
+   * Parse "__order" parameter for a collection ordering.
+   */
+  protected function listOrder() {
+    return (array) $this->request()->meta('order');
+  }
 
 }

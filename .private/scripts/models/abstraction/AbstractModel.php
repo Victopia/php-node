@@ -167,7 +167,23 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    */
   function &__get($name) {
     if ( !preg_match('/^(@|__)/', $name) ) {
-      return $this->data[$name];
+      return $this->data->$name;
+    }
+
+    if ( strpos($name, '__is') === 0 ) {
+      $auth = '\authenticators\\Is' . ucfirst(substr($name, 4));
+
+      // "__isSuperUser" into "__is_super_user"
+      $name = preg_replace('/(?<!^)([A-Z])/', '_\\1', $name);
+
+      if ( class_exists($auth) ) {
+        // note; Make a variable for reference returning.
+        $result = call_user_func("$auth::authenticate", $this->__request);
+
+        return $result;
+      }
+
+      unset($auth);
     }
 
     return $this->$name;
@@ -213,7 +229,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     // RW takes precedence
     if ( isset($this->$name) ) {
       if ( !$args ) {
-        return $this->data[$name];
+        return $this->data->$name;
       }
 
       if ( count($args) == 1 ) {
@@ -318,11 +334,19 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       $model = get_called_class();
       $model = new $model($data);
 
+      if ( isset($this->__request) ) {
+        $model->__request = $this->__request;
+      }
+
+      if ( isset($this->__response) ) {
+        $model->__response = $this->__response;
+      }
+
       // force invoke internal function
       util::forceInvoke(array($model, 'afterLoad'));
 
       // add if model still has data
-      if ( $model->data() ) {
+      if ( (array) $model->data() ) {
         $collection[] = $model;
       }
     });
@@ -341,7 +365,9 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       return $this;
     }
 
-    $identity = Database::escapeValue($identity);
+    if ( ctype_print($identity) ) {
+      $identity = Database::escapeValue($identity);
+    }
 
     $filter = array(
         Node::FIELD_COLLECTION => self::collectionName()
@@ -379,7 +405,9 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       $_result = &$result;
     }
 
-    $_result = array();
+    $_result = array(
+        'success' => false
+      );
 
     $errors = array();
     $this->beforeSave($errors);
@@ -418,7 +446,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
         }
 
         $_result['error'] = $e->getMessage();
-        $_result['success'] = false;
+        $_result['code'] = $e->getCode();
         unset($_result['action']);
       }
 

@@ -41,6 +41,10 @@ class Promise {
 	//
 	//--------------------------------------------------
 
+	public function state() {
+		return $this->state;
+	}
+
 	public function progress($callback) {
 		if ($this->state === self::STATE_NORMAL) {
 			$this->progressCallbacks[] = $callback;
