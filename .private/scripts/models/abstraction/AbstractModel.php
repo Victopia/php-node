@@ -360,7 +360,11 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * @param {array|string|number} $filter Scalar types will be treated as identity,
    *                                      array types will be used as is.
    */
-  function load($identity) {
+  function load($identity = null) {
+    if ( !$identity ) {
+      $identity = $this->identity();
+    }
+
     if ( !$identity ) {
       return $this;
     }
@@ -382,7 +386,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
 
     $this->beforeLoad($filter);
     if ( $filter !== false ) {
-      $this->data((array) @Node::getOne($filter));
+      $this->appendData((array) @Node::getOne($filter));
       $this->afterLoad();
     }
 
