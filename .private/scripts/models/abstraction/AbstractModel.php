@@ -126,7 +126,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * Append data to current model data, this is equivalent to using `+` operator
    * with arrays, inexisting keys will be added to current data.
    *
-   * @param {array} $data Array of data to be appended.
+   * @param {array|object} $data Array of data to be appended.
    * @return {AbstractModel} Chainable
    */
   function appendData($data) {
@@ -138,11 +138,11 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * Add data on top of current model data, this differs from appendData() in a
    * way that the specified data takes precedence.
    *
-   * @param {array} $data Arrray of data to be prepended.
+   * @param {array|object} $data Arrray of data to be prepended.
    * @return {AbstractModel} Chainable
    */
-  function prependData(array $data) {
-    $this->data($data + $this->data);
+  function prependData($data) {
+    $this->data((array) $data + (array) $this->data);
     return $this;
   }
 
