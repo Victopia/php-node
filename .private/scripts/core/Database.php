@@ -359,7 +359,11 @@ final class Database {
           break;
       }
 
-      $stmt->bindValue($index + 1, $param, $parmType);
+      if (is_numeric($index)) {
+        $index++;
+      }
+
+      $stmt->bindValue($index, $param, $parmType);
     });
 
     if ( $stmt->execute() ) {
