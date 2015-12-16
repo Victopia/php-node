@@ -22,6 +22,8 @@ This is in on-going development and actively used by me on casual websites, but 
 
 Just create issues in github as usual, I am open for discussions.
 
+**Please note that the following components will be broken down into separate repositories for standalone Composer packages.**
+
 ## Basics
 
 This framework aims to provide simple select and upsert upon a database, seamlessly manipulating data across virtual (JSON encoded) columns and rational columns.
@@ -33,21 +35,6 @@ Some of the ideas might seems irrational, feel free to discuss every tiny bit in
 This is a [Front Controller pattern](http://en.wikipedia.org/wiki/Front_Controller_pattern) implementation of PHP using apache's .htaccess file.
 
 All scripts are initialized with gateway and their corresponding resolvers.
-
-### Special directories
-
-These directories behave differently as normal folders, they are configurable via the .htaccess file. The documented names are only defaults.
-
-#### .private
-This directory is prevented from access. For any reason you don't want some files to be public, place them here.
-
-#### .private/scripts
-This directory contains framework scripts, and is not supposed to be accessed by public.
-
-Feel free to add your own scripts here.
-
-#### .privae/services
-PHP scripts in this folder are served as RESTful methods, for more information see the example script inside and scripts/resolveers/WebServiceResolver.
 
 ### Node
 
