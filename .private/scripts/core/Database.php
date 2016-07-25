@@ -342,7 +342,8 @@ final class Database {
 
     $param = (array) $param;
 
-    array_walk($param, function($param, $index) use(&$stmt) {
+    $paramIndex = 1;
+    array_walk($param, function($param, $index) use(&$stmt, &$paramIndex) {
       switch ( gettype($param) ) {
         case 'integer':
         case 'double':
@@ -359,8 +360,11 @@ final class Database {
           break;
       }
 
-      if (is_numeric($index)) {
-        $index++;
+      if ( is_numeric($index) ) {
+        $index = $paramIndex++;
+      }
+      else if ( strpos($index, ':') !== 0 ) {
+        $index = ":$index";
       }
 
       $stmt->bindValue($index, $param, $parmType);
@@ -371,6 +375,12 @@ final class Database {
     }
 
     $errorInfo = $stmt->errorInfo();
+
+    switch ( $errorInfo[0] ) {
+      case 'HY093':
+        $errorInfo[2] = 'Bound parameter name does not match.';
+        break;
+    }
 
     $ex = new \PDOException($errorInfo[2], $errorInfo[1]);
 
