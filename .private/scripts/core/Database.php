@@ -560,18 +560,20 @@ final class Database {
   /**
    * Upsert function.
    *
-   * @param $table Target table name.
-   * @param $data Key-value pairs of field names and values.
+   * @param {string} $table Target table name.
+   * @param {array} $data Key-value pairs of field names and values.
+   * @param {?bool} $replace Use REPLACE INTO instead of ON DUPLICATE KEY UPDATE, defaults true.
    *
    * @returns True on update succeed, insertId on a row inserted, false on failure.
    */
   public static /* Mixed */
-  function upsert($table, array $data, $update = null) {
+  function upsert($table, array $data, $replace = true) {
     $fields = static::escapeField(array_keys($data), $table);
 
     $values = array_values($data);
 
-    $query = sprintf('INSERT INTO %s (%s) VALUES (%s)',
+    $query = sprintf(
+      ($replace ? 'REPLACE' : 'INSERT') . ' INTO %s (%s) VALUES (%s)',
       static::escapeField($table),
       implode(', ', $fields),
       implode(', ', array_fill(0, count($fields), '?'))
@@ -583,31 +585,28 @@ final class Database {
     $fields = array_intersect($fields, static::escapeField($keys, $table));
 
     if ( $fields ) {
-      // selective update
-      if ( $update !== null ) {
-        $data = array_select($data, (array) $update);
-      }
-
       foreach ( $data as $field => $value ) {
         $data["`$field` = ?"] = $value;
 
         unset($data[$field]);
       }
 
-      // full dataset appended with non-key fields
-      $values = array_merge($values,
-        array_values(array_filter_keys($data, notIn($keys))));
+      if ( !$replace ) {
+        $query.= ' ON DUPLICATE KEY UPDATE ';
 
-      $query.= ' ON DUPLICATE KEY UPDATE ';
+        // full dataset appended with non-key fields
+        $values = array_merge($values,
+          array_values(array_filter_keys($data, notIn($keys))));
 
-      if ( $data ) {
-        $query.= implode(', ', array_keys($data));
-      }
-      else {
-      // note: key1 = key1; We do not use INSERT IGNORE because it'll ignore other errors.
-        $value = reset($fields);
-        $query.= "$value = $value";
-        unset($value);
+        if ( $data ) {
+          $query.= implode(', ', array_keys($data));
+        }
+        else {
+        // note: key1 = key1; We do not use INSERT IGNORE because it'll ignore other errors.
+          $value = reset($fields);
+          $query.= "$value = $value";
+          unset($value);
+        }
       }
     }
 
