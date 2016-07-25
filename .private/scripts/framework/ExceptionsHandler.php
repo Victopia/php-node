@@ -164,26 +164,25 @@ class ExceptionsHandler {
       $response->send($output, $statusCode);
     }
     else {
-      header('Content-Type: text/plain', true, 500);
-
-      echo "$logString\n";
+      // echo "$logString\n";
+      $logString.= "\n";
 
       if ( $e instanceof ValidationException ) {
-        echo "Errors:\n";
+        $logString.= "Errors:\n";
         foreach ( $e->getErrors() as $error ) {
           if ( $error instanceof Exception ) {
-            echo $error->getMessage() . "\n";
+            $logString.= $error->getMessage() . "\n";
           }
           else {
-            echo "$error\n";
+            $logString.= "$error\n";
           }
         }
       }
 
       // Debug stack trace
       if ( System::environment(false) != System::ENV_PRODUCTION ) {
-        echo "Trace:\n";
-        array_walk($eC, function($stack, $index) {
+        $logString.= "Trace:\n";
+        array_walk($eC, function($stack, $index) use(&$logString) {
           $trace = ($index + 1) . '.';
 
           $function = implode('->', array_filter(array(
@@ -202,9 +201,11 @@ class ExceptionsHandler {
             }
           }
 
-          echo "$trace\n";
+          $logString.= "$trace\n";
         });
       }
+
+      error_log($logString);
     }
 
     // CLI exit code on Exceptions and Errors
