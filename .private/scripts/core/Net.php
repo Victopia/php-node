@@ -4,6 +4,7 @@
 namespace core;
 
 use framework\System;
+use framework\Response;
 
 /**
  * Net class
@@ -216,55 +217,61 @@ class Net {
 
       // Data type converting
       if ( isset($option['success']) ) {
-        $originalSuccess = @$option['success'];
+        $option['success'] = function($response, $curlOptions) use($option) {
+          $status = (int) @$curlOptions['response']['status'];
+          if ( $status && ($status < 200 || $status > 399) ) {
+            if ( isset($option['failure']) ) {
+              $curlOptions['response']['data'] = $response;
 
-        switch ( @$option['dataType'] ) {
-          case 'json':
-            $option['success'] = function($response, $curlOptions) use($option, $originalSuccess) {
-              $result = @ContentEncoder::json($respons);
+              Utility::forceInvoke($option['failure'],
+                [ $status
+                , Response::getStatusMessage($status)
+                , $curlOptions
+                ]);
+            }
+          }
+          else {
+            switch ( @$option['dataType'] ) {
+              case 'json':
+                $result = @ContentDecoder::json($response);
 
-              if ( $result === false && $response ) {
-                Utility::forceInvoke(@$option['failure'], array(
-                    3
-                  , 'Malformed JSON string returned.'
-                  , $curlOptions
-                  ));
-              }
-              else {
-                Utility::forceInvoke(@$originalSuccess, array(
-                    $result
-                  , $curlOptions
-                  ));
-              }
-            };
-            break;
+                if ( $result === false && $response ) {
+                  Utility::forceInvoke(@$option['failure'],
+                    [ 3
+                    , 'Malformed JSON string returned.'
+                    , $curlOptions
+                    ]);
+                }
+                else {
+                  Utility::forceInvoke($option['success'], [ $result, $curlOptions ]);
+                }
+                break;
 
-          case 'xml':
-            $option['success'] = function($response, $curlOptions) use($option, $originalSuccess) {
-              try {
-                $result = XMLConverter::fromXML($response);
-              } catch (\Exception $e) {
-                $result = NULL;
-              }
+              case 'xml':
+                try {
+                  $result = XMLConverter::fromXML($response);
+                } catch (\Exception $e) {
+                  $result = NULL;
+                }
 
-              if ( $result === NULL && $response ) {
-                Utility::forceInvoke(@$option['failure'], array(
-                    2
-                  , 'Malformed XML string returned.'
-                  , $curlOptions
-                  ));
-              }
-              else {
-                Utility::forceInvoke(@$originalSuccess, array(
-                    $result
-                  , $curlOptions
-                  ));
-              }
-            };
-            break;
-        }
+                if ( $result === NULL && $response ) {
+                  Utility::forceInvoke(@$option['failure'],
+                    [ 2
+                    , 'Malformed XML string returned.'
+                    , $curlOptions
+                    ]);
+                }
+                else {
+                  Utility::forceInvoke($option['success'], [ $result, $curlOptions ]);
+                }
+                break;
 
-        unset($originalSuccess);
+              default:
+                Utility::forceInvoke($option['success'], [ $response, $curlOptions ]);
+                break;
+            }
+          }
+        };
       }
 
       $curlOption['callbacks'] = array_filter(array(
@@ -457,13 +464,29 @@ class Net {
           }
 
           // Append HTTP status code
-          $curlOption['status'] =
+          $curlOption['response']['status'] =
             curl_getinfo($info['handle'], CURLINFO_HTTP_CODE);
 
-          Utility::forceInvoke(@$callbacks['success'], array(
-              curl_multi_getcontent($info['handle'])
+          $responseText = curl_multi_getcontent($info['handle']);
+
+          // Check for gzip and deflate.
+          if ( preg_match('/Content-Encoding:\s*(\w+)\r?\n/', @$curlOption['response']['headers'], $matches) ) {
+            switch ( $matches[1] ) {
+              case 'gzip':
+                $responseText = gzdecode($responseText);
+                break;
+
+              case 'deflate':
+                $responseText = gzinflate($responseText);
+                break;
+            }
+          }
+          unset($matches);
+
+          Utility::forceInvoke(@$callbacks['success'],
+            [ $responseText
             , $curlOption
-            ));
+            ]);
         }
 
         // Failure handler
