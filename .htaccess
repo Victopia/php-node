@@ -1,29 +1,3 @@
-# Apache control on root
-#
-
-#
-# Assign HTTP headers to $_SERVER in PHP
-#
-# Quoted @ 29 Apr, 2015
-# Because they just appears in getallheaders().
-#
-# SetEnvIfNoCase ^If-Modified-Since$ "(.+)" HTTP_IF_MODIFIED_SINCE=$1
-# SetEnvIfNoCase ^If-None-Match$ "(.+)" HTTP_IF_NONE_MATCH=$1
-# SetEnvIfNoCase ^If-Match$ "(.+)" HTTP_IF_MATCH=$1
-# SetEnvIfNoCase ^If-Range$ "(.+)" HTTP_IF_RANGE=$1
-# SetEnvIfNoCase ^Cache-Control$ "(.+)" HTTP_CACHE_CONTROL=$1
-# SetEnvIfNoCase ^Connection$ "(.+)" HTTP_CONNECTION=$1
-# SetEnvIfNoCase ^Keep-Alive$ "(.+)" HTTP_KEEP_ALIVE=$1
-# SetEnvIfNoCase ^Authorization$ "(.+)" HTTP_AUTHORIZATION=$1
-
-#
-# Use ENV in notifying gateway to throw HTTP header at once.
-#
-# This is a workaround for the unpredictable behavior between
-# ErrorDocument and rewrite_module Directives.
-#
-#SetEnvIf Request_URI "^\/assets\/errordocs" HTTP_STATUS=404
-
 #
 # Redirects all access to gateway.php.
 #
@@ -32,11 +6,6 @@
   #
   # Rewrite starts
   RewriteEngine On
-
-  #
-  # Rewrite Debug
-  #RewriteCond %{QUERY_STRING} !rdebug
-  #RewriteRule (.*) _dump.php?rdebug&r=%{REQUEST_FILENAME} [R=301,QSA,L]
 
   RewriteBase /
 
@@ -47,12 +16,3 @@
   RewriteRule .* .private/gateway.php [L]
 
 </IfModule>
-
-#
-# Cheat sheet
-# RewriteRule will take the request uri without the preceding back-slash.
-# i.e. "http://www.example.com" in browser will be "" instead of a single "/".
-#
-# Not like RewriteRule, the %{REQUEST_URI} in RewriteCond will be the one
-# after directory indexing.
-# i.e. "http://www.example.com" in browser will be "/index.html" instead of "".
