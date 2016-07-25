@@ -32,7 +32,7 @@ CREATE TABLE `Logs` (
   `subject` char(255) NOT NULL,
   `action` char(78) NOT NULL,
   `@contents` longtext NOT NULL,
-  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `timestamp` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`id`),
   KEY `type` (`type`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='This table should not have update actions performed upon.';
@@ -63,7 +63,7 @@ CREATE TABLE `Nodes` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `@collection` varchar(255) NOT NULL,
   `@contents` longtext NOT NULL,
-  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `timestamp` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`id`),
   FULLTEXT KEY `content` (`@contents`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Data nodes';
@@ -84,7 +84,7 @@ CREATE TABLE `Processes` (
   `pid` int(11) DEFAULT NULL,
   `start_time` datetime NOT NULL COMMENT 'Scheduled Start Time',
   `@contents` longtext NOT NULL,
-  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `timestamp` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
@@ -100,7 +100,7 @@ CREATE TABLE `Sessions` (
   `username` varchar(255) NOT NULL,
   `token` varchar(40) DEFAULT NULL,
   `fingerprint` varchar(255) DEFAULT NULL,
-  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `timestamp` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`sid`)
 ) ENGINE=MEMORY DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
@@ -116,7 +116,7 @@ CREATE TABLE `Translations` (
   `key` varchar(255) NOT NULL DEFAULT 'default' COMMENT 'Version key of the same identifier',
   `value` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Translation content',
   `locale` varchar(255) NOT NULL COMMENT 'Locale of target translation',
-  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `timestamp` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`identifier`,`key`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
@@ -132,7 +132,7 @@ CREATE TABLE `User` (
   `username` char(255) NOT NULL,
   `password` char(119) NOT NULL,
   `@contents` longtext NOT NULL,
-  `timestamp` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `timestamp` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`uuid`),
   UNIQUE KEY `username` (`username`(191))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
