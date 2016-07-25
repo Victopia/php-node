@@ -11,29 +11,11 @@ class ContentEncoder {
    * @param {void*} $value Any arbitrary PHP value.
    * @return {string} JSON representation of specified PHP value.
    */
-  public static function json($value) {
+  public static function json($value, $options = JSON_NUMERIC_CHECK) {
     // note: binary strings will fuck up the encoding process, remove them.
-    $maskBinary = function(&$value) use(&$maskBinary) {
-      if ( $value instanceof \JsonSerializable ) {
-        $value = $value->jsonSerialize();
-      }
+    static::maskBinary($value);
 
-      if ( is_object($value) ) {
-        foreach ( get_object_vars($value) as $key => $_value ) {
-          $maskBinary($value->$key);
-        } unset($_value);
-      }
-      else if ( is_array($value) ) {
-        array_walk($value, $maskBinary);
-      }
-      else if ( is_string($value) && $value && !ctype_print($value) && json_encode($value) === false ) {
-        $value = '[binary string]';
-      }
-    };
-
-    $maskBinary($value);
-
-    return json_encode($value);
+    return json_encode($value, $options);
   }
 
   /**
@@ -81,6 +63,34 @@ class ContentEncoder {
    */
   public static function export($value) {
     return var_export($value, 1);
+  }
+
+  /**
+   * @protected
+   *
+   * Replaces binary data with arbitrary string to prevent json_encode() from
+   * dying silently.
+   *
+   * Cannot use anonymous functions because this creates memory leaks.
+   */
+  protected static function maskBinary(&$value) {
+    if ( $value instanceof \JsonSerializable ) {
+      $value = $value->jsonSerialize();
+    }
+
+    if ( is_object($value) ) {
+      foreach ( get_object_vars($value) as $key => $_value ) {
+        static::maskBinary($value->$key);
+      } unset($key, $_value);
+    }
+    else if ( is_array($value) ) {
+      foreach ($value as &$_value) {
+        static::maskBinary($_value);
+      }
+    }
+    else if ( is_string($value) && $value && !ctype_print($value) && json_encode($value) === false ) {
+      $value = '[binary string]';
+    }
   }
 
 }
