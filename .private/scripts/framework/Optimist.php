@@ -532,7 +532,7 @@ final class Optimist implements \ArrayAccess {
           $currentNode = &$currentNode[array_shift($nodePath)];
         }
 
-        $value = isset($matches[3]) ? $matches[3] : TRUE;
+        $value = isset($matches[2]) ? $matches[2] : TRUE;
 
         // Value exists
         if ( $currentNode ) {
