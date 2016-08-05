@@ -121,7 +121,7 @@ class ImageConverter {
   /**
    * Returns the binary image data, optionally with specified format.
    */
-  function getImage($mime = null, $quality = 85) {
+  function getImage($mime = null, $quality = 85, $target = null) {
     if ( !is_resource($this->image) ) {
       return null;
     }
@@ -130,28 +130,30 @@ class ImageConverter {
       $mime = $this->mime;
     }
 
-    ob_start();
+    if ( $target === null ) {
+      ob_start();
+    }
 
     switch ( $mime ) {
       case 'image/jpeg':
       case 'image/jpg':
-        imagejpeg($this->image, null, $quality);
+        $res = imagejpeg($this->image, $target, $quality);
         break;
 
       case 'image/gif':
-        imagegif($this->image);
+        $res = imagegif($this->image, $target);
         break;
 
       case 'image/png':
-        imagepng($this->image, null, $quality / 10, PNG_FILTER_PAETH);
+        $res = imagepng($this->image, $target, $quality / 10, PNG_FILTER_PAETH);
         break;
 
       case 'image/vnd.wap.wbmp':
-        imagewbmp($this->image);
+        $res = imagewbmp($this->image, $target);
         break;
 
       case 'image/bmp':
-        self::exportBMP($this->image);
+        $res = self::exportBMP($this->image, $target);
         break;
 
       case 'image/tif':
@@ -161,7 +163,12 @@ class ImageConverter {
         break;
     }
 
-    return ob_get_clean();
+    if ( $target === null ) {
+      return ob_get_clean();
+    }
+    else {
+      return $res;
+    }
   }
 
   /**
@@ -496,9 +503,11 @@ class ImageConverter {
       $writeSteam = 'php://output';
     }
 
-    $writeSteam = fopen($writeSteam, 'w');
+    if ( is_string($writeSteam) ) {
+      $writeSteam = fopen($writeSteam, 'w');
+    }
 
-    if ( !$writeSteam ) {
+    if ( !is_resource($writeSteam) ) {
       return false;
     }
 
