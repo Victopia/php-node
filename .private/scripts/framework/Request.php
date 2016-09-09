@@ -8,6 +8,7 @@ use Locale;
 use core\ContentDecoder;
 use core\Net;
 use core\Utility as util;
+use core\XMLConverter;
 
 use framework\exceptions\FrameworkException;
 
@@ -177,18 +178,44 @@ class Request {
 
         default:
           // Request parameters GET
-          $this->paramCache['get'] = $_GET;
+          // note; PHP replaces several characters into underscore,
+          //       parse the RAW query string if available. #stupidity #legacy
+          if ( isset($_SERVER['QUERY_STRING']) ) {
+            $this->paramCache['get'] = $this->parse($_SERVER['QUERY_STRING']);
+          }
+          else {
+            $this->paramCache['get'] = $_GET;
+          }
 
           // Request parameters POST
-          if ( preg_match('/^application\/json/', $this->header('Content-Type')) ) {
-            $this->paramCache['post'] = ContentDecoder::json(file_get_contents('php://input'), true);
+          $postString = @file_get_contents('php://input');
+          if ( $postString ) {
+            if ( preg_match('/^application\/json/', $this->header('Content-Type')) ) {
+              $this->paramCache['post'] = ContentDecoder::json($postString, true);
+            }
+            else if ( preg_match('/^text\/xml/', $this->header('Content-Type')) ) {
+              $this->paramCache['postXML'] = XMLConverter::fromXML($postString);
+              $this->paramCache['post'] = [];
+            }
+            else {
+              $this->paramCache['post'] = $this->parse($postString);
+            }
           }
           else {
             $this->paramCache['post'] = $_POST;
           }
+          unset($postString);
 
           // Cookies
-          $this->paramCache['cookies'] = &$_COOKIE;
+
+          // note; Cookie string is separated by "; " instead of "&", parse_str() doesn't work.
+          // if ( isset($_SERVER['HTTP_COOKIE']) ) {
+          //   $this->paramCache['cookies'] = $this->parse($_SERVER['HTTP_COOKIE']);
+          // }
+          // else {
+          //   $this->paramCache['cookies'] = $_COOKIE;
+          // }
+          $this->paramCache['cookies'] = $_COOKIE;
 
           // File uploads
           if ( $this->method() == 'put' ) {
@@ -295,7 +322,7 @@ class Request {
 
       default:
         $this->paramCache['request'] = array_merge(
-          (array) @$this->paramCache['cookies'],
+          // (array) @$this->paramCache['cookies'],
           (array) @$this->paramCache['get'],
           (array) @$this->paramCache['post']);
         break;
@@ -495,14 +522,14 @@ class Request {
    *
    * @return {string} Returns the current locale.
    */
-  public function locale($locale = null) {
-    $locale = $this->locale;
+  public function locale($value = null) {
+    $result = $this->locale;
 
-    if ( $locale !== null ) {
-      $this->locale = $locale;
+    if ( $value !== null ) {
+      $this->locale = $value;
     }
 
-    return $locale;
+    return $result;
   }
 
   //-------------------------------------
@@ -653,6 +680,33 @@ class Request {
   //----------------------------------------------------------------------------
 
   /**
+   * Decodes query string formats into variables.
+   *
+   * Because PHP replaces multiple special characters in the keys into underscore,
+   * we need this to preserve them. #legacy #stupidity
+   *
+   * @param {string} $query Query string format in GET, POST or COOKIE.
+   * @return {array} An array of parsed variables from the string.
+   */
+  protected function parse($query) {
+    parse_str(
+      implode(
+        '&',
+        array_map(function($pair) {
+          $pair = explode('=', urldecode($pair));
+          $pair[0] = preg_replace_callback('/^(.*?)(\[.*\])?$/', function($matches) {
+            return bin2hex($matches[1]) . @$matches[2];
+          }, $pair[0]);
+          return implode('=', $pair);
+        }, explode('&', $query))
+      ),
+      $query
+    );
+
+    return array_combine(array_map('hex2bin', array_keys($query)), $query);
+  }
+
+  /**
    * Fire this request object as a request.
    *
    * @param {?Resolver} $resolver If provided, this request will be resolved by
@@ -694,7 +748,7 @@ class Request {
                 $response->header($value);
               }
 
-              $response->send($responseText, (int) @$options['status']);
+              $response->send($responseText, (int) @$options['response']['status']);
             },
             'failure' => function($errNum, $errMsg, $options) {
               throw new FrameworkException($errMsg, $errNum);
