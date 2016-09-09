@@ -77,16 +77,11 @@ final class Database {
         throw new \PDOException('Options must be an instance of DatabaseOptions class.');
       }
 
-      $connectionString = self::$options->driver
-        . ':host=' . self::$options->host
-        . ';port=' . self::$options->port
-        . ';dbname=' . self::$options->schema;
-
       try {
-        self::$con = new \PDO($connectionString
+        self::$con = new \PDO(self::$options->toPdoDsn()
           , self::$options->username
           , self::$options->password
-          , self::$options->driverOptions
+          , self::$options->options
           );
       }
       catch(\PDOException $e) {

@@ -12,21 +12,11 @@ namespace core;
  */
 final class DatabaseOptions {
 
-  function __construct($driver = 'mysql',
-                       $host = 'localhost',
-                       $port = 3306,
-                       $schema = null,
-                       $username = null,
-                       $password = null,
-                       $driverOptions = array()) {
-    $this->driver = $driver;
-    $this->host = $host;
-    $this->port = $port;
-    $this->schema = $schema;
-    $this->username = $username;
-    $this->password = $password;
-    $this->driverOptions = $driverOptions;
-  }
+  //----------------------------------------------------------------------------
+  //
+  //  Properties
+  //
+  //----------------------------------------------------------------------------
 
   /**
    * PDO DSN prefix, such as "mysql", "oci" or "odbc". Do not add colon.
@@ -34,24 +24,14 @@ final class DatabaseOptions {
   public $driver;
 
   /**
-   * PDO Driver options.
+   * PDO driver attributes.
    */
-  public $driverOptions = array();
+  public $driverAttributes = array();
 
   /**
-   * Database connection hostname.
+   * PDO driver specific options.
    */
-  public $host;
-
-  /**
-   * Database connection port.
-   */
-  public $port;
-
-  /**
-   * The database name.
-   */
-  public $schema;
+  public $options = array();
 
   /**
    * Login username.
@@ -62,5 +42,38 @@ final class DatabaseOptions {
    * Login password.
    */
   public $password;
+
+  //----------------------------------------------------------------------------
+  //
+  //  Methods
+  //
+  //----------------------------------------------------------------------------
+
+  function __construct($driver = 'mysql',
+                       $driverAttributes = array(),
+                       $username = null,
+                       $password = null,
+                       $options = array()) {
+    $this->driver = $driver;
+    $this->driverAttributes = $driverAttributes;
+    $this->username = $username;
+    $this->password = $password;
+    $this->options = $options;
+  }
+
+  /**
+   * Construct a PDO compatible data source name (DSN)
+   *
+   * We don't restrict driver attributes because PDO documentation is just not stable enough.
+   */
+  function toPdoDsn() {
+    $attrs = array();
+
+    foreach ( array_filter($this->driverAttributes) as $key => $value ) {
+      $attrs[] = "$key=$value";
+    }
+
+    return $this->driver . ':' . implode(';', $attrs);
+  }
 
 }
