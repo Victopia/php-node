@@ -571,21 +571,28 @@ class Utility {
   }
 
   /**
-   * This function is very much like the date() function,
-   * except it also takes a string which originally needs
-   * an extra call to strtotime().
+   * This function is very much like the date() function with microsecond support
+   * and also takes a string which originally needs an extra call to strtotime().
    */
   public static /* string */
-  function formatDate($pattern, $date) {
-    if ( !is_numeric($date) && $date ) {
-      return call_user_func(array(__CLASS__, __FUNCTION__), $pattern, strtotime($date));
+  function formatDate($pattern, $date = 'now') {
+    // todo; microseconds should only appears on now or relative dates, which counts from now.
+
+    // note; ->modify() does not alter microseconds, thus we must know whether
+    //       $date is absolute or relative and calls that on __construct().
+
+    // note; Unable to implement such feature since date format supports string
+    //       mixed with both absolute and relative date. e.g. "+1 day 12:01:01", "+1 hour 01 Feb, 2001"
+
+    if ( $date == 'now' ) {
+      $date = \DateTime::createFromFormat('U.u', sprintf('%.f', microtime(1)), new \DateTimeZone('GMT'))
+        ->setTimezone(new \DateTimeZone(date_default_timezone_get()));
+    }
+    else {
+      $date = new \DateTime($date);
     }
 
-    if ( !$date || $date == -1 ) {
-      return false;
-    }
-
-    return date($pattern, $date);
+    return $date->format($pattern);
   }
 
   /* Added and Quoted by Vicary @ 17 Feb, 2013
