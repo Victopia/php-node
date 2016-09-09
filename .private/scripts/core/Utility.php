@@ -822,6 +822,10 @@ class Utility {
     }
 
     switch ( pathinfo($file, PATHINFO_EXTENSION) ) {
+      case 'appcache':
+      case 'mf':
+        $mime = 'text/cache-manifest';
+        break;
       case 'css':
         $mime = 'text/css; charset=utf-8';
         break;
