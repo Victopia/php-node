@@ -25,6 +25,10 @@ $opts = (new framework\Optimist)
       'alias' => 'c'
     , 'describe' => 'Indicates the process is invoked from cron job, only affects the log.'
     ))
+  ->options('cleanup',
+    [ 'alias' => 'x'
+    , 'describe' => 'Cleanup dead processes and deletes process history.'
+    ])
   ->argv;
 
 // Process cleanup
@@ -73,7 +77,7 @@ $opts = (new framework\Optimist)
       Log::debug(sprintf('Process cleanup, %d processes removed.', $affectedRows));
     }
 
-    die;
+    unset($affectedRows);
   }
 
 // Cron processes
@@ -81,25 +85,37 @@ $opts = (new framework\Optimist)
     Log::debug('Cron started process.');
 
     $scheduler = function($schedule) {
+      $schedule+=
+        [ 'type' => 'cron'
+        , 'spawn' => false
+        ];
+
       $nextTime = CronExpression::factory($schedule['schedule'])->getNextRunDate()->format('Y-m-d H:i:s');
 
       /*! Note
        *  The purpose of schedule_name alias is to use a less common name, and
        *  leave the "name" property open for in-process use.
        */
-      $schedules = Node::get(array(
-          Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
-        , 'start_time' => $nextTime
-        , 'command' => $schedule['command']
+
+      $schedules =
+        [ Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
         , 'schedule_name' => $schedule['name']
-        ));
+        // , 'pid' => '>0'
+        ];
+
+      // note; permanent won't die, no need to search by time.
+      if ( $schedule['type'] != 'permanent' ) {
+        $schedules['start_time'] = $nextTime;
+      }
+
+      $schedules = Node::getCount($schedules);
       if ( !$schedules ) {
         $schedule =
           [ 'command' => $schedule['command']
           , 'start_time' => $nextTime
           , 'schedule_name' => $schedule['name']
-          , '$type' => 'cron'
-          , '$spawn' => false
+          , '$type' => $schedule['type']
+          , '$spawn' => $schedule['spawn']
           ];
 
         Log::debug('Scheduling new process', $schedule);
@@ -233,7 +249,10 @@ $opts = (new framework\Optimist)
 
 // Check if $env specified in option
   if ( @$_SERVER['env'] ) {
-    $_SERVER['env'] = ContentDecoder::json($_SERVER['env'], 1);
+    $env = ContentDecoder::json($_SERVER['env'], 1);
+  }
+  else {
+    $env = null;
   }
 
 // More debug logs
@@ -247,7 +266,7 @@ $opts = (new framework\Optimist)
         array('pipe', 'r')
       , array('pipe', 'w')
       , array('pipe', 'e')
-      ), $pipes, null, @$_SERVER['env']);
+      ), $pipes, null, $env);
 
     if ( $proc ) {
       break;
