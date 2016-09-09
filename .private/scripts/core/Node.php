@@ -3,14 +3,14 @@
 
 namespace core;
 
+use PDO;
+
 use core\exceptions\CoreException;
 
 /**
  * Node entity access class.
- *
- * @errors Code range 300-399
  */
-class Node {
+class Node implements \Iterator, \ArrayAccess, \Countable {
 
   /**
    * The table name to use when no real table is found.
@@ -55,7 +55,7 @@ class Node {
   /**
    * Regex pattern to match date-time filter expressions.
    */
-  const PATTERN_DATETIME = '/^(<|<=|==|!=|>=|>)?\s*\'([0-9- :TZ\+]+)\'\s*$/';
+  const PATTERN_DATETIME = '/^(<|<=|==|!=|>=|>)?\s*\'([0-9- \.:TZ\+]+)\'\s*$/';
 
   /**
    * Regex pattern to match null type filter expressions.
@@ -67,11 +67,286 @@ class Node {
    */
   public static $fetchSize = 200;
 
-  //--------------------------------------------------
+  /**
+   * Underlying PDOStatement
+   */
+  protected $statement = null;
+
+  /**
+   * Current data offset
+   */
+  protected $offset = -1;
+
+  /**
+   * Current fetched data object
+   */
+  protected $data = null;
+
+  /**
+   * @constructor
+   *
+   * Node instances as an iteratrable, countable wrapper.
+   */
+  public function __construct($filter) {
+    $filter = static::composeQuery($filter);
+
+    if ( !$filter ) {
+      throw new CoreException('Invalid filter specified.');
+    }
+
+    if ( $filter['filter'] ) {
+      if ( is_string($filter['indexHints']) ) {
+        $filter['table'].= " $filter[indexHints]";
+      }
+      else if ( is_array($filter['indexHints']) && array_key_exists($filter['indexHints'], $filter['table']) ) {
+        $filter['table'] = "`$filter[table]` {$filter['indexHints']['$tableName']}";
+      }
+    }
+    else {
+      if ( is_array($filter['indexHints']) && array_key_exists($filter['table'], $filter['indexHints']) ) {
+        $filter['indexHints'] = $filter['indexHints'][$filter['table']];
+      }
+    }
+
+    // note; When all fields are not virtual, we can safely apply limits to query.
+    if ( !$filter['filter'] ) {
+      if ( $filter['limits'] ) {
+        $filter['query'].= ' LIMIT ' . implode(', ', $filter['limits']);
+      }
+    }
+
+    $query = "SELECT $filter[select] FROM $filter[table]$filter[query]";
+
+    unset($filter['select']);
+
+    if ( !$filter['limits'] ) {
+      $filter['limits'] = [ 0, PHP_INT_MAX ];
+    }
+
+    $filter['indexMap'] = [];
+
+    // note; virtual only affects context limit, it does not
+    $this->statement = Database::query($query, $filter['params'],
+      [ PDO::ATTR_CURSOR => PDO::CURSOR_SCROLL
+      ]);
+
+    unset($query);
+
+    // note; virtual fields will not use this for counting.
+    if ( $filter['filter'] ) {
+      unset($filter['indexHints'], $filter['query']);
+    }
+
+    $this->context = $filter;
+
+    $this->rewind();
+  }
+
+  //----------------------------------------------------------------------------
   //
-  //  Functions
+  //  Methods : Iterator
   //
-  //--------------------------------------------------
+  //----------------------------------------------------------------------------
+
+  public function current() {
+    return $this->data;
+  }
+
+  public function key() {
+    return $this->offset;
+  }
+
+  public function next() {
+    // note; stop fetching when offset exceed desired limit
+    $limits = @$this->context['limits'];
+    if ( $limits && $this->offset > $limits[0] + $limits[1] ) {
+      return;
+    }
+
+    $this->offset++;
+
+    // todo; fetch the next shit from PDOStatement and store the data.
+    if ( $this->statement ) {
+      $offset = &$this->context['indexMap'][$this->offset];
+
+      // // note;warning; Mysql does not support scrollable cursor.
+      // if ( $offset !== null ) {
+      //   $data = $this->statement->fetch(PDO::FETCH_ASSOC, PDO::FETCH_ORI_ABS, $offset);
+      //   $data = $this->decodesContent($data);
+      // }
+      // else {
+        $offset = $this->context['limits'][0];
+
+        if ( $this->context['filter'] ) {
+          while ( empty($data) ) {
+            $data = $this->statement->fetch(PDO::FETCH_ASSOC, PDO::FETCH_ORI_ABS, $offset);
+            if ( !$data ) {
+              unset($this->context['indexMap'][$this->offset]); // remove the exceed offset
+              break; // no more data
+            }
+
+            $data = $this->decodesContent($data);
+            if ( $data ) {
+              break; // data found
+            }
+
+            $offset++;
+          }
+
+          $this->context['limits'][0] = $offset;
+          if ( empty($data) ) {
+            $this->context['limits'][1] = $offset;
+          }
+          else {
+            $this->offset = $offset;
+          }
+        }
+        else {
+          $data = $this->statement->fetch(PDO::FETCH_ASSOC, PDO::FETCH_ORI_ABS, $offset);
+          if ( $data ) {
+            $data = $this->decodesContent($data);
+          }
+          else {
+            unset($this->context['indexMap'][$this->offset]); // remove the exceed offset
+          }
+        }
+      // }
+
+      $this->data = @$data ? $data : null;
+    }
+
+    return $this;
+  }
+
+  public function rewind() {
+    if ( $this->offset != 0 ) {
+      $this->offset = -1;
+      $this->data = null;
+
+      // note; fucking creates the PDOStatement again, no scrollable cursor.
+      $this->reload();
+      $this->next();
+    }
+
+    return $this;
+  }
+
+  public function valid() {
+    return $this->offset < 0 || $this->data;
+  }
+
+  //----------------------------------------------------------------------------
+  //
+  //  Methods : ArrayAccess
+  //
+  //----------------------------------------------------------------------------
+
+  public function offsetExists($offset) {
+    if ( !is_numeric($offset) ) {
+      return false;
+    }
+
+    $this->seek($offset);
+
+    return isset($this->context['indexMap'][$offset]);
+  }
+
+  public function offsetGet($offset) {
+    if ( $this->offsetExists($offset) ) {
+      return $this->data;
+    }
+  }
+
+  public function offsetSet($offset, $value) {
+    throw new CoreException('Node::offsetSet() is ambiguous thus not implemented.');
+  }
+
+  public function offsetUnset($offset) {
+    if ( $this->offsetExists($offset) ) {
+      Node::delete($this->data);
+
+      $this->context['indexMap'] = [];
+    }
+  }
+
+  //----------------------------------------------------------------------------
+  //
+  //  Methods : Countable
+  //
+  //----------------------------------------------------------------------------
+
+  public function count() {
+    $context = &$this->context;
+
+    if ( $context['filter'] ) {
+      $this->rewind();
+
+      while ($this->valid()) $this->next();
+
+      return count($context['indexMap']);
+    }
+    else {
+      $count = Database::fetchField(
+        "SELECT COUNT(*) FROM `$context[table]` $context[indexHints]$context[query]",
+        $context['params']);
+
+      // note; Since LIMIT in SQL does not restrict COUNT(*), we can only do this.
+      return (int) min($context['limits'][1], $count);
+    }
+  }
+
+  //----------------------------------------------------------------------------
+  //
+  //  Methods
+  //
+  //----------------------------------------------------------------------------
+
+  /**
+   * Refresh the underlying result set to retrieve new data changes.
+   *
+   * @return {Node} Chainable.
+   */
+  public function reload() {
+    $this->statement = Database::query(
+      $this->statement->queryString,
+      $this->context['params'],
+      [ PDO::ATTR_CURSOR => PDO::CURSOR_SCROLL ]
+    );
+
+    return $this;
+  }
+
+  /**
+   * Move the cursor to target offset, halts when end of result is reached.
+   */
+  protected function seek($offset) {
+    if ( $this->offset > $offset ) {
+      $this->rewind();
+    }
+
+    while ( $this->valid() && $this->offset < $offset ) {
+      $this->next();
+    }
+  }
+
+  /**
+   * Fetch the whole result and return as an array.
+   */
+  public function toArray() {
+    $result = [];
+
+    foreach ($this as $value) {
+      $result[] = $value;
+    }
+
+    return $result;
+  }
+
+  //----------------------------------------------------------------------------
+  //
+  //  Static Methods
+  //
+  //----------------------------------------------------------------------------
 
   /**
    * Retrieves all nodes with the specified name, as return as an array.
@@ -86,11 +361,8 @@ class Node {
    *                           fetched.
    *                        3. ID from the default collection, usually be 'Nodes'.
    *                        4. Special filters
-   *                          4.1 @fieldsRequired Excludes the row if is does not contains a filtering property.
-   *                          4.2 @limits Either $length, or [$offset, $length].
-   *                          4.3 @sorter Either [ $field1 => $isAscending, $field2 => $isAscending ], or a compare function.
-   * @param $fieldsRequired (bool) If true, rows must contain all fields
-   *                               specified in argument filter to survive.
+   *                          4.1 @limits Either $length, or [$offset, $length].
+   *                          4.2 @sorter Either [ $field1 => $isAscending, $field2 => $isAscending ], or a compare function.
    * @param $limits (mixed) Can be integer specifying the row count from
    *                       first row, or an array specifying the starting
    *                       row and row count.
@@ -100,19 +372,15 @@ class Node {
    *
    * @return Array of filtered data rows.
    */
-  static /* array */ function get($filter, $fieldsRequired = true, $limits = null, $sorter = null) {
+  static /* array */ function get($filter, $limits = null, $sorter = null) {
     if ( $limits !== null && (!$limits || !is_int($limits) && !is_array($limits)) ) {
-      return array();
+      return [];
     }
 
     // Defaults string to collections.
     if ( is_string($filter) ) {
-      $filter = array(
-        self::FIELD_COLLECTION => $filter
-      );
+      $filter = [ static::FIELD_COLLECTION => $filter ];
     }
-
-    $filter['@fieldsRequired'] = $fieldsRequired;
 
     if ( $limits !== null ) {
       $filter['@limits'] = $limits;
@@ -122,12 +390,7 @@ class Node {
       $filter['@sorter'] = $sorter;
     }
 
-    $result = array();
-    self::getAsync($filter, function($data) use(&$result) {
-      $result[] = $data;
-    });
-
-    return $result;
+    return new Node($filter);
   }
 
   /**
@@ -138,9 +401,7 @@ class Node {
   static function getOne($filter) {
     // Defaults string to collections.
     if ( is_string($filter) ) {
-      $filter = array(
-        self::FIELD_COLLECTION => $filter
-      );
+      $filter = [ static::FIELD_COLLECTION => $filter ];
     }
 
     // Force length to be 1
@@ -151,46 +412,11 @@ class Node {
       $filter['@limits'] = 1;
     }
 
-    $data = self::get($filter);
-    if ( $data ) {
-      $data = reset($data);
-    }
-
-    return $data;
+    return static::get($filter)->rewind()->current();
   }
 
   static function getCount($filter) {
-    if ( !self::ensureConnection() ) {
-      return false;
-    }
-
-    $context = self::composeQuery($filter);
-    if ( !$context ) {
-      return 0;
-    }
-
-    $count = 0;
-
-    if ( !$context['filter'] ) {
-      if ( $context['limits'] ) {
-        $context['query'].= ' LIMIT ' . implode(', ', $context['limits']);
-      }
-
-      if ( is_array($context['indexHints']) && array_key_exists($context['table'], $context['indexHints']) ) {
-        $context['indexHints'] = $context['indexHints'][$context['table']];
-      }
-
-      $count = (int) Database::fetchField(
-        "SELECT COUNT(*) FROM `$context[table]` $context[indexHints] $context[query]",
-        $context['params']);
-    }
-    else {
-      self::getAsync($filter, function() use(&$count) {
-        $count++;
-      });
-    }
-
-    return $count;
+    return count(new Node($filter));
   }
 
   /**
@@ -199,141 +425,19 @@ class Node {
    * @return An array of return values from every invokes to $dataCallback, works like array_map().
    */
   static function getAsync($filter, $dataCallback) {
-    if ( !self::ensureConnection() ) {
-      return false;
+    $result = [];
+    foreach (static::get($filter) as $value) {
+      $result = $dataCallback($value);
     }
-
-    $context = self::composeQuery($filter);
-    if ( !$context ) {
-      return false;
-    }
-
-    $result = array();
-
-    // Simple SQL statment when all filtering fields are real column.
-    if ( !$context['filter'] ) {
-      if ( $context['limits'] ) {
-        $context['query'].= ' LIMIT ' . implode(', ', $context['limits']);
-      }
-
-      if ( is_array($context['indexHints']) && array_key_exists($context['table'], $context['indexHints']) ) {
-        $context['indexHints'] = $context['indexHints'][$context['table']];
-      }
-
-      $res = "SELECT $context[select] FROM `$context[table]` $context[indexHints] $context[query]";
-
-      $res = Database::query($res, $context['params']);
-
-      $res->setFetchMode(\PDO::FETCH_ASSOC);
-
-      $decodesContent = function($row) use($context) {
-        if ( isset($row[self::FIELD_VIRTUAL]) ) {
-          $contents = (array) ContentDecoder::json($row[self::FIELD_VIRTUAL], true);
-
-          unset($row[self::FIELD_VIRTUAL]);
-
-          if ( is_array($contents) ) {
-            $row = $contents + $row;
-          }
-
-          unset($contents);
-        }
-
-        $row[self::FIELD_COLLECTION] = $context['table'];
-
-        return $row;
-      };
-
-      foreach ( $res as $row ) {
-        $result[] = $dataCallback($decodesContent($row));
-      }
-
-      unset($res, $row, $decodesContent);
-    }
-
-    // otherwise goes vritual route with at least one virtual field.
-    else {
-      // Fetch until the fetched size is less than expected fetch size.
-      if ( $context['limits'] === null ) {
-        $context['limits'] = array(0, PHP_INT_MAX);
-      }
-
-      $fetchOffset = 0; // Always starts with zero as we are calculating virtual fields.
-      $fetchLength = self::$fetchSize; // Node fetch size, or the target size if smaller.
-
-      // Row decoding function.
-      $decodesContent = function(&$row) use($context) {
-        if ( isset($row[self::FIELD_VIRTUAL]) ) {
-          $contents = (array) ContentDecoder::json($row[self::FIELD_VIRTUAL], true);
-
-          unset($row[self::FIELD_VIRTUAL]);
-
-          $row+= $contents;
-
-          unset($contents);
-        }
-
-        // Calculates if the row qualifies the $contentFilter or not.
-        foreach ( $context['filter'] as $field => $expr ) {
-          // Reuse $expr as it's own result here, do not confuse with the name.
-          $expr = self::filterWalker($expr, array(
-              'row' => $row,
-              'field' => $field,
-              'required' => $context['required']
-            ));
-
-          if ( !$expr ) {
-            return false;
-          }
-        }
-
-        return true;
-      };
-
-      if ( is_string($context['indexHints']) ) {
-        $context['table'].= " $context[indexHints]";
-      }
-      else if ( is_array($context['indexHints']) && array_key_exists($context['indexHints'], $context['table']) ) {
-        $context['table'] = "`$context[table]` {$context['indexHints']['$tableName']}";
-      }
-
-      while ( $res = Database::select($context['table'], $context['select'], "$context[query] LIMIT $fetchOffset, $fetchLength", $context['params']) ) {
-        $fetchOffset+= count($res);
-
-        while ( $row = array_shift($res) ) {
-          if ( $decodesContent($row) ) {
-            if ( $context['limits'][0] ) {
-              $context['limits'][0]--;
-            }
-            else {
-              if ( $context['table'] !== self::BASE_COLLECTION ) {
-                $row[self::FIELD_COLLECTION] = $context['table'];
-              }
-
-              $result[] = $dataCallback($row);
-
-              // Result size is less than specified size, it means end of data.
-              if ( !--$context['limits'][1] ) {
-                break;
-              }
-            }
-          }
-        }
-      } unset($fetchOffset, $fetchLength, $res);
-    }
-
     return $result;
   }
 
   private static function composeQuery($filter) {
     // Defaults string to collections.
     if ( is_string($filter) ) {
-      $filter = array(
-        self::FIELD_COLLECTION => $filter
-      );
+      $filter = [ static::FIELD_COLLECTION => $filter ];
     }
 
-    $fieldsRequired = (bool) @$filter['@fieldsRequired'];
     $limits = @$filter['@limits'];
     $sorter = @$filter['@sorter'];
 
@@ -341,46 +445,51 @@ class Node {
       return false;
     }
 
-    // Defaults numbers to ID
-    if ( is_numeric($filter) ) {
-      $filter = array(
-        'ID' => intval($filter)
-      );
+    if ( !is_array($filter) ) {
+      return false;
     }
 
-    $filter = (array) $filter;
+    $tableName = static::resolveCollection(@$filter[static::FIELD_COLLECTION]);
 
-    $tableName = self::resolveCollection(@$filter[self::FIELD_COLLECTION]);
-
-    if ( $tableName !== self::BASE_COLLECTION ) {
-      unset($filter[self::FIELD_COLLECTION]);
+    if ( $tableName !== static::BASE_COLLECTION ) {
+      unset($filter[static::FIELD_COLLECTION]);
     }
 
     /* If index hint is specified, append the clause to collection. */
-    if ( @$filter[self::FIELD_INDEX] ) {
-      $indexHints = $filter[self::FIELD_INDEX];
+    if ( @$filter[static::FIELD_INDEX] ) {
+      $indexHints = $filter[static::FIELD_INDEX];
     }
     else {
       $indexHints = null;
     }
 
     /* Removes the index hint field. */
-    unset($filter[self::FIELD_INDEX]);
+    unset($filter[static::FIELD_INDEX]);
 
-    $selectField = isset($filter[self::FIELD_SELECT]) ? $filter[self::FIELD_SELECT] : '*';
+    if ( isset($filter[static::FIELD_SELECT]) ) {
+      if ( is_array($filter[static::FIELD_SELECT]) ) {
+        $selectField = implode(', ', $filter[static::FIELD_SELECT]);
+      }
+      else {
+        $selectField = (string) $filter[static::FIELD_SELECT];
+      }
+    }
+    else {
+      $selectField = '*';
+    }
 
-    unset($filter[self::FIELD_SELECT]);
+    unset($filter[static::FIELD_SELECT]);
 
     $queryString = '';
 
-    $query = array();
-    $params = array();
+    $query = [];
+    $params = [];
 
     /* Merge $filter into SQL statements. */
     $columns = Database::getFields($tableName);
 
-    if ( isset($filter[self::FIELD_RAWQUERY]) ) {
-      $rawQuery = (array) $filter[self::FIELD_RAWQUERY];
+    if ( isset($filter[static::FIELD_RAWQUERY]) ) {
+      $rawQuery = (array) $filter[static::FIELD_RAWQUERY];
 
       array_walk($rawQuery,
         function($value, $key) use(&$query, &$params) {
@@ -401,23 +510,31 @@ class Node {
           }
         });
 
-      unset($filter[self::FIELD_RAWQUERY], $rawQuery);
+      unset($filter[static::FIELD_RAWQUERY], $rawQuery);
     }
 
     // Pick real columns for SQL merging
-    $columnsFilter = array_select($filter, $columns);
+    $columnsFilter = array_filter_keys(
+      $filter,
+      function($key) use($columns) {
+        return in_array($key, $columns) ||
+          array_reduce($columns, function($result, $column) use($key) {
+            return $result || strpos($key, "`$column`");
+          }, false);
+      }
+    );
 
     /* Merge $filter into SQL statement. */
       array_walk($columnsFilter, function(&$contents, $field) use(&$query, &$params, $tableName) {
         $contents = Utility::wrapAssoc($contents);
 
-        $subQuery = array();
+        $subQuery = [];
 
         // Explicitly groups equality into expression: IN (...[, ...])
-        $inValues = array();
+        $inValues = [];
 
         // Explicitly groups equality into expression: NOT IN (...[, ...])
-        $notInValues = array();
+        $notInValues = [];
 
         array_walk($contents, function($content) use(&$subQuery, &$params, &$inValues, &$notInValues) {
           // Error checking
@@ -425,17 +542,31 @@ class Node {
             throw new CoreException('Node does not support composite array types.', 301);
           }
 
+          // 1. Advanced expression, class should __toString() itself.
+          if ( $content instanceof NodeExpression ) {
+            $subQuery[] = "$content";
+            $params = array_merge($params, $content->params());
+          }
+
           // 1. Boolean comparison: true, false
-          if ( is_bool($content) ) {
-            $inValues[] = $content;
+          else if ( is_bool($content) ) {
+            $subQuery[] = 'IS ' . ($content ? 'TRUE' : 'FALSE');
           }
           else if ( preg_match(static::PATTERN_BOOL, trim($content), $matches) ) {
-            if ( $matches[1] == '==' ) {
-              $inValues[] = $matches[2] == 'true';
+            $content = 'IS ';
+
+            if ( $matches[1] != '==' ) {
+              $content.= 'NOT ';
+            }
+
+            if ( $matches[2] == 'true' ) {
+              $content.= 'TRUE';
             }
             else {
-              $notInValues = $matches[2] == 'true';
+              $content.= 'FALSE';
             }
+
+            $subQuery[] = $content;
           }
           else
 
@@ -473,23 +604,14 @@ class Node {
           }
           else
 
-          // 4. Regexp matching: "/^AB\d+/"
-          if ( @preg_match(trim($content), null) !== false )
-          {
-            $subQuery[] = "REGEXP ?";
-            $params[] = preg_replace('/\\\b(.*?)\\\b/', '[[:<:]]$1[[:>:]]',
-              trim(rtrim(trim($content), 'igxmysADSUXJ'), '/'));
-          }
-          else
-
-          // 5. null types
+          // 4. null types
           if ( is_null($content) || preg_match(static::PATTERN_NULL_TYPE, trim($content), $matches) ) {
             $content = 'IS ' . (@$matches[1][0] == '!' ? 'NOT ' : '') . 'null';
             $subQuery[] = "$content";
           }
           else
 
-          // 6. Plain string.
+          // 5. Plain string.
           if ( is_string($content) ) {
             // note: Unescaped *, % or _ characters
             if ( ctype_print($content) && preg_match('/[^\\][\\*%_]/', $content) ) {
@@ -537,8 +659,6 @@ class Node {
         }
       });
 
-      unset($columnsFilter);
-
       // Remove real columns from the filter
       remove($columns, $filter);
 
@@ -547,12 +667,22 @@ class Node {
 
     /* Merge $sorter into SQL statement. */
       if ( is_array($sorter) ) {
-        $columnsSorter = Utility::isAssoc($sorter) ?
-          array_select($sorter, $columns) :
-          array_intersect($sorter, $columns);
+        $columnsSorter = call_user_func(
+          Utility::isAssoc($sorter) ? 'array_filter_keys' : 'array_filter',
+          $sorter,
+          function($key) use($columns) {
+            return in_array($key, $columns) || array_reduce(
+              $columns,
+              function($result, $column) use($key) {
+                return $result || false !== strpos($key, "`$column`") || false !== strpos($key, '()');
+              },
+              false
+            );
+          }
+        );
 
         // We are free to reuse $query at this point.
-        $query = array();
+        $query = [];
 
         array_walk($columnsSorter, function($direction, $field) use(&$query, $tableName) {
             // Numeric key, swap if supplied array-value as field, defaulting to ascending order.
@@ -579,98 +709,118 @@ class Node {
 
     // Normalize $limits into the format of [offset, length].
     if ( is_int($limits) ) {
-      $limits = array(0, $limits);
+      $limits = [ 0, $limits ];
     }
     elseif ( is_array($limits) ) {
-      $limits = array_slice($limits, 0, 2) + array(0, 0);
+      $limits = array_slice($limits, 0, 2) + [ 0, 0 ];
     }
 
-    $filter = array_select($filter, array_filter(array_keys($filter), compose('not', startsWith('@'))));
+    // note; Everything not in $columnsFilter goes into $filter
+    $filter = array_filter_keys($filter, funcAnd(
+      notIn(array_keys($columnsFilter)),
+      compose('not', startsWith('@'))
+    ));
 
-    return array(
-        'filter' => $filter,
-        'select' => $selectField,
-        'indexHints' => $indexHints,
-        'table' => $tableName,
-        'query' => $queryString,
-        'limits' => $limits,
-        'params' => $params,
-        'required' => $fieldsRequired
-      );
+    return
+      [ 'filter' => $filter
+      , 'select' => $selectField
+      , 'indexHints' => $indexHints
+      , 'table' => $tableName
+      , 'query' => $queryString
+      , 'limits' => $limits
+      , 'params' => $params
+      ];
   }
 
-  private static function filterWalker($content, $data) {
-    $field = $data['field'];
-    $required = $data['required'];
+  protected function decodesContent($row) {
+    if ( isset($row[static::FIELD_VIRTUAL]) ) {
+      $contents = (array) ContentDecoder::json($row[static::FIELD_VIRTUAL], true);
 
-    // Just skip the field on optional matcher.
-    // Return TURE to include those fields, false to drop them.
-    if ( !$required && !isset($data['row'][$field]) ) {
-      return true;
+      unset($row[static::FIELD_VIRTUAL]);
+
+      if ( is_array($contents) ) {
+        $row = $contents + $row;
+      }
+
+      unset($contents);
     }
 
-    $value = &$data['row'][$field];
+    foreach ( (array) $this->context['filter'] as $field => $expr ) {
+      if ( !static::filterWalker($row, $field, $expr) ) {
+        return false;
+      }
+    }
 
-    if ( is_array($content) ) {
+    $row[static::FIELD_COLLECTION] = $this->context['table'];
+
+    return $row;
+  }
+
+  private static function filterWalker($data, $field, $expr) {
+    $value = @$data[$field];
+
+    if ( is_array($expr) ) {
       // OR operation here.
+      $result = true;
+      foreach ( $expr as $value ) {
+        if ( static::filterWalker($data, $field, $value) ) {
+          return true; // pop a true right away.
+        }
+      }
 
-      $content = array_map(function($content) use($data) {
-        return self::filterWalker($content, $data);
-      }, $content);
-
-      return in_array(true, $content, true);
+      return false;
     }
     else {
+      // Check field existance.
+      if ( $expr && !isset($data[$field]) ) {
+        return false;
+      }
+
       // Normalize numeric values into exact match.
-      if ( is_numeric($content) ) {
-        if ( $content != $value ) {
+      else if ( is_numeric($expr) ) {
+        if ( $expr != $value ) {
           return false;
         }
       }
 
-      // Required fields
-      else if ( $required && !isset($value) ) {
-        return false;
-      }
-
       // Boolean comparison: true, false
-      else if ( is_bool($content) ) {
-        if ( $content !== (bool) $value ) {
+      else if ( is_bool($expr) ) {
+        if ( $expr !== (bool) $value ) {
           return false;
         }
       }
 
       // null type: null
-      else if ( is_null($content) ) {
+      else if ( is_null($expr) ) {
         if ( !is_null($value) ) {
           return false;
         }
       }
 
       // Regexp matching: "/^AB\d+/"
-      else if ( @preg_match($content, null) !== false ) {
-        if ( preg_match($content, $value) == 0 ) {
+      else if ( $expr instanceof NodeRegularExpression ) {
+        if ( preg_match($expr->pattern(), $value) == 0 ) {
           return false;
         }
       }
 
       // Numeric or null type comparison: direct evals;
-      else if ( preg_match(static::PATTERN_NUMERIC, $content, $matches) || preg_match(static::PATTERN_NULL_TYPE, $content, $matches) ) {
-        if ( !eval("return \$value$content;") ) {
+      else if ( preg_match(static::PATTERN_NUMERIC, $expr, $matches) || preg_match(static::PATTERN_NULL_TYPE, $expr, $matches) ) {
+        if ( !eval("return \$value$expr;") ) {
           return false;
         }
       }
 
       // Datetime comparison: <'2010-07-31', >='1989-06-21' ... etc
-      else if ( preg_match(static::PATTERN_DATETIME, $content, $matches) ) {
+      else if ( preg_match(static::PATTERN_DATETIME, $expr, $matches) ) {
         if ( !eval("return strtotime(\$value)$matches[1]strtotime($matches[2]);") ) {
           return false;
         }
       }
 
       // Plain string
-      else if ( !$matches && is_string($content) && !preg_match('/^(<|<=|==|>=|>)/', $content) ) {
-        if ( $content !== $value ) {
+      else if ( !$matches && is_string($expr) && !preg_match('/^(<|<=|==|>=|>)/', $expr) ) {
+        if ( $expr !== $value ) {
           return false;
         }
       }
@@ -681,7 +831,7 @@ class Node {
 
   public static /* int */
   function nodeSorter($itemA, $itemB) {
-    $itemIndex = strcmp($itemA[self::FIELD_COLLECTION], $itemB[self::FIELD_COLLECTION]);
+    $itemIndex = strcmp($itemA[static::FIELD_COLLECTION], $itemB[static::FIELD_COLLECTION]);
 
     if ( $itemIndex === 0 ) {
       $itemIndex = 'ID';
@@ -733,30 +883,30 @@ class Node {
    */
   static /* Array */
   function set($contents = null, $extendExists = false) {
-    if ( !self::ensureConnection() ) {
+    if ( !static::ensureConnection() ) {
       return false;
     }
 
     if ( !$contents ) {
-      return array();
+      return [];
     }
 
     $contents = Utility::wrapAssoc($contents);
 
-    $result = array();
+    $result = [];
 
     foreach ( $contents as $row ) {
       if ( !is_array($row) || !$row ) {
         continue;
       }
 
-      if ( !trim(@$row[self::FIELD_COLLECTION]) ) {
-        throw new CoreException('Data object must specify a collection with property "'.self::FIELD_COLLECTION.'".', 302);
+      if ( !trim(@$row[static::FIELD_COLLECTION]) ) {
+        throw new CoreException('Data object must specify a collection with property "'.static::FIELD_COLLECTION.'".', 302);
 
         continue;
       }
 
-      $tableName = self::resolveCollection($row[self::FIELD_COLLECTION]);
+      $tableName = static::resolveCollection($row[static::FIELD_COLLECTION]);
 
       // Get physical columns of target collection,
       // merges into SQL for physical columns.
@@ -765,7 +915,7 @@ class Node {
       // This is used only when $extendExists is true,
       // contains primary keys and unique keys for retrieving
       // the exact existing object.
-      $keys = array_filter($res, propHas('Key', array('PRI', 'UNI')));
+      $keys = array_filter($res, propHas('Key', [ 'PRI', 'UNI' ]));
 
       // Normal columns for merging SQL statements.
       $cols = array_diff_key($res, $keys);
@@ -773,19 +923,19 @@ class Node {
       $keys = array_keys($keys);
       $cols = array_keys($cols);
 
-      // Composite a filter and call self::get() for the existing object.
+      // Composite a filter and call static::get() for the existing object.
       // Note that this process will break when one of the primary key
       // is not provided inside $content object, thus unable to search
       // the exact row.
       if ( $extendExists === true ) {
-        $res = array(
-          self::FIELD_COLLECTION => $tableName === self::BASE_COLLECTION ?
-            $row[self::FIELD_COLLECTION] : $tableName
-        );
+        $res =
+          [ static::FIELD_COLLECTION =>
+              $tableName === static::BASE_COLLECTION ? $row[static::FIELD_COLLECTION] : $tableName
+          ];
 
         $res+= array_select($row, $keys);
 
-        $res = node::get($res);
+        $res = static::get($res);
 
         if ( count($res) > 1 ) {
           throw new CoreException('More than one row is selected when extending '.
@@ -800,11 +950,11 @@ class Node {
       }
 
       // Real array to be passed down Database::upsert().
-      $data = array();
+      $data = [];
 
       foreach ( $row as $field => $fieldContents ) {
         // Physical columns exists, pass in.
-        if ( $field !== self::FIELD_VIRTUAL && in_array($field, array_merge($keys, $cols)) ) {
+        if ( $field !== static::FIELD_VIRTUAL && in_array($field, array_merge($keys, $cols)) ) {
           $data[$field] = $fieldContents;
 
           unset($row[$field]);
@@ -812,13 +962,13 @@ class Node {
       }
 
       // Do not pass in @collection as data row below, physical tables only.
-      if ( @$row[self::FIELD_COLLECTION] !== self::BASE_COLLECTION ) {
-        unset($row[self::FIELD_COLLECTION]);
+      if ( @$row[static::FIELD_COLLECTION] !== static::BASE_COLLECTION ) {
+        unset($row[static::FIELD_COLLECTION]);
       }
 
       // Encode the rest columns and put inside virtual field.
       // Skip the whole action when `@contents` columns doesn't exists.
-      if ( in_array(self::FIELD_VIRTUAL, $cols) ) {
+      if ( in_array(static::FIELD_VIRTUAL, $cols) ) {
         array_walk_recursive($row, function(&$value) {
           if ( is_resource($value) ) {
             $value = get_resource_type($value);
@@ -826,15 +976,15 @@ class Node {
         });
 
         // Silently swallow json encode errors.
-        $data[self::FIELD_VIRTUAL] = @ContentEncoder::json($row);
+        $data[static::FIELD_VIRTUAL] = @ContentEncoder::json($row, JSON_NUMERIC_CHECK);
 
         // Defaults to be an empty object.
-        if ( !$data[self::FIELD_VIRTUAL] || $data[self::FIELD_VIRTUAL] == '[]' ) {
-          $data[self::FIELD_VIRTUAL] = '{}';
+        if ( !$data[static::FIELD_VIRTUAL] || $data[static::FIELD_VIRTUAL] == '[]' ) {
+          $data[static::FIELD_VIRTUAL] = '{}';
         }
       }
 
-      $result[] = Database::upsert($tableName, $data);
+      $result[] = Database::upsert($tableName, $data, false);
     }
 
     if ( count($contents) == 1 ) {
@@ -849,19 +999,18 @@ class Node {
    *
    * @param $filter (mixed) Uses the same filtering mechanism as get(),
    *                        then delete all rows retrieved from within.
-   * @param $fieldsRequired (bool) Same as get().
    *
    * @return The total number of affected rows.
    */
   static /* int */
-  function delete($filter = null, $fieldsRequired = false, $limit = null) {
+  function delete($filter = null, $limit = null) {
     // Shortcut for TRUNCATE TABLE
     if ( is_string($filter) ) {
-      $tableName = self::resolveCollection($filter);
+      $tableName = static::resolveCollection($filter);
 
       // Delete all fields of specified collection name.
-      if ( $tableName == self::BASE_COLLECTION ) {
-        $res = Database::query('DELETE FROM `'.self::BASE_COLLECTION.'` WHERE `@collection` = ?', [$filter]);
+      if ( $tableName == static::BASE_COLLECTION ) {
+        $res = Database::query('DELETE FROM `'.static::BASE_COLLECTION.'` WHERE `@collection` = ?', [$filter]);
 
         return $res->rowCount();
       }
@@ -872,21 +1021,21 @@ class Node {
       unset($tableName);
     }
 
-    $res = self::get($filter, $fieldsRequired, $limit);
+    $res = static::get($filter, $limit);
 
     $affectedRows = 0;
 
     foreach ( $res as $key => $row ) {
-      $tableName = self::resolveCollection($row[self::FIELD_COLLECTION]);
+      $tableName = static::resolveCollection($row[static::FIELD_COLLECTION]);
 
-      $fields = Database::getFields($tableName, array('PRI', 'UNI'));
+      $fields = Database::getFields($tableName, [ 'PRI', 'UNI' ]);
 
-      $deleteKeys = array();
+      $deleteKeys = [];
 
       foreach ( $fields as &$field ) {
         if ( array_key_exists($field, $row) ) {
           if ( !is_array(@$deleteKeys[$field]) ) {
-            $deleteKeys[$field] = array();
+            $deleteKeys[$field] = [];
           }
 
           $deleteKeys[$field] = $row[$field];
@@ -901,18 +1050,22 @@ class Node {
 
   //-----------------------------------------------------------------------
   //
-  //  Private helper functions
+  //  Private helper methods
   //
   //-----------------------------------------------------------------------
 
   private static /* String */
   function resolveCollection($tableName) {
-    if ( !self::ensureConnection() ) {
+    if ( !is_string($tableName) ) {
+      throw new CoreException('Collection name must be string.');
+    }
+
+    if ( !static::ensureConnection() ) {
       return null;
     }
 
     if ( !Database::hasTable($tableName) ) {
-      return self::BASE_COLLECTION;
+      return static::BASE_COLLECTION;
     }
     else {
       return $tableName;
@@ -935,7 +1088,7 @@ class Node {
 
   //-----------------------------------------------------------------------
   //
-  //  Manipulations
+  //  DML
   //
   //-----------------------------------------------------------------------
 
@@ -967,7 +1120,7 @@ class Node {
 
     $fields = Database::getFields($collection);
 
-    if ( !in_array(self::FIELD_VIRTUAL, $fields) ) {
+    if ( !in_array(static::FIELD_VIRTUAL, $fields) ) {
       throw new CoreException( 'Specified table `'
                              . $collection
                              . '` does not support virtual fields, no action is taken.',
@@ -989,9 +1142,9 @@ class Node {
       return false;
     }
 
-    $fields = Database::getFields($collection, array('PRI'));
+    $fields = Database::getFields($collection, [ 'PRI' ]);
 
-    array_push($fields, self::FIELD_VIRTUAL, $fieldName);
+    array_push($fields, static::FIELD_VIRTUAL, $fieldName);
 
     $fields = Database::escapeField($fields);
 
@@ -1003,16 +1156,16 @@ class Node {
     $res->setFetchMode(\PDO::FETCH_ASSOC);
 
     foreach ( $res as $row ) {
-      $contents = ContentDecoder::json($row[self::FIELD_VIRTUAL], true);
+      $contents = (array) ContentDecoder::json($row[static::FIELD_VIRTUAL], true);
 
       $row[$fieldName] = $contents[$fieldName];
 
       unset($contents[$fieldName]);
 
-      $row[self::FIELD_VIRTUAL] = @ContentEncoder::json($contents);
-      $row[self::FIELD_COLLECTION] = $collection;
+      $row[static::FIELD_VIRTUAL] = @ContentEncoder::json($contents, JSON_NUMERIC_CHECK);
+      $row[static::FIELD_COLLECTION] = $collection;
 
-      if ( self::set($row) === false ) {
+      if ( static::set($row) === false ) {
         $migrated = false;
       }
     }
