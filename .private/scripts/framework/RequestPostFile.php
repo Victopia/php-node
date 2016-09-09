@@ -50,6 +50,13 @@ class RequestPostFile extends \SplFileObject {
   }
 
   /**
+   * Overrides the function to work with filename instead of tmp_name.
+   */
+  public function getExtension() {
+    return pathinfo($this->filename, PATHINFO_EXTENSION);
+  }
+
+  /**
    * Returns the fileinfo expression of current file.
    *
    * @param {int} $type One of the FILEINFO_* constants.
