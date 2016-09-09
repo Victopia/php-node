@@ -54,7 +54,7 @@ class Session {
   const ERR_TOKEN_INVALID = 4;
 
   // Session expire time relative to current time.
-  const EXPIRE_TIME = '-30 min';
+  const EXPIRE_TIME = '+30 min';
 
   // Sessions this old will be deleted.
   const DELETE_TIME = '-1 week';
@@ -110,27 +110,56 @@ class Session {
     // Search by username
     $user = (new User)->load($username);
     if ( !$user->identity() ) {
-      return static::ERR_MISMATCH;
+      throw new exceptions\FrameworkException('Username and password mismatch.', static::ERR_MISMATCH);
     }
 
     // Password crypt matching
     if ( crypt($password, $user->password) !== $user->password ) {
-      return static::ERR_MISMATCH;
+      throw new exceptions\FrameworkException('Username and password mismatch.', static::ERR_MISMATCH);
     }
 
     // Can login, generate sid and stores to PHP session.
-    $session = array(
-        Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION,
-        'sid' => Database::fetchField("SELECT UNHEX(REPLACE(UUID(), '-', ''))"),
-        'username' => $user->username,
-      );
+    $session =
+      [ Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION
+      , 'username' => $user->username
+      ];
 
     if ( trim($fingerprint) ) {
       $session['fingerprint'] = trim($fingerprint);
     }
 
+    $res = Node::getOne($session);
+
+    if ( !$fingerprint && $res ) {
+      $res = util::unpackUuid($res['sid']);
+      throw new exceptions\FrameworkException('Session already exists.', static::ERR_EXISTS, null,
+        [ 'sid' => $res ]);
+
+      return $res;
+    }
+    else {
+      if ( isset($res['sid'] ) ) {
+        $session['sid'] = $res['sid'];
+
+        $session['timestamp'] = util::formatDate('Y-m-d H:i:s.u');
+      }
+      else {
+        do {
+          $session['sid'] = Database::fetchField("SELECT UNHEX(REPLACE(UUID(), '-', ''))");
+        }
+        while ( Node::getCount($session) );
+      }
+    }
+
     // Store session into database
-    Node::set($session);
+    $res = Node::set($session);
+
+    if ( is_int($res) ) {
+      $session = Node::getOne(
+        [ Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION
+        , 'sid' => $session['sid']
+        ]);
+    }
 
     // Reference to current session
     static::$currentSession = $session;
@@ -138,7 +167,11 @@ class Session {
     // Log the sign in action.
     Log::debug('Session validated', $session);
 
-    return util::unpackUuid($session['sid']);
+    return
+      [ 'sid' => util::unpackUuid($session['sid'])
+      , 'username' => $session['username']
+      , 'expires' => util::formatDate('Y-m-d H:i:s.u', $session['timestamp'] . static::EXPIRE_TIME)
+      ];
   }
 
   /**
@@ -156,12 +189,16 @@ class Session {
         'sid' => $sid
       ));
 
-    Database::query('DELETE FROM `'.FRAMEWORK_COLLECTION_SESSION.'` WHERE `sid` = ?', array($sid));
+    $res = Database::query('DELETE FROM `'.FRAMEWORK_COLLECTION_SESSION.'` WHERE `sid` = ?', array($sid));
 
-    Log::info(sprintf('Session invalidated', $session));
+    if ( $res->rowCount() ) {
+      Log::info(sprintf('Session invalidated', $session));
 
-    /* Clear reference */
-    static::$currentSession = null;
+      /* Clear reference */
+      static::$currentSession = null;
+    }
+
+    return (bool) $res->rowCount();
   }
 
   /**
@@ -178,37 +215,46 @@ class Session {
    */
   static function ensure($sid, $token = null, $fingerprint = null) {
     if ( !$sid ) {
-      return static::ERR_INVALID;
+      throw new exceptions\FrameworkException('Invalid session identifier.', static::ERR_INVALID);
+      return false;
     }
 
-    $res = Node::getOne(array(
+    $session = Node::getOne(array(
         Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION,
         'sid' => util::packUuid($sid),
         'fingerprint' => $fingerprint
       ));
 
-    if ( !$res ) {
-      return static::ERR_INVALID;
+    if ( !$session ) {
+      throw new exceptions\FrameworkException('Invalid session identifier.', static::ERR_INVALID);
+      return false;
     }
 
     // One-time token mismatch
-    if ( ($token || $res['token']) && util::packUuid($token) != $res['token'] ) {
+    if ( ($token || $session['token']) && util::packUuid($token) != $session['token'] ) {
+      throw new exceptions\FrameworkException('Invalid one-time token.', static::ERR_INVALID);
       return false;
     }
 
     // Session expired
-    if ( strtotime($res['timestamp']) < strtotime(static::EXPIRE_TIME) ) {
-      return static::ERR_EXPIRED;
+    if ( strtotime($session['timestamp'] . static::EXPIRE_TIME) < time() ) {
+      throw new exceptions\FrameworkException('Session expired, please login again.', static::ERR_EXPIRED);
+      return false;
     }
 
-    unset($res['timestamp'], $res['token']);
+    $session['token'] = null;
+    $session['timestamp'] = util::formatDate('Y-m-d H:i:s.u');
 
     // Update timestamp
-    Node::set($res);
+    Node::set($session);
 
-    static::$currentSession = $res;
+    static::$currentSession = $session;
 
-    return true;
+    return
+      [ 'sid' => util::unpackUuid($session['sid'])
+      , 'username' => $session['username']
+      , 'expires' => util::formatDate('Y-m-d H:i:s.u', $session['timestamp'] . static::EXPIRE_TIME)
+      ];;
   }
 
   /**
@@ -228,14 +274,20 @@ class Session {
     $res = &static::$currentSession;
 
     $res['token'] = Database::fetchField("SELECT UNHEX(REPLACE(UUID(),'-',''));");
-
-    unset($res['timestamp']);
+    $res['timestamp'] = util::formatDate('Y-m-d H:i:s.u');
 
     if ( Node::set($res) === false ) {
       return null;
     }
 
     return util::unpackUuid($res['token']);
+  }
+
+  /**
+   * Returns user object associated with current session.
+   */
+  static function getUser() {
+    return (new User)->load(static::current('username'));
   }
 
 }
