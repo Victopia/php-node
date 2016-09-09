@@ -116,6 +116,10 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
       $path = './';
     }
 
+    if ( strpos($path, '/') === 0 ) {
+      $path = ".$path";
+    }
+
     //------------------------------
     //  Emulate DirectoryIndex
     //------------------------------
