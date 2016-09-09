@@ -242,7 +242,7 @@ class Response {
     if ( $key === null ) {
       return $this->headers;
     }
-    else if ( !$value ) {
+    else if ( $value === null ) {
       if ( preg_match('/^([\w-_]+)\s*:\s*(.+)$/', trim($key), $matches) ) {
         $key = $matches[1];
         $value = $matches[2];
@@ -368,7 +368,7 @@ class Response {
       http_response_code($this->status());
     }
     else {
-      $statusMessage = $this->getStatusMessage($this->status());
+      $statusMessage = static::getStatusMessage($this->status());
       if ( $statusMessage ) {
         // FastCGI and CGI expects "Status:" instead of "HTTP/1.0" for status code.
         $statusMessage =
@@ -522,7 +522,7 @@ class Response {
    * Retrieves HTTP status message depends on the given code, also removes message
    * body on statuses that do not allows it.
    */
-  protected function getStatusMessage($statusCode) {
+  public static function getStatusMessage($statusCode) {
     switch ( $statusCode ) {
       // 1xx
       case 100: return 'Continue';
