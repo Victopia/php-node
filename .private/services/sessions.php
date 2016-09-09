@@ -15,59 +15,70 @@ use framework\exceptions\ServiceException;
  */
 class sessions extends \framework\WebService {
 
-	function validate($username, $password) {
-		$session = Node::getOne(array(
-				Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION,
-				'username' => Database::escapeValue($username)
-			));
+  function validate($username, $password = null) {
+    if ( !$password ) {
+      $password = $this->request()->post('password');
+    }
 
-		$res = Session::validate($username, $password, $this->request()->fingerprint());
-		if ( is_int($res) ) {
-			switch ( $res ) {
-				case Session::ERR_MISMATCH:
-					throw new ServiceException('Username and password mismatch.', $res);
-					break;
+    if ( !$password ) {
+      throw new ServiceException('No password provided.');
+    }
 
-				case Session::ERR_EXISTS:
-					throw new ServiceException('Session already exists.', $res);
-					break;
-			}
-		}
+    return $res = Session::validate($username, $password, $this->request()->fingerprint());
+    if ( is_int($res) ) {
+      switch ( $res ) {
+        case Session::ERR_MISMATCH:
+          throw new ServiceException('Username and password mismatch.', $res);
+          break;
 
-		return $res;
-	}
+        case Session::ERR_EXISTS:
+          throw new ServiceException('Session already exists.', $res);
+          break;
+      }
+    }
 
-	function ensure($sid, $token = null) {
-		$res = Session::ensure($sid, $token, $this->request()->fingerprint());
-		if ( is_int($res) ) {
-			switch ( $res ) {
-				case Session::ERR_INVALID:
-					throw new ServiceException('Specified session ID is not valid.', $res);
-					break;
+    return $res;
+  }
 
-				case Session::ERR_EXPIRED:
-					throw new ServiceException('Session has expired, restore it before making other calls.', $res);
-					break;
-			}
-		}
+  function ensure($sid = null, $token = null) {
+    if ( $sid === null ) {
+      $sid = $this->request()->meta('sid');
+    }
 
-		return $res;
-	}
+    $res = Session::ensure($sid, $token, $this->request()->fingerprint());
+    if ( is_int($res) ) {
+      switch ( $res ) {
+        case Session::ERR_INVALID:
+          throw new ServiceException('Specified session ID is not valid.', $res);
+          break;
 
-	function current() {
-		return Session::current();
-	}
+        case Session::ERR_EXPIRED:
+          throw new ServiceException('Session has expired, restore it before making other calls.', $res);
+          break;
+      }
+    }
 
-	function token() {
-		return Session::generateToken();
-	}
+    return $res;
+  }
 
-	function invalidate($sid = null) {
-		if ( $sid === null ) {
-			$sid = $this->request()->meta('sid');
-		}
+  function current() {
+    return Session::current();
+  }
 
-		return Session::invalidate($sid);
-	}
+  function token() {
+    return Session::generateToken();
+  }
+
+  function invalidate($sid = null) {
+    if ( $sid === null ) {
+      $sid = $this->request()->meta('sid');
+    }
+
+    return Session::invalidate($sid);
+  }
+
+  function user() {
+    return $this->request()->user;
+  }
 
 }
