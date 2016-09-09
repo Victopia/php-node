@@ -3,6 +3,8 @@
 
 namespace resolvers;
 
+use core\Node;
+
 use models\User;
 
 use framework\Request;
@@ -37,19 +39,22 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
     switch ( $req->client('type') ) {
       case 'cli':
         // Retrieve user context from process data, then CLI argument.
-        $userId = (int) Process::get('type');
-        if ( !$userId ) {
+        $userId = Process::get('type');
+        if ( $userId ) {
+          $req->user->load($userId);
+        }
+
+        if ( !$req->user->identity() ) {
           $req->cli()->options('u', array(
               'alias' => 'user'
-            , 'type' => 'integer'
+            , 'type' => 'string'
             , 'describe' => 'Idenitfier of target context user.'
             ));
 
-          $userId = (int) $req->meta('user');
-        }
-
-        if ( $userId ) {
-          $req->user->load($userId);
+          $userId = $req->meta('user');
+          if ( $userId ) {
+            $req->user->load($userId);
+          }
         }
 
         unset($userId);
@@ -79,12 +84,23 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
           }
         }
         // When no user is set, add a default user
-        else if ( $this->setupSession && !@\core\Node::get('User') ) {
-          $req->user->data(
-            [ 'id' => 0
-            , 'groups' => ['Administrators']
-            , 'username' => '__default'
-            ]);
+        else if ( $this->setupSession ) {
+          try {
+            $count = Node::getCount('User');
+          }
+          catch (\Exception $ex) {
+            $count = 0;
+          }
+
+          if ( $count ) {
+            $req->user->data(
+              [ 'id' => 0
+              , 'groups' => ['Administrators']
+              , 'username' => '__default'
+              ]);
+          }
+
+          unset($count);
         }
         break;
     }

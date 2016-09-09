@@ -13,7 +13,7 @@ use authenticators\IsInternal;
 
 use framework\exceptions\ResolverException;
 
-class User extends abstraction\JsonSchemaModel {
+class User extends abstraction\UuidModel {
 
   /**
    * Identifier for User-Role (1:*) relation.
@@ -29,21 +29,6 @@ class User extends abstraction\JsonSchemaModel {
    * Prepended to hash for crypt() method to understand which algorithm to use.
    */
   protected $__hashPrefix = '$6$rounds=10000$'; // CRYPT_SHA512
-
-  /**
-   * @constructor
-   */
-  public function __construct($data = null) {
-    // note; read schema from this file.
-    static $schema;
-    if ( !$schema ) {
-      $schema = ContentDecoder::json(file_get_contents(__FILE__, false, null, __COMPILER_HALT_OFFSET__), 0);
-    }
-
-    $this->schema = $schema;
-
-    parent::__construct($data);
-  }
 
   //----------------------------------------------------------------------------
   //
@@ -66,10 +51,43 @@ class User extends abstraction\JsonSchemaModel {
     return crypt($password, $hash);
   }
 
-  /**
-   * Cascading name display from user data.
-   */
-  public function name() {
+  //----------------------------------------------------------------------------
+  //
+  //  Methods
+  //
+  //----------------------------------------------------------------------------
+
+  public function __create() {
+    return $this;
+  }
+
+  //----------------------------------------------------------------------------
+  //
+  //  Methods: AbstractModel
+  //
+  //----------------------------------------------------------------------------
+
+  function load($identity = null) {
+    if ( $identity == '~' ) {
+      return $this->data( $this->__request->user->data() );
+    }
+    // note; email address as username
+    else if ( $identity && strpos($identity, '@') !== false ) {
+      $identity = [ 'username' => $identity ];
+    }
+
+    return parent::load($identity);
+  }
+
+  function populate() {
+    if ( !$this->__isSuperUser ) {
+      unset($this->password);
+    }
+
+    // Load groups
+    $this->groups = $this->parents(static::GROUP_RELATION);
+
+    // Cascade name display for user object.
     $names = array_filter(array(
         $this->first_name,
         $this->last_name
@@ -79,82 +97,14 @@ class User extends abstraction\JsonSchemaModel {
       $names[] = $this->username;
     }
 
-    return implode(' ', $names);
+    $this->name = implode(' ', $names);
+
+    return parent::populate();
   }
 
-  //----------------------------------------------------------------------------
-  //
-  //  Properties : AbstractModel
-  //
-  //----------------------------------------------------------------------------
+  function validate() {
+    $errors = parent::validate();
 
-  protected $_primaryKey = 'uuid';
-
-  public function identity($value = null) {
-    if ( $value === null ) {
-      return util::unpackUuid(parent::identity());
-    }
-    else {
-      return parent::identity(util::packUuid($value));
-    }
-  }
-
-  //----------------------------------------------------------------------------
-  //
-  //  Methods: AbstractModel
-  //
-  //----------------------------------------------------------------------------
-
-  function load($identity) {
-    if ( $identity == '~' ) {
-      return $this->data( $this->__request->user->data() );
-    }
-    else {
-      // note; email address as username
-      if ( strpos($identity, '@') !== false ) {
-        $identity = array( 'username' => $identity );
-      }
-      else {
-        $identity = util::packUuid($identity);
-      }
-
-      return parent::load($identity);
-    }
-  }
-
-  function find(array $filter = array()) {
-    $identity = &$filter[$this->primaryKey()];
-    if ( $identity ) {
-      if ( is_array($identity) ) {
-        $identity = array_map('core\Utility::packUuid', $identity);
-      }
-      else {
-        $identity = util::packUuid($identity);
-      }
-    }
-    else {
-      unset($filter[$this->primaryKey()]);
-    }
-    unset($identity);
-
-    return parent::find($filter);
-  }
-
-  function afterLoad() {
-    if ( !$this->__isSuperUser ) {
-      unset($this->password);
-    }
-
-    // unpack uuid
-    $this->uuid = util::unpackUuid($this->uuid);
-
-    // Load groups
-    $this->groups = $this->parents(static::GROUP_RELATION);
-
-    return parent::afterLoad();
-  }
-
-  function validate(array &$errors = array()) {
     if ( $this->isCreate() ) {
       if ( (new User)->load($this->username)->identity() ) {
         $errors[100] = 'This email has already been registerd.';
@@ -163,6 +113,8 @@ class User extends abstraction\JsonSchemaModel {
     else if ( !$this->__isSuperUser && @$this->__request->user->id != $this->id ) {
       throw new ResolverException(401, 'You are not allowed to edit this user.');
     }
+
+    return $errors;
   }
 
   /**
@@ -180,26 +132,9 @@ class User extends abstraction\JsonSchemaModel {
       $this->__groups = $this->groups; unset($this->groups);
     }
 
-    // note; assign UUID upon creation
-    if ( $this->isCreate() ) {
-      // note; loop until we find a unique uuid
-      do {
-        $this->identity(Database::fetchField("SELECT UNHEX(REPLACE(UUID(), '-', ''))"));
-      }
-      while (
-        $this->find(array(
-            $this->primaryKey() => $this->identity()
-          ))
-        );
-    }
+    $this->timestamp = util::formatDate('Y-m-d H:i:s.u');
 
     parent::beforeSave($errors);
-
-    if ( !$errors ) {
-      if ( isset($this->uuid) ) {
-        $this->uuid = util::packUuid($this->uuid);
-      }
-    }
 
     return $this;
   }
@@ -226,19 +161,6 @@ class User extends abstraction\JsonSchemaModel {
   }
 
   /**
-   * @protected
-   *
-   * Pack UUID for delete filters.
-   */
-  function beforeDelete(array &$filter = array()) {
-    if ( isset($filter[$this->primaryKey()]) ) {
-      $filter[$this->primaryKey()] = util::packUuid($filter[$this->primaryKey()]);
-    }
-
-    return $this;
-  }
-
-  /**
    * Remove all sessions upon delete.
    */
   function afterDelete() {
@@ -252,80 +174,4 @@ class User extends abstraction\JsonSchemaModel {
     return parent::afterDelete();
   }
 
-}
-
-__halt_compiler();
-
-{
-  "data": {
-    "$schema": "http://json-schema.org/draft-04/schema#",
-    "id": "/serivce/_/Users/schema",
-    "type": "object",
-    "title": "User",
-    "description": "Users for the prefw system.",
-    "properties": {
-      "uuid": {
-        "type": "string",
-        "minLength": 32,
-        "maxLength": 32,
-        "pattern": "^[a-fA-F0-9]{32}$",
-        "description": "User instance identity key."
-      },
-      "username": {
-        "description": "Unique identifier for the user acconut",
-        "type": "string",
-        "format": "email",
-        "pattern": "^\\S+@\\S+$",
-        "minLength": 4,
-        "maxLength": 254,
-        "uniqueItems": true
-      },
-      "password": {
-        "description": "Password is encrypted after save.",
-        "type": "string",
-        "minLength": 8,
-        "maxLength": 255
-      },
-      "first_name": {
-        "description": "First name of the user",
-        "type": "string"
-      },
-      "middle_names": {
-        "description": "Middle names of the user, multiple middle names supported",
-        "type": "array",
-        "minItems": 1,
-        "items": {
-          "type": "string"
-        }
-      },
-      "last_name": {
-        "description": "Last name of the user",
-        "type": "string"
-      },
-      "birthday": {
-        "description": "Date, or possibly time, of the birth of the user.",
-        "type": "string",
-        "format": "date-time"
-      },
-      "groups": {
-        "type": "array",
-        "description": "Groups this user is assigned.",
-        "items": {
-          "type": "string",
-          "minLength": 2,
-          "maxLength": 255
-        },
-        "uniqueItems": true
-      }
-    },
-    "required": ["username", "password"]
-  },
-  "form": [
-    {
-      "key": "username",
-      "description": "Email address to uniquely identifies the user."
-    },
-    "password",
-    "groups"
-  ]
 }
