@@ -11,7 +11,7 @@ use core\EventEmitter;
 use core\Node;
 use core\Utility as util;
 
-use framework\exceptions\ValidatdionException;
+use framework\exceptions\ValidationException;
 
 /**
  * Base class for all data models.
@@ -35,6 +35,10 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * @param {?array} $data Designated data to be set into this model object.
    */
   function __construct($data = null) {
+    if ( $data instanceof self ) {
+      $data = $data->data();
+    }
+
     $this->data($data);
   }
 
@@ -130,8 +134,11 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * @return {AbstractModel} Chainable
    */
   function appendData($data) {
-    $this->data((array) $this->data + (array) $data);
-    return $this;
+    if ( $data instanceof self ) {
+      $data = $data->data;
+    }
+
+    return $this->data((array) $this->data + (array) $data);
   }
 
   /**
@@ -142,8 +149,11 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * @return {AbstractModel} Chainable
    */
   function prependData($data) {
-    $this->data((array) $data + (array) $this->data);
-    return $this;
+    if ( $data instanceof self ) {
+      $data = $data->data;
+    }
+
+    return $this->data((array) $data + (array) $this->data);
   }
 
   /**
@@ -313,7 +323,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * @return {array} Array of errors.
    */
   function validate() {
-    return array();
+    return [];
   }
 
   /**
@@ -321,37 +331,29 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    */
   function find(array $filter = array()) {
     if ( $filter && !util::isAssoc($filter) ) {
-      $filter = array(
-          $this->_primaryKey => $filter
-        );
+      $filter = [ $this->_primaryKey => $filter ];
     }
 
     $filter[Node::FIELD_COLLECTION] = self::collectionName();
 
-    $collection = array();
-    Node::getAsync($filter, function($data) use(&$collection) {
-      // create a new instance for retrieved data
-      $model = get_called_class();
-      $model = new $model($data);
+    $collection = new ModelCollection(get_called_class(), $filter);
 
-      if ( isset($this->__request) ) {
-        $model->__request = $this->__request;
-      }
+    if ( isset($this->__request) ) {
+      $collection->__request = $this->__request;
+    }
 
-      if ( isset($this->__response) ) {
-        $model->__response = $this->__response;
-      }
-
-      // force invoke internal function
-      util::forceInvoke(array($model, 'afterLoad'));
-
-      // add if model still has data
-      if ( (array) $model->data() ) {
-        $collection[] = $model;
-      }
-    });
+    if ( isset($this->__request) ) {
+      $collection->__response = $this->__response;
+    }
 
     return $collection;
+  }
+
+  /**
+   * Static shorthand of find.
+   */
+  static function search(array $filter = array()) {
+    return (new static)->find($filter);
   }
 
   /**
@@ -373,9 +375,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       $identity = Database::escapeValue($identity);
     }
 
-    $filter = array(
-        Node::FIELD_COLLECTION => self::collectionName()
-      );
+    $filter = [ Node::FIELD_COLLECTION => self::collectionName() ];
 
     if ( is_scalar($identity) ) {
       $filter[$this->_primaryKey] = $identity;
@@ -385,8 +385,13 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     }
 
     $this->beforeLoad($filter);
+
     if ( $filter !== false ) {
-      $this->appendData((array) @Node::getOne($filter));
+      $data = (array) @Node::getOne($filter);
+    }
+
+    if ( !empty($data) ) {
+      $this->data($data);
       $this->afterLoad();
     }
 
@@ -400,26 +405,25 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    *                 $result[errors] Array of validation errors.3
    *                 $result[success] True on succeed, otherwise not set.
    */
-  function save(array &$result = null) {
+  function save(&$result = null) {
     $this->_isCreate = !$this->identity();
 
-    $errors = array();
+    $errors = [];
 
     if ( $result !== null ) {
+      $result = [];
       $_result = &$result;
     }
 
-    $_result = array(
-        'success' => false
-      );
+    $_result = [ 'success' => false ];
 
-    $errors = array();
+    $errors = [];
     $this->beforeSave($errors);
     if ( $errors ) {
       $_result['errors'] = $errors;
 
       if ( $result === null ) {
-        throw new ValidatdionException('Error thrown during model validation.', 0, $errors);
+        throw new ValidationException($errors, 'Invalid model data.', 0);
       }
     }
     else {
@@ -430,6 +434,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
         $res[Node::FIELD_COLLECTION] = self::collectionName();
 
         $res = Node::set($res);
+
         if ( is_numeric($res) ) {
           $_result['action'] = 'insert';
 
@@ -456,10 +461,9 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
 
       // Load again to reflect database level changes
       if ( $_result['success'] ) {
-        $this->load($this->identity());
+        $this->load();
+        $this->afterSave($result);
       }
-
-      $this->afterSave($result);
     }
 
     $this->_isCreate = false;
@@ -473,7 +477,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   function delete(&$isDeleted = false) {
     $filter =
       [ Node::FIELD_COLLECTION => self::collectionName()
-      , '@limit' => 1
+      , '@limits' => 1
       ];
 
     if ( $this->identity() ) {
@@ -496,6 +500,13 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   }
 
   /**
+   * Populate computed values from existing fields.
+   */
+  protected function populate() {
+    return $this;
+  }
+
+  /**
    * Called before model is loaded, performing modifications to the filter
    * before passing down to Node::get() or Node::getOne().
    *
@@ -512,7 +523,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * @return {AbstractModel} Chainable.
    */
   protected function afterLoad() {
-    return $this;
+    return $this->populate();
   }
 
   /**
