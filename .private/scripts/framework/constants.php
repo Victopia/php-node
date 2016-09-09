@@ -1,8 +1,8 @@
 <?php
 /* constants.php | Define framework wide constants. */
 
-// Epoach in seconds before 1970-01-01
-define('EPOACH', -62167246596);
+// Seconds between real Epoch and 1970-01-01, GMT.
+define('EPOACH', -62167219200); // -62167246602
 
 // Shorthand constants
 define('DS', DIRECTORY_SEPARATOR);
