@@ -2,35 +2,51 @@
 /*! Login.php | Simple user login. */
 
 use framework\Session;
+use framework\exceptions\FrameworkException;
 
 $req = $this->request();
 $res = $this->response();
-if ( @$req->user ) {
-  $res->redirect($req->client('referer'));
+
+if ( @$req->user->identity() ) {
+  $res->redirect(
+    $req->param('returnUrl') ?
+      $req->param('returnUrl') :
+      $req->client('referer')
+    );
   die;
 }
 
-if ( $req->post('uid') && $req->post('pwd') ) {
-  $ret = @Session::validate($req->post('uid'), $req->post('pwd'), $req->post('override'));
-  if ( is_string($ret) ) {
-    setcookie('sid', $ret);
-
-    $res->redirect(
-      $req->param('returnUrl')
-      );
-    die;
+if ( $req->post('username') && $req->post('password') ) {
+  try {
+    $session = Session::validate($req->post('username'), $req->post('password'), $req->fingerprint());
   }
-  else {
-    switch ( $ret ) {
+  catch (FrameworkException $e) {
+    switch ( $e->getCode() ) {
       case Session::ERR_MISMATCH:
         $ret = 'Username and password mismatch';
         break;
 
-      default:
       case Session::ERR_EXISTS:
-        $ret = 'You have not logged out from last session, login again to override.';
+        // $ret = 'You have not logged out from last session, login again to override.';
+        $session = $e->getContext();
+        Session::ensure($session['sid'], null, $req->fingerprint());
         break;
+
+      case Session::ERR_EXPIRED:
+        $ret = 'Your session has expired, login again to restore it.';
+        break;
+
+      default:
+        throw $e;
     }
+  }
+
+  if ( isset($session) ) {
+    $res
+      ->cookie('__sid', $session['sid'], FRAMEWORK_COOKIE_EXPIRE_TIME, '/')
+      ->redirect($req->param('returnUrl'));
+
+    exit;
   }
 }
 
@@ -47,9 +63,11 @@ unset($req, $res);
     <script src="//code.jquery.com/jquery.min.js"></script>
 
     <!-- Bootstrap -->
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap.min.css"/>
-    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/css/bootstrap-theme.min.css"/>
-    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.4/js/bootstrap.min.js"></script>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/latest/css/bootstrap.min.css"/>
+    <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/latest/css/bootstrap-theme.min.css"/>
+    <script src="https://maxcdn.bootstrapcdn.com/bootstrap/latest/js/bootstrap.min.js"></script>
+
+    <script>$(function() {$('#txtUID').focus()});</script>
   </head>
 
   <body>
@@ -70,14 +88,14 @@ unset($req, $res);
             <div class="form-group">
               <label for="txtUID" class="col-sm-3 control-label">Username</label>
               <div class="col-sm-9">
-                <input type="text" name="uid" id="txtUID" class="form-control"/>
+                <input type="text" name="username" id="txtUID" class="form-control"/>
               </div>
             </div>
 
             <div class="form-group">
               <label for="txtPWD" class="col-sm-3 control-label">Password</label>
               <div class="col-sm-9">
-                <input type="password" name="pwd" id="txtPWD" class="form-control"/>
+                <input type="password" name="password" id="txtPWD" class="form-control"/>
               </div>
             </div>
 
