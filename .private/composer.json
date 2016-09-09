@@ -2,6 +2,7 @@
   "name": "victopia/php-node",
   "description": "PHP data framework with API support.",
   "type": "project",
+  "prefer-stable": true,
   "require": {
     "leafo/lessphp": "~0.5",
     "mustache/mustache": "~2.8",
@@ -13,10 +14,11 @@
     "monolog/monolog": "^1.15@dev",
     "leafo/scssphp": "dev-master",
     "linkorb/jsmin-php": "dev-master",
-    "natxet/cssmin": "^3.0@dev"
+    "natxet/cssmin": "^3.0@dev",
+    "peridot-php/object-path": "^1.0",
+    "intervention/image": "^2.3"
   },
   "require-dev": {
-    "phpunit/phpunit": "^5.1@dev"
   },
   "license": "WTFPL",
   "authors": [
@@ -28,6 +30,6 @@
   "minimum-stability": "dev",
   "config": {
     "notify-on-install": false,
-    "vendor-dir": ".private/scripts/vendor/"
+    "vendor-dir": "scripts/vendor/"
   }
 }
