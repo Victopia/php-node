@@ -85,8 +85,10 @@ if ( $dbOptions ) {
   }
 
   $dbOptions = new core\DatabaseOptions(
-    $dbOptions['driver'], @$dbOptions['host'], @$dbOptions['port'],
-    @$dbOptions['schema'], $dbOptions['user'], @$dbOptions['password'],
+    $dbOptions['driver'],
+    (array) @$dbOptions['attributes'],
+    $dbOptions['user'],
+    @$dbOptions['password'],
     (array) @$dbOptions['options']
     );
 
