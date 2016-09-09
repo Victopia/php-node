@@ -147,7 +147,7 @@ class Process {
         ));
 
       // Process object will be updated
-      if ( $identicalProcesses ) {
+      if ( count($identicalProcesses) ) {
         $process['id'] = $identicalProcesses[0]['id'];
       }
 
@@ -163,7 +163,7 @@ class Process {
 
     // Default start time to now
     if ( empty($process['start_time']) || !strtotime($process['start_time']) ) {
-      $process['start_time'] = date('c');
+      $process['start_time'] = date('Y-m-d H:i:s');
     }
 
     // Push or updates target process.
@@ -180,16 +180,20 @@ class Process {
     unset($res);
 
     $env = (array) @$options['$env'];
-
     if ( $env ) {
       $env = array('env' => ContentEncoder::json($env));
     }
-
-    unset($options['$env']);
+    else {
+      $env = null;
+    }
 
     // Only spawn a worker if target process is not already working.
-    if ( @$options['$spawn'] && !@$process['pid'] && !self::spawnWorker($env) ) {
-      throw new ProcessException('Unable to spawn daemon worker.', self::ERR_SPAWN);
+    if ( @$options['$spawn'] && !@$process['pid'] ) {
+      usleep(200000); // note; sleep for 0.2 seconds to ensure database write.
+      $process['pid'] = self::spawnWorker($env);
+      if ( !$process['pid'] ) {
+        throw new ProcessException('Unable to spawn daemon worker.', self::ERR_SPAWN);
+      }
     }
 
     return $process;
@@ -218,12 +222,10 @@ class Process {
    */
   public static /* boolean */
   function kill($procId, $signal) {
-    $proc = Node::get(array(
+    $proc = Node::getOne(array(
         Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
       , 'id' => (int) $procId
       ));
-
-    $proc = util::unwrapAssoc($proc);
 
     if ( !@$proc['pid'] ) {
       return false;
@@ -243,7 +245,7 @@ class Process {
    *                          but also includes properties starts with dollar sign.
    */
   public static function schedule($name, $expr, $command, $options = array()) {
-    $schedules = Node::get(array(
+    $schedules = Node::getCount(array(
         Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS_SCHEDULE
       , 'name' => $name
       ));
@@ -288,7 +290,11 @@ class Process {
       $env = null;
     }
 
-    $proc = proc_open(self::EXEC_PATH, $proc, $pipes, getcwd(), $env, array(
+    if ( $env === null ) {
+      $env = Configuration::get('system::process.env');
+    }
+
+    $proc = proc_open(self::EXEC_PATH, $proc, $pipes, null, $env, array(
         'suppress_errors' => true
       , 'bypass_shell' => true
       ));
@@ -324,12 +330,10 @@ class Process {
 
     $processData = &self::$_processData;
     if ( !$processData ) {
-      $processData = Node::get(array(
+      $processData = Node::getOne(array(
           Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_PROCESS
         , 'pid' => [getmypid(), posix_getppid()] // Both processes should be alive and no collision should ever exists.
         ));
-
-      $processData = util::unwrapAssoc($processData);
     }
 
     if ( is_null($name) ) {
