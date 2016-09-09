@@ -136,6 +136,7 @@ require_once('scripts/Initialize.php');
 
   // Physical file handling
     $fileResolver = array(
+        'prefix' => conf::get('web::resolvers.file.prefix', '/'),
         'directoryIndex' => conf::get('web::resolvers.file.indexes', 'Home index')
       );
 
