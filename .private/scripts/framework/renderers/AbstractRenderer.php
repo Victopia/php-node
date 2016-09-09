@@ -105,8 +105,8 @@ abstract class AbstractRenderer implements IFileRenderer {
   /**
    * Accessible from template files.
    */
-  protected function __($key) {
-    return $this->response()->__($key);
+  protected function __($string, $key = null) {
+    return $this->response()->__($string, $key);
   }
 
   /**

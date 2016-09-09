@@ -108,8 +108,15 @@ class Translation {
 
   /**
    * Retrieve a translation with a key preference.
+   *
+   * @param {string} $string The value to be translated.
+   * @param {?string} $bundle Explicitly use a bundle name in this call.
    */
-  public function get($string) {
+  public function get($string, $bundle = null) {
+    if ($bundle === null) {
+      $bundle = $this->bundle;
+    }
+
     $localeChain = (array) $this->localeChain;
 
     // Map translations with the hash of $string.
@@ -121,7 +128,7 @@ class Translation {
       $cache = array_filter($cache, propIn('locale', $localeChain));
 
       // Search by preferred key, if nothing is found just fall back to the whole cache.
-      $_cache = array_filter($cache, propIs('key', $this->bundle));
+      $_cache = array_filter($cache, propIs('key', $bundle));
       if ( $_cache ) {
         $cache = $_cache;
       }
@@ -140,7 +147,7 @@ class Translation {
     }
     // Otherwise, insert it into database for future translation.
     else {
-      $this->set($string, $this->bundle);
+      $this->set($string, $bundle);
     }
 
     // note: sprintf() only when there are more arguments
@@ -170,7 +177,7 @@ class Translation {
           Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_TRANSLATION
         , 'identifier' => $identifier
         , 'locale' => $this->localeChain
-        ));
+        ))->toArray();
 
       // Sorts by locale with localChain
       usort($cache, function($subject, $object) {
