@@ -52,19 +52,19 @@ class UriRewriteResolver implements \framework\interfaces\IRequestResolver {
 
           if ( is_string($rule['target']) ) {
             $rule['target'] = compose(
-              invokes('uri', array('path')),
-              replaces($rule['source'], $rule['target']));
+              replaces($rule['source'], $rule['target']),
+              invokes('uri', [ 'path' ]));
           }
         }
         // plain string
         else if ( !is_callable($rule['source']) ) {
-          $rule['source'] = startsWith($rule['source']);
-
           if ( is_string($rule['target']) ) {
             $rule['target'] = compose(
-              invokes('uri', array('path')),
-              replaces('/^' . preg_quote($rule['source']) . '/', $rule['target']));
+              replaces('/^' . preg_quote($rule['source'], '/') . '/', $rule['target']),
+              invokes('uri', [ 'path' ]));
           }
+
+          $rule['source'] = startsWith($rule['source']);
         }
       }
 
