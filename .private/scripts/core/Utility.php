@@ -142,6 +142,80 @@ class Utility {
   }
 
   /**
+   * Gets all network interfaces with an appropriate IPv4 address.
+   *
+   * Mimic the output of os.networkInterfaces() in node.js.
+   */
+  static function networkInterfaces() {
+    switch ( strtoupper(PHP_OS) ) {
+      case 'DARWIN': // MAC OS X
+        $res = preg_split('/\n/', @`ifconfig`);
+        $res = array_filter(array_map('trim', $res));
+
+        $result = array();
+
+        foreach ( $res as $row ) {
+          if ( preg_match('/^(\w+\d+)\:\s+(.+)/', $row, $matches) ) {
+            $result['__currentInterface'] = $matches[1];
+
+            $result[$result['__currentInterface']]['__internal'] = false !== strpos($matches[2], 'LOOPBACK');
+          }
+          else if ( preg_match('/^inet(6)?\s+([^\/\s]+)(?:%.+)?/', $row, $matches) ) {
+            $iface = &$result[$result['__currentInterface']];
+
+            @$iface[] = array(
+                'address' => $matches[2]
+              , 'family' => $matches[1] ? 'IPv6' : 'IPv4'
+              , 'internal' => $iface['__internal']
+              );
+
+            unset($iface);
+          }
+
+          unset($matches);
+        } unset($row, $res);
+
+        unset($result['__currentInterface']);
+
+        return array_filter(array_map(compose('array_filter', removes('__internal')), $result));
+
+      case 'LINUX':
+        // $ifaces = `ifconfig -a | sed 's/[ \t].*//;/^\(lo\|\)$/d'`;
+        // $ifaces = preg_split('/\s+/', $ifaces);
+        $res = preg_split('/\n/', @`ip addr`);
+        $res = array_filter(array_map('trim', $res));
+
+        $result = array();
+
+        foreach ( $res as $row ) {
+          if ( preg_match('/^\d+\:\s+(\w+)/', $row, $matches) ) {
+            $result['__currentInterface'] = $matches[1];
+          }
+          else if ( preg_match('/^link\/(\w+)/', $row, $matches) ) {
+            $result[$result['__currentInterface']]['__internal'] = strtolower($matches[1]) == 'loopback';
+          }
+          else if ( preg_match('/^inet(6)?\s+([^\/]+)(?:\/\d+)?.+\s([\w\d]+)(?:\:\d+)?$/', $row, $matches) ) {
+            @$result[$matches[3]][] = array(
+                'address' => $matches[2]
+              , 'family' => $matches[1] ? 'IPv6' : 'IPv4'
+              , 'internal' => Utility::cascade(@$result[$matches[3]]['__internal'], false)
+              );
+          }
+
+          unset($matches);
+        } unset($row, $res);
+
+        unset($result['__currentInterface']);
+
+        return array_filter(array_map(compose('array_filter', removes('__internal')), $result));
+
+      case 'WINNT': // Currently not supported.
+      default:
+        return array();
+    }
+  }
+
+  /**
    * Check whether specified file is somehow in CSV format.
    */
   static function isCSV($file) {
@@ -507,7 +581,7 @@ class Utility {
     $parameters = (array) $parameters;
 
     // Normal callable
-    if ( is_callable($callable) ) {
+    if ( !is_array($callable) && is_callable($callable) ) {
       return call_user_func_array($callable, $parameters);
     }
 
@@ -524,50 +598,175 @@ class Utility {
     // Not callable but is an array, cast it to ReflectionMethod.
     if ( is_array($callable) ) {
       $method = new \ReflectionMethod($callable[0], $callable[1]);
+
       $method->setAccessible(true);
 
-      if ( is_object($callable[0]) ) {
-        $method->instance = $callable[0];
+      $callable = $method->invokeArgs(
+        is_object($callable[0])? $callable[0]: null,
+        $parameters
+      );
+
+      if ( $method->isProtected() || $method->isPrivate() ) {
+        $method->setAccessible(false);
       }
 
-      $callable = $method;
-
-      unset($method);
+      return $callable;
     }
+  }
 
-    if ( $callable instanceof \ReflectionMethod ) {
-      return $callable->invokeArgs(@$callable->instance, $parameters);
+  static function connectUnixSocket($address) {
+    $socket = socket_create(AF_UNIX, SOCK_STREAM, 0);
+
+    if ( socket_connect($socket, $address) ) {
+      return $socket;
+    }
+    else {
+      $num = socket_last_error($socket);
+      $str = socket_strerror($num);
+
+      if ( error_reporting() ) {
+        throw new \Exception($str, $num);
+      }
+
+      return false;
+    }
+  }
+
+  /**
+   * Wrapper for socket_select().
+   *
+   * @param {array} $read Reading sockets to watch.
+   * @param {array} $write Writing sockets to watch.
+   * @param {array} $except Watch for exceptions in these sockets.
+   * @param {double} $timeout Timeout in seconds, will be properly converted into $tv_sec and $tv_usec.
+   *
+   * @return {array} In the format of [$read, $write, $except], or false when nothing is changed.
+   */
+  static function selectSockets($read = [], $write = [], $except = [], $timeout = 0) {
+    $tv_sec = (int) $timeout;
+    $tv_usec = ($timeout - $tv_sec) * 1000000;
+
+    if ( socket_select($read, $write, $except, $tv_sec, $tv_usec) ) {
+      return [$read, $write, $except];
+    }
+    else {
+      return false;
     }
   }
 
   /**
    * Returns all readable data from a unix socket.
    */
-  static function readUnixSocket($address) {
-    $socket = socket_create(AF_UNIX, SOCK_STREAM, 0);
-
-    if ( !socket_connect($socket, $address) ) {
-      return false;
+  static function readUnixSocket($address, $type = PHP_BINARY_READ) {
+    if ( is_resource($address) ) {
+      $socket = $address;
+    }
+    else {
+      $socket = socket_create(AF_UNIX, SOCK_STREAM, 0);
+      if ( !socket_connect($socket, $address) ) {
+        return false;
+      }
     }
 
     $result = '';
 
-    while ( true ) {
-      $data = @socket_read($socket, 4096);
+    // note; a single read consist of following steps
+    //       1. peek until there are data ready for read
+    //       2. consumes the data length from target socket (use the length returned from peek)
 
-      if ( false === $data ) {
-        return false;
+    while ( true ) {
+      if ( !self::selectSockets([$socket]) ) {
+        usleep(100000);
+        continue;
+      }
+
+      $data = socket_read($socket, 1024, $type);
+
+      if ( $data === false ) {
+        $num = socket_last_error();
+        $str = socket_strerror($num);
+
+        switch ($num) {
+          case 11: // Resource temporary unavailable (non-blocking)
+          case 35: // Socket temporary unavailable (non-blocking)
+            usleep(100000); // sleep for 0.1 sec
+            break;
+
+          default:
+            throw new \Exception($str, $num);
+            break;
+        }
+
+        return $result ? $result : false;
       }
       else if ( !$data ) {
+        // note; we're in the half way of receiving, keep retrying even if nothing is read.
+        if ( $result && !@unserialize($result) ) {
+          usleep(100000);
+          continue;
+        }
+
         break;
       }
 
       $result.= $data;
+
+      // note; reading finished, exit.
+      $data = @unserialize($result);
+      if ( $data ) {
+        return $data;
+      }
+    }
+  }
+
+  /**
+   * Bump into socket until the whole buffer is sent.
+   */
+  static function writeUnixSocket($address, $value) {
+    if ( is_resource($address) ) {
+      $socket = $address;
+    }
+    else {
+      $socket = socket_create(AF_UNIX, SOCK_STREAM, 0);
+      if ( !socket_connect($socket, $address) ) {
+        return false;
+      }
     }
 
-    socket_close($socket);
+    $value = serialize($value);
 
-    return $result;
+    while ( $value ) {
+      // note; wait until sockets are writable.
+      if ( !self::selectSockets([], [$socket]) ) {
+        usleep(100000);
+        continue;
+      }
+
+      $length = socket_write($socket, substr($value, 0));
+
+      if ( $length === false ) {
+        $num = socket_last_error();
+        $str = socket_strerror($num);
+
+        switch ($num) {
+          case 11: // Resource temporary unavailable (non-blocking)
+          case 35: // Socket temporary unavailable (non-blocking)
+            usleep(100000); // sleep for 0.1 sec
+            break;
+
+          default:
+            throw new \Exception($str, $num);
+            break;
+        }
+
+        unset($num, $str);
+      }
+      else {
+        $value = substr($value, $length);
+      }
+    }
+
+    return true;
   }
 
   /**
