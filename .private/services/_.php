@@ -3,6 +3,7 @@
 
 namespace services;
 
+use framework\exceptions\ResolverException;
 use framework\exceptions\ServiceException;
 use framework\exceptions\ValidationException;
 
@@ -38,7 +39,7 @@ class _ extends \framework\WebService {
       return;
     }
     else if ( !class_exists("models\\$model") ) {
-      throw new ServiceException("Model $model does not exist.");
+      throw new ResolverException(404, "Model $model does not exist.");
     }
 
     $model = "models\\$model";
@@ -60,6 +61,15 @@ class _ extends \framework\WebService {
       $method = array($this->modelClass, '__' . array_shift($args));
     }
     else {
+      // note; remove file extensions which should be taken care by ContentTypeProcessor.
+      if (count($args)) {
+        $ext = pathinfo($args[0], PATHINFO_EXTENSION);
+        if ($ext) {
+          $args[0] = substr($args[0], 0, -(strlen($ext) + 1));
+        }
+        unset($ext);
+      }
+
       $method = array($this, $this->resolveMethodName($args));
     }
 
@@ -83,7 +93,15 @@ class _ extends \framework\WebService {
     }
   }
 
+  protected function put($identity = null) {
+    return $this->post($identity);
+  }
+
   protected function post($identity = null) {
+    if ( $identity === null ) {
+      $identity = $this->request()->meta('extends');
+    }
+
     return $this->upsert($identity);
   }
 
@@ -107,7 +125,8 @@ class _ extends \framework\WebService {
    */
   protected function findOne($identity) {
     $this->modelClass->load($identity);
-    if ( $this->modelClass->identity() === null ) {
+
+    if ( !$this->modelClass->identity() ) {
       $this->response()->status(404);
     }
     else {
@@ -126,36 +145,44 @@ class _ extends \framework\WebService {
    *  A problem is that it assumes the primary key is already named "ID", should
    *  tackle of this.
    */
-  protected function upsert($identity) {
+  protected function upsert($identity = null) {
+    if ( $identity === null ) {
+      $identity = $this->request()->param(
+        $this->modelClass->primaryKey()
+      );
+    }
+
     $data = (array) $this->request()->param();
     if ( $data ) {
+      // note; no null types and empty strings
+      $data = array_filter($data, function($value) {
+        return !is_null($value) && $value !== '';
+      });
+
       // This will append the existing data to the submitted one.
-      if ( $this->request()->meta('extends') ) {
-        if ( !isset($data[$this->modelClass->primaryKey()]) ) {
-          throw new ServiceException('Extending data without identity field.');
-        }
-
-        $this->modelClass->load(
-          $identity ? $identity : $data[$this->modelClass->primaryKey()]
-          );
-
-        $this->modelClass->appendData($data);
-      }
-      else {
-        $this->modelClass->data($data);
+      if ( $identity ) {
+        $this->modelClass->load($identity);
       }
 
-      // errors
-      $res = $this->modelClass->validate();
-      if ( $res ) {
-        throw new ValidationException($res, 'Invalid user input.');
-        return;
-      }
+      $this->modelClass->prependData($data);
 
       // result
       $res = array();
-
       $this->modelClass->save($res);
+
+      if ( !$res['success'] ) {
+        if ( isset($res['errors']) ) {
+          throw new ValidationException($res['errors'], sprintf('Validation failure in %s.', get_class($this->modelClass)), 80);
+        }
+        else if ( isset($res['error']) ) {
+          throw new ServiceException($res['error'], @$res['code']);
+        }
+        else {
+          throw new ServiceException('Error saving model.');
+        }
+
+        return;
+      }
 
       switch ( @$res['action'] ) {
         case 'insert':
@@ -183,10 +210,13 @@ class _ extends \framework\WebService {
    */
   protected function delete($identity = null) {
     $model = $this->findOne($identity);
+
     if ( $model ) {
       $model->delete($isDeleted);
 
-      return (bool) $isDeleted;
+      return [
+        'status' => $isDeleted ? 'success': 'failure'
+      ];
     }
   }
 
@@ -209,7 +239,7 @@ class _ extends \framework\WebService {
    *  methods. But since nobody is using this and the message body is undocumneted,
    *  we can make use of it and returns the designated model structure.
    */
-  protected function option() { }
+  protected function options() { }
 
   //----------------------------------------------------------------------------
   //
