@@ -454,6 +454,33 @@ class Response {
         }
       }
 
+      // try detect Content-Length header by response contents.
+      if ( !$this->header('Content-Length') ) {
+        $body = $this->body();
+
+        if ( $body instanceof \SplFileObject && $body->getSize() ) {
+          $this->header('Content-Length', $body->getSize());
+        }
+        else if ( is_resource($body) ) {
+          $body = fstat($body);
+          if ( !empty($body['size']) ) {
+            $this->header('Content-Length', $body['size']);
+          }
+        }
+        else if ( is_string($body) && @is_file($body) ) {
+          $body = realpath(System::getPathname() . '/' . $body);
+          if ( filesize($body) ) {
+            $this->header('Content-Length', filesize($body));
+          }
+        }
+        else {
+          $body = $this->contentEncode($body);
+          $this->header('Content-Length', strlen($body));
+        }
+
+        unset($body);
+      }
+
       // Push the headers to output buffer
       $this->flushHeaders();
 
