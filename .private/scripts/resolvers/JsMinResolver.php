@@ -63,7 +63,7 @@ class JsMinResolver implements \framework\interfaces\IRequestResolver {
   public function resolve(Request $request, Response $response) {
     $pathInfo = $request->uri('path');
 
-    // Inex 1 because request URI starts with a slash
+    // Index 1 because request URI starts with a slash
     if ( strpos($pathInfo, $this->dstPath) !== 1 ) {
       return;
     }
@@ -90,8 +90,12 @@ class JsMinResolver implements \framework\interfaces\IRequestResolver {
       if ( file_exists($srcPath) && (!file_exists($dstPath) || @filemtime($srcPath) > @filemtime($dstPath)) ) {
         // empty results are ignored
         $result = trim(@JSMin::minify(file_get_contents($srcPath)));
-        if ( $result && !@file_put_contents($dstPath, $result) ) {
-          Log::warn('Permission denied, unable to minify Javascript files.');
+        if ( $result ) {
+          // note; reuse variable $srcPath
+          $srcPath = dirname($dstPath);
+          if ( (!file_exists($srcPath) && !@mkdir($srcPath, 0770, true)) || !@file_put_contents($dstPath, $result) ) {
+            Log::warn('Permission denied, unable to minify Javascript files.');
+          }
         }
 
         break;

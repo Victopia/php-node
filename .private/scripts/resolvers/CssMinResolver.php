@@ -90,8 +90,12 @@ class CssMinResolver implements \framework\interfaces\IRequestResolver {
       if ( file_exists($srcPath) && (!file_exists($dstPath) || @filemtime($srcPath) > @filemtime($dstPath)) ) {
         // empty results are ignored
         $result = trim(@CssMin::minify(file_get_contents($srcPath)));
-        if ( $result && !@file_put_contents($dstPath, $result) ) {
-          Log::warn('Permission denied, unable to minify CSS.');
+        if ( $result ) {
+          // note; reuse variable $srcPath
+          $srcPath = dirname($dstPath);
+          if ( (!file_exists($srcPath) && !@mkdir($srcPath, 0770, true)) || !@file_put_contents($dstPath, $result) ) {
+            Log::warn('Permission denied, unable to minify CSS.');
+          }
         }
 
         break;
