@@ -42,17 +42,14 @@ class InvokerPostProcessor implements \framework\interfaces\IRequestResolver {
         $func = @$this->funcMap[$matches[1]];
         if ( is_callable($func) ) {
           if ( @$matches[2] ) {
-            $func = call_user_func_array(
-              $func,
-              explode(',', $matches[2]) // note: preserve whitespace
-              );
+            // note: preserve whitespace in parameters
+            $func = call_user_func_array($func, explode(',', $matches[2]));
           }
 
           if ( is_callable($func) ) {
             try {
-              $response->send(
-                call_user_func_array($func, array($response->body()))
-                );
+              $func = call_user_func_array($func, array($response->body(), $request, $response));
+              $response->send($func);
             }
             catch(\Exception $e) {
               Log::error(sprintf('[InvokerPostProcessor] Error calling %s(): %s @ %s:%d',
