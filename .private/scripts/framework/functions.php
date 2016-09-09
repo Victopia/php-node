@@ -33,8 +33,13 @@ use core\Utility;
 //
 //--------------------------------------------------
 
-function compose() {
-  $funcs = func_get_args();
+function compose($funcs) {
+  if ( func_num_args() > 1 ) {
+    $funcs = func_get_args();
+  }
+  else {
+    $funcs = (array) $funcs;
+  }
 
   return function() use($funcs) {
     $args = func_get_args();
@@ -147,13 +152,34 @@ function has($needle, $strict = false) {
 }
 
 function prop($name) {
+  if ( is_array($name) ) {
+    $name = array_map(
+      function($name) {
+        return prop($name);
+      },
+      array_reverse($name)
+    );
+
+    return compose($name);
+  }
+
   return function ($object) use($name) {
     if ( is_object($object) ) {
-      return $object->$name;
+      return @$object->$name;
     }
     else {
       return @$object[$name];
     }
+  };
+}
+
+function pluck($list, $prop) {
+  return array_map(prop($prop), $list);
+}
+
+function plucks($prop) {
+  return function($list) use($prop) {
+    return pluck($list, $prop);
   };
 }
 
@@ -328,8 +354,12 @@ function reduce($input, $callback, $initial = null) {
  * Object compatible version of array_filter.
  */
 function filter($input, $callback = null, $deep = false) {
+  if ( $input === null ) {
+    return $input;
+  }
+
   if ( !is_array($input) && !is_object($input) ) {
-    throw new \InvalidArgumentException(sprintf('filter() expects parameter 1 to be array or object, %s given.', gettype($value)));
+    throw new \InvalidArgumentException(sprintf('filter() expects parameter 1 to be array or object, %s given.', gettype($input)));
   }
 
   if ( $callback === null ) {
@@ -346,10 +376,29 @@ function filter($input, $callback = null, $deep = false) {
 }
 
 /**
+ * Modified array_map to support ArrayAccess and Iterator interfaces.
+ */
+function map($input, callable $callback) {
+  if ( is_array($input) ) {
+    return array_map($callback, $input);
+  }
+  else if ( $input instanceof \Iterator ) {
+    $result = [];
+    foreach ( $input as $k => $i ) {
+      $result[$k] = $callback($i);
+    }
+    return $result;
+  }
+  else {
+    throw new \InvalidArgumentException('Supplied input must be an array or Iterator.');
+  }
+}
+
+/**
  * Variation of empty() function that also counts for object emptiness (stdClass).
  */
 function blank($value) {
-  if ( is_object($value) ) {
+  if ( is_object($value) && $value instanceof stdClass ) {
     $value = get_object_vars($value);
   }
 
@@ -439,42 +488,18 @@ function sortsDescend($subject, $object, $strict = false) {
 }
 
 function sortsPropAscend($name, $strict = false) {
+  $name = prop($name);
+
   return function($subject, $object) use($name, $strict) {
-    if ( is_object($subject) ) {
-      $subject = @$subject->$name;
-    }
-    else {
-      $subject = @$subject[$name];
-    }
-
-    if ( is_object($object) ) {
-      $object = @$object->$name;
-    }
-    else {
-      $object = @$object[$name];
-    }
-
-    return sortsAscend($subject, $object, $strict);
+    return sortsAscend($name($subject), $name($object), $strict);
   };
 }
 
 function sortsPropDescend($name, $strict = false) {
+  $name = prop($name);
+
   return function($subject, $object) use($name, $strict) {
-    if ( is_object($subject) ) {
-      $subject = @$subject->$name;
-    }
-    else {
-      $subject = @$subject[$name];
-    }
-
-    if ( is_object($object) ) {
-      $object = @$object->$name;
-    }
-    else {
-      $object = @$object[$name];
-    }
-
-    return sortsDescend($subject, $object, $strict);
+    return sortsDescend($name($subject), $name($object), $strict);
   };
 }
 
@@ -555,6 +580,72 @@ function assigns($value, $prop = null) {
   }
 }
 
+// Numeric values
+function eq($value, $strict = false) {
+  return is($value, $strict);
+}
+
+function gt($value) {
+  return function($input) use($value) {
+    return $input > $value;
+  };
+}
+
+function gte($value) {
+  return function($input) use($value) {
+    return $input >= $value;
+  };
+}
+
+function lt($value) {
+  return function($input) use($value) {
+    return $input < $value;
+  };
+}
+
+function lte($value) {
+  return function($input) use($value) {
+    return $input <= $value;
+  };
+}
+
+function adds($value) {
+  return function($input) use($value) {
+    return $input + $value;
+  };
+}
+
+function subtracts($value) {
+  return function($input) use($value) {
+    return $input + $value;
+  };
+}
+
+function subtractsBy($value) {
+  return function($input) use($value) {
+    return $value - $input;
+  };
+}
+
+function multiplies($value) {
+  return function($input) use($value) {
+    return $input * $value;
+  };
+}
+
+function divides($value) {
+  return function($input) use($value) {
+    return $input / $value;
+  };
+}
+
+function dividesBy($value) {
+  return function($input) use($value) {
+    return $value / $input;
+  };
+}
+
+// String values
 function replaces($pattern, $replacement) {
   return function($string) use($pattern, $replacement) {
     return preg_replace($pattern, $replacement, $string);
@@ -758,12 +849,26 @@ if ( !function_exists('array_sort') ) {
 }
 
 if ( !function_exists('array_select') ) {
-  function array_select($list, array $keys) {
+  /**
+   * @param {array} $list Array to be selected.
+   * @param {array} $keys Array of keys to select.
+   * @param {?bool} $preserveKeys Will preserve original key ordering when TRUE.
+   */
+  function array_select(array $list, array $keys, $preserveKeys = false) {
     $result = array();
 
-    foreach ( $keys as $key ) {
-      if ( array_key_exists($key, $list) ) {
-        $result[$key] = $list[$key];
+    if ( $preserveKeys ) {
+      foreach ( $list as $key => $value ) {
+        if ( in_array($key, $keys, true) ) {
+          $result[$key] = $value;
+        }
+      }
+    }
+    else {
+      foreach ( $keys as $key ) {
+        if ( array_key_exists($key, $list) ) {
+          $result[$key] = $list[$key];
+        }
       }
     }
 
@@ -870,5 +975,11 @@ function isfile() {
 function isexecutable() {
   return function($file) {
     return is_executable($file);
+  };
+}
+
+function unlinks($path) {
+  return function() use($path) {
+    @unlink($path);
   };
 }
