@@ -32,8 +32,10 @@ class LocaleResolver implements \framework\interfaces\IRequestResolver {
 
   public function resolve(Request $request, Response $response) {
     // Then request params
+    $locale = $request->param('locale');
+
     if ( empty($locale) ) {
-      $locale = $request->param('locale');
+      $locale = $request->meta('locale');
     }
 
     // User preference
@@ -55,6 +57,8 @@ class LocaleResolver implements \framework\interfaces\IRequestResolver {
       if ( $request->meta('locale') != $locale ) {
         $response->cookie('__locale', $locale, FRAMEWORK_COOKIE_EXPIRE_TIME, '/');
       }
+
+      $request->locale($locale);
 
       $response->translation(new Translation($locale));
     }
