@@ -105,7 +105,7 @@ class Relation {
   /**
    * Check whether $child is direct descendant of $parent.
    */
-  static function isDirectRelated($parent, $child, $collection = '%') {
+  static function isDirectlyRelated($parent, $child, $collection = '%') {
     return in_array($child, self::getChildren($parent, $collection));
   }
 
