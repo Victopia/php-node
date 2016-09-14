@@ -53,9 +53,9 @@ abstract class UuidModel extends JsonSchemaModel {
   }
 
   protected function beforeSave(array &$errors = array()) {
-    if ( $this->isCreate() ) {
-      $key = $this->primaryKey();
+    $key = $this->primaryKey();
 
+    if ( $this->isCreate() ) {
       // note; loop until we find a unique uuid
       do {
         $this->$key = Database::fetchField("SELECT LOWER(REPLACE(UUID(), '-', ''))");
@@ -65,9 +65,7 @@ abstract class UuidModel extends JsonSchemaModel {
 
     $ret = parent::beforeSave($errors);
 
-    if ( $this->isCreate() ) {
-      $this->$key = util::packUuid($this->$key);
-    }
+    $this->$key = util::packUuid($this->$key);
 
     return $ret;
   }
