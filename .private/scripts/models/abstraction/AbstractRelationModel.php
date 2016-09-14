@@ -224,7 +224,7 @@ abstract class AbstractRelationModel extends AbstractModel {
    * @param {string} $parent The descendent identifier.
    * @param {?string} Specified relation name, defaults to the model collection name.
    */
-  protected function hasDescendent($descendant, $collection = null) {
+  protected function hasDescendant($descendant, $collection = null) {
     if ( $collection === null ) {
       $collection = $this->collectionName();
     }
