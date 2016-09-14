@@ -182,7 +182,7 @@ abstract class AbstractRelationModel extends AbstractModel {
    * @param {string} $parent The parent identifier.
    * @param {?string} Specified relation name, defaults to the model collection name.
    */
-  protected function isParent($parent, $collection = null) {
+  protected function hasParent($parent, $collection = null) {
     if ( $collection === null ) {
       $collection = $this->collectionName();
     }
@@ -196,7 +196,7 @@ abstract class AbstractRelationModel extends AbstractModel {
    * @param {string} $parent The ancestor identifier.
    * @param {?string} Specified relation name, defaults to the model collection name.
    */
-  protected function isAncestor($ancestor, $collection = null) {
+  protected function hasAncestor($ancestor, $collection = null) {
     if ( $collection === null ) {
       $collection = $this->collectionName();
     }
@@ -210,7 +210,7 @@ abstract class AbstractRelationModel extends AbstractModel {
    * @param {string} $parent The child identifier.
    * @param {?string} Specified relation name, defaults to the model collection name.
    */
-  protected function isChild($child, $collection = null) {
+  protected function hasChild($child, $collection = null) {
     if ( $collection === null ) {
       $collection = $this->collectionName();
     }
@@ -224,7 +224,7 @@ abstract class AbstractRelationModel extends AbstractModel {
    * @param {string} $parent The descendent identifier.
    * @param {?string} Specified relation name, defaults to the model collection name.
    */
-  protected function isDescendent($descendant, $collection = null) {
+  protected function hasDescendent($descendant, $collection = null) {
     if ( $collection === null ) {
       $collection = $this->collectionName();
     }
