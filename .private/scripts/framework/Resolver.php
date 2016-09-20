@@ -50,7 +50,7 @@ class Resolver {
   /**
    * Initiates the resolve-response mechanism with current context.
    */
-  public /* void */ function run(Request $request = null, Response $response = null) {
+  public function run(Request $request = null, Response $response = null) {
     $this->request = &$request;
     if ( $request === null ) {
       $request = new Request($this);
@@ -76,12 +76,13 @@ class Resolver {
   /**
    * Register a resolver.
    *
-   * @param IRequestResolver $resolver
+   * @param {IRequestResolver} $resolver
+   * @param {int} $weight Weight to determine if a resolver chains before
+   *                      other, the bigger the earlier.
    *
-   * @param Integer $weight Weight to determine if a resolver chains before
-   *                        other, the bigger the earlier.
+   * @return {boolean} True on success, false if resolver already exists.
    */
-  public /* boolean */ function registerResolver(interfaces\IRequestResolver $resolver, $weight = 10) {
+  public function registerResolver(interfaces\IRequestResolver $resolver, $weight = 10) {
     $resolvers = &$this->resolvers;
 
     $resolver->weight = $weight;
@@ -107,12 +108,13 @@ class Resolver {
    * The resolving chain will continue to work as long as the returned value is
    * a string and not empty, until there are no more resolvers it will return 404.
    */
-  private /* void */ function resolve() {
+  private function resolve() {
     $request = $this->request;
     $response = $this->response;
     foreach ( $this->resolvers as $resolver ) {
       try {
         $resolver->resolve($request, $response);
+        \core\Log::info(sprintf('[%s] HTTP status: %d', get_class($resolver), $response->status()));
       }
       catch (exceptions\ResolverException $e) {
         $status = $e->statusCode();
