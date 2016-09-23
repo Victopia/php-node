@@ -229,7 +229,7 @@ abstract class AbstractRelationModel extends AbstractModel {
       $collection = $this->collectionName();
     }
 
-    return Relation::isDirectlyRelated($this->identity(), $descendant, $collection);
+    return Relation::isRelated($this->identity(), $descendant, $collection);
   }
 
 }
