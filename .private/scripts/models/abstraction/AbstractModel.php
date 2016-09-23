@@ -233,7 +233,13 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
 
     // Special methods are ignored
     if ( $name[0] == '_' ) {
-      throw new \BadMethodCallException('Method does not exist.');
+      // Internal force invoke. i.e. __afterLoad() -> afterLoad()
+      if ( preg_match('/^__([^_]+)$/', $name, $matches) ) {
+        return $this->{$matches[1]}($args);
+      }
+      else {
+        throw new \BadMethodCallException('Method does not exist.');
+      }
     }
 
     // RW takes precedence
@@ -334,7 +340,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       $filter = [ $this->_primaryKey => $filter ];
     }
 
-    $filter[Node::FIELD_COLLECTION] = self::collectionName();
+    $filter[Node::FIELD_COLLECTION] = $this->collectionName();
 
     $collection = new ModelCollection(get_called_class(), $filter);
 
@@ -375,7 +381,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       $identity = Database::escapeValue($identity);
     }
 
-    $filter = [ Node::FIELD_COLLECTION => self::collectionName() ];
+    $filter = [ Node::FIELD_COLLECTION => $this->collectionName() ];
 
     if ( is_scalar($identity) ) {
       $filter[$this->_primaryKey] = $identity;
@@ -387,7 +393,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     $this->beforeLoad($filter);
 
     if ( $filter !== false ) {
-      $data = (array) @Node::getOne($filter);
+      $data = (array) Node::getOne($filter);
     }
 
     if ( !empty($data) ) {
@@ -431,7 +437,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
         // note; Conflicts here. Virutal fields would love to skip nulls, but real fields would not.
         $res = util::objectToArray($this->data);
 
-        $res[Node::FIELD_COLLECTION] = self::collectionName();
+        $res[Node::FIELD_COLLECTION] = $this->collectionName();
 
         $res = Node::set($res);
 
@@ -476,7 +482,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    */
   function delete(&$isDeleted = false) {
     $filter =
-      [ Node::FIELD_COLLECTION => self::collectionName()
+      [ Node::FIELD_COLLECTION => $this->collectionName()
       , '@limits' => 1
       ];
 
