@@ -35,19 +35,31 @@ abstract class UuidModel extends JsonSchemaModel {
   //----------------------------------------------------------------------------
 
   protected function beforeLoad(array &$filter) {
-    $filter = $this->packUuid($filter);
+    foreach ( $this->binaryFields() as $binaryField ) {
+      if ( isset($filter[$binaryField]) ) {
+        $filter[$binaryField] = util::packUuid((array) $filter[$binaryField]);
+      }
+    }
 
     return parent::beforeLoad($filter);
   }
 
   function populate() {
-    $this->{$this->primaryKey()} = $this->identity();
+    foreach ( $this->binaryFields() as $binaryField ) {
+      if ( isset($this->$binaryField) ) {
+        $this->$binaryField = util::unpackUuid($this->$binaryField);
+      }
+    }
 
     return parent::populate();
   }
 
   function find(array $filter = []) {
-    $filter = $this->packUuid($filter);
+    foreach ( $this->binaryFields() as $binaryField ) {
+      if ( isset($filter[$binaryField]) ) {
+        $filter[$binaryField] = util::packUuid((array) $filter[$binaryField]);
+      }
+    }
 
     return parent::find($filter);
   }
@@ -65,28 +77,40 @@ abstract class UuidModel extends JsonSchemaModel {
 
     $ret = parent::beforeSave($errors);
 
-    $this->$key = util::packUuid($this->$key);
+    foreach ( $this->binaryFields() as $binaryField ) {
+      if ( isset($filter[$binaryField]) ) {
+        $filter[$binaryField] = util::packUuid((array) $filter[$binaryField]);
+      }
+    }
 
     return $ret;
+  }
+
+  protected function afterSave(array &$result = null) {
+    foreach ( $this->binaryFields() as $binaryField ) {
+      if ( isset($this->$binaryField) ) {
+        $this->$binaryField = util::packUuid($this->$binaryField);
+      }
+    }
+
+    return parent::afterSave($result);
   }
 
   /**
    * Packs UUID for filters.
    */
   protected function beforeDelete(array &$filter = []) {
-    $filter = $this->packUuid($filter);
+    foreach ( $this->binaryFields() as $binaryField ) {
+      if ( isset($filter[$binaryField]) ) {
+        $filter[$binaryField] = util::packUuid((array) $filter[$binaryField]);
+      }
+    }
 
     return parent::beforeDelete($filter);
   }
 
-  protected function packUuid(array $filter = []) {
-    $key = $this->primaryKey();
-
-    if ( isset($filter[$key]) ) {
-      $filter[$key] = util::packUuid($filter[$key]);
-    }
-
-    return $filter;
+  protected function binaryFields() {
+    return [ $this->primaryKey() ];
   }
 
 }
