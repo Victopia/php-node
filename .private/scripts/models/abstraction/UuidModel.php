@@ -37,7 +37,7 @@ abstract class UuidModel extends JsonSchemaModel {
   function find(array $filter = []) {
     foreach ( $this->binaryFields() as $binaryField ) {
       if ( isset($filter[$binaryField]) ) {
-        $filter[$binaryField] = util::packUuid((array) $filter[$binaryField]);
+        $filter[$binaryField] = array_map('core\Utility::packUuid', (array) $filter[$binaryField]);
       }
     }
 
@@ -47,7 +47,7 @@ abstract class UuidModel extends JsonSchemaModel {
   protected function beforeLoad(array &$filter) {
     foreach ( $this->binaryFields() as $binaryField ) {
       if ( isset($filter[$binaryField]) ) {
-        $filter[$binaryField] = util::packUuid((array) $filter[$binaryField]);
+        $filter[$binaryField] = array_map('core\Utility::packUuid', (array) $filter[$binaryField]);
       }
     }
 
@@ -108,7 +108,7 @@ abstract class UuidModel extends JsonSchemaModel {
   protected function beforeDelete(array &$filter = []) {
     foreach ( $this->binaryFields() as $binaryField ) {
       if ( isset($filter[$binaryField]) ) {
-        $filter[$binaryField] = util::packUuid((array) $filter[$binaryField]);
+        $filter[$binaryField] = array_map('core\Utility::packUuid', (array) $filter[$binaryField]);
       }
     }
 
