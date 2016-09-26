@@ -34,6 +34,16 @@ abstract class UuidModel extends JsonSchemaModel {
   //
   //----------------------------------------------------------------------------
 
+  function find(array $filter = []) {
+    foreach ( $this->binaryFields() as $binaryField ) {
+      if ( isset($filter[$binaryField]) ) {
+        $filter[$binaryField] = util::packUuid((array) $filter[$binaryField]);
+      }
+    }
+
+    return parent::find($filter);
+  }
+
   protected function beforeLoad(array &$filter) {
     foreach ( $this->binaryFields() as $binaryField ) {
       if ( isset($filter[$binaryField]) ) {
@@ -54,16 +64,6 @@ abstract class UuidModel extends JsonSchemaModel {
     return parent::populate();
   }
 
-  function find(array $filter = []) {
-    foreach ( $this->binaryFields() as $binaryField ) {
-      if ( isset($filter[$binaryField]) ) {
-        $filter[$binaryField] = util::packUuid((array) $filter[$binaryField]);
-      }
-    }
-
-    return parent::find($filter);
-  }
-
   protected function beforeSave(array &$errors = array()) {
     $key = $this->primaryKey();
 
@@ -75,11 +75,17 @@ abstract class UuidModel extends JsonSchemaModel {
       while ($this->find([ $key => $this->$key ])->count());
     }
 
+    foreach ( $this->binaryFields() as $binaryField ) {
+      if ( isset($this->$binaryField) ) {
+        $this->$binaryField = util::unpackUuid($this->$binaryField);
+      }
+    }
+
     $ret = parent::beforeSave($errors);
 
     foreach ( $this->binaryFields() as $binaryField ) {
-      if ( isset($filter[$binaryField]) ) {
-        $filter[$binaryField] = util::packUuid((array) $filter[$binaryField]);
+      if ( isset($this->$binaryField) ) {
+        $this->$binaryField = util::packUuid($this->$binaryField);
       }
     }
 
@@ -89,7 +95,7 @@ abstract class UuidModel extends JsonSchemaModel {
   protected function afterSave(array &$result = null) {
     foreach ( $this->binaryFields() as $binaryField ) {
       if ( isset($this->$binaryField) ) {
-        $this->$binaryField = util::packUuid($this->$binaryField);
+        $this->$binaryField = util::unpackUuid($this->$binaryField);
       }
     }
 
