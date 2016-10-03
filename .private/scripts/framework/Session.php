@@ -161,6 +161,8 @@ class Session {
         ]);
     }
 
+    $session['sid'] = util::unpackUuid($session['sid']);
+
     // Reference to current session
     static::$currentSession = $session;
 
