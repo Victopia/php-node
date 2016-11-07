@@ -22,7 +22,7 @@ class SessionProcessor {
     }
 
     if ( Session::current() ) {
-      $record['extra']['user'] = (int) Session::current('UserID');
+      $record['extra']['user'] = Session::getUser()->identity();
     }
     else if ( is_numeric(@Process::get('type')) ) {
       $record['extra']['user'] = (int) Process::get('type');
