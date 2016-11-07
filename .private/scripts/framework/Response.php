@@ -432,6 +432,9 @@ class Response {
       return;
     }
 
+    // note; Some versions of PHP will forget current working directory when it falls into destructors.
+    chdir(System::getPathname());
+
     if ( !$this->useOutputBuffer ) {
       if ( !function_exists('headers_sent') || headers_sent() ) {
         return;
