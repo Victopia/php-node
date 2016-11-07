@@ -99,7 +99,7 @@ function funcOr() {
   $funcs = func_get_args();
   return function($input) use($funcs) {
     return array_reduce($funcs, function($result, $func) use($input) {
-      if ( !$result ) {
+      if ( $result ) {
         return $result;
       }
 
@@ -108,7 +108,7 @@ function funcOr() {
       }
 
       return $result || $func;
-    }, true);
+    }, false);
   };
 };
 
