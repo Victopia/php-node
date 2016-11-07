@@ -477,10 +477,6 @@ class Response {
             $this->header('Content-Length', filesize($body));
           }
         }
-        else {
-          $body = $this->contentEncode($body);
-          $this->header('Content-Length', strlen($body));
-        }
 
         unset($body);
       }
