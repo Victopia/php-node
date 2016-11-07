@@ -45,9 +45,6 @@ class _ extends \framework\WebService {
     $model = "models\\$model";
     $this->modelClass = new $model();
 
-    $this->modelClass->__request = $this->request();
-    $this->modelClass->__response = $this->response();
-
     // Remove model name
     $args = array_slice(func_get_args(), 1);
 

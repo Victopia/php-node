@@ -11,6 +11,8 @@ use core\EventEmitter;
 use core\Node;
 use core\Utility as util;
 
+use framework\Resolver;
+
 use framework\exceptions\ValidationException;
 
 /**
@@ -40,6 +42,9 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     }
 
     $this->data($data);
+
+    $this->__request = Resolver::getActiveInstance()->request();
+    $this->__response = Resolver::getActiveInstance()->response();
   }
 
   //----------------------------------------------------------------------------
@@ -340,7 +345,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       $filter = [ $this->_primaryKey => $filter ];
     }
 
-    $filter[Node::FIELD_COLLECTION] = $this->collectionName();
+    $filter[Node::FIELD_COLLECTION] = self::collectionName();
 
     $collection = new ModelCollection(get_called_class(), $filter);
 
@@ -381,7 +386,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       $identity = Database::escapeValue($identity);
     }
 
-    $filter = [ Node::FIELD_COLLECTION => $this->collectionName() ];
+    $filter = [ Node::FIELD_COLLECTION => self::collectionName() ];
 
     if ( is_scalar($identity) ) {
       $filter[$this->_primaryKey] = $identity;
@@ -437,7 +442,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
         // note; Conflicts here. Virutal fields would love to skip nulls, but real fields would not.
         $res = util::objectToArray($this->data);
 
-        $res[Node::FIELD_COLLECTION] = $this->collectionName();
+        $res[Node::FIELD_COLLECTION] = self::collectionName();
 
         $res = Node::set($res);
 
@@ -482,7 +487,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    */
   function delete(&$isDeleted = false) {
     $filter =
-      [ Node::FIELD_COLLECTION => $this->collectionName()
+      [ Node::FIELD_COLLECTION => self::collectionName()
       , '@limits' => 1
       ];
 
