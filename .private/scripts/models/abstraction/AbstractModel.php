@@ -540,7 +540,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * @return {AbstractModel} Chainable.
    */
   protected function beforeSave(array &$errors = array()) {
-    $errors = $this->validate();
+    $errors+= $this->validate();
     return $this;
   }
 
