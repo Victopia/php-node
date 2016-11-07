@@ -3,8 +3,8 @@
   , "id": "/medicare-app/service/_/Users/schema"
   , "type": "object"
   , "title": "User"
-  , "titleField": "username"
-  , "description": "Users for the prefw system."
+  , "titleField": "name"
+  , "description": "Users of the system."
   , "properties":
     { "uuid":
       { "type": "string"
