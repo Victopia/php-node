@@ -22,8 +22,6 @@ define('FRAMEWORK_COLLECTION_PROCESS', 'Processes');
 define('FRAMEWORK_COLLECTION_USER', 'Users');
 // Collection of http user sessions
 define('FRAMEWORK_COLLECTION_SESSION', 'Sessions');
-// Collection of user files, basic file system implementation.
-define('FRAMEWORK_COLLECTION_FILE', 'Files');
 // Collection of locale resources.
 define('FRAMEWORK_COLLECTION_TRANSLATION', 'Translations');
 
