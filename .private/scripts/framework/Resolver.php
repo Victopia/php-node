@@ -114,7 +114,6 @@ class Resolver {
     foreach ( $this->resolvers as $resolver ) {
       try {
         $resolver->resolve($request, $response);
-        \core\Log::info(sprintf('[%s] HTTP status: %d', get_class($resolver), $response->status()));
       }
       catch (exceptions\ResolverException $e) {
         $status = $e->statusCode();
