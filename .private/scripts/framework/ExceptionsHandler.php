@@ -6,6 +6,7 @@ namespace framework;
 use Exception;
 use ErrorException;
 
+use core\ContentEncoder;
 use core\Database;
 use core\Log;
 use core\Utility;
@@ -139,15 +140,7 @@ class ExceptionsHandler {
     }
 
     // Display error message
-    if ( isset($response) && @$client['type'] != 'cli' ) {
-      // Do i18n when repsonse context is available
-      if ( $e instanceof GeneralException ) {
-        $errorMessage = $response->__($eS, $logType);
-        if ( $errorMessage ) {
-          $output['error'] = $errorMessage;
-        }
-      }
-
+    if ( @$client['type'] != 'cli' ) {
       if ( $e instanceof ErrorException ) {
         $statusCode = 500;
       }
@@ -159,9 +152,24 @@ class ExceptionsHandler {
         $output['errors'] = $e->getErrors();
       }
 
-      $response->clearHeaders();
-      $response->header('Content-Type', 'application/json; charset=utf-8');
-      $response->send($output, $statusCode);
+      if ( isset($response) ) {
+        // Do i18n when repsonse context is available
+        if ( $e instanceof GeneralException ) {
+          $errorMessage = $response->__($eS, $logType);
+          if ( $errorMessage ) {
+            $output['error'] = $errorMessage;
+          }
+        }
+
+        $response->clearHeaders();
+        $response->header('Content-Type', 'application/json; charset=utf-8');
+        $response->send($output, $statusCode);
+      }
+      else {
+        header('Content-Type: application/json; charset=utf-8', true, $statusCode);
+
+        echo ContentEncoder::json($output);
+      }
     }
     else {
       // echo "$logString\n";
