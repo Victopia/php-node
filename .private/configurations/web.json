@@ -10,7 +10,7 @@
 
   "auth": {
     "paths": {
-      ".private": false,
+      ".private": [ "IsInternal" ],
       "*": true
     },
     "statusCode": 404
