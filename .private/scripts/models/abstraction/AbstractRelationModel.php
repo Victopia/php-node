@@ -35,7 +35,7 @@ abstract class AbstractRelationModel extends AbstractModel {
 
     $return = Relation::getParents($this->identity(), $collection);
 
-    if ( $parents ) {
+    if ( $parents !== null ) {
       if ( $replace ) {
         $this->deleteAncestors($collection);
       }
@@ -71,7 +71,7 @@ abstract class AbstractRelationModel extends AbstractModel {
 
     $return = Relation::getChildren($this->identity(), $collection);
 
-    if ( $children ) {
+    if ( $children !== null ) {
       if ( $replace ) {
         $this->deleteDescendants($collection);
       }
