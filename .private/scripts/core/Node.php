@@ -975,6 +975,8 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
           }
         });
 
+        ksort($row);
+
         // Silently swallow json encode errors.
         $data[static::FIELD_VIRTUAL] = @ContentEncoder::json($row, JSON_NUMERIC_CHECK);
 
