@@ -171,7 +171,8 @@ class Response {
   public function redirect($target, $options = array()) {
     // Default values
     $options+= array(
-        'status' => 307
+        'status' => 307,
+        'secure' => (bool) System::getHostname('secure')
       );
 
     // Normalize redirection target
