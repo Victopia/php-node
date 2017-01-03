@@ -1,12 +1,13 @@
-<?php
-/*! LocaleResolver.php | Resolve locale and creates a resource object for request. */
+<?php /*! LocaleResolver.php | Resolve locale and creates a resource object for request. */
 
 namespace resolvers;
 
 use Locale;
 
+use framework\Configuration as conf;
 use framework\Request;
 use framework\Response;
+use framework\System;
 use framework\Translation;
 
 class LocaleResolver implements \framework\interfaces\IRequestResolver {
@@ -31,15 +32,29 @@ class LocaleResolver implements \framework\interfaces\IRequestResolver {
   }
 
   public function resolve(Request $request, Response $response) {
-    // Then request params
+    // note; Request params will always update cookies
     $locale = $request->param('locale');
 
     if ( empty($locale) ) {
       $locale = $request->meta('locale');
     }
 
+    if ( $locale ) {
+      $response->cookie(
+        '__locale',
+        $locale,
+        FRAMEWORK_COOKIE_EXPIRE_TIME,
+        conf::get('system::domains.path_prefix'),
+        System::getHostname('cookies'),
+        $request->client('secure')
+      );
+
+      $request->updateParamCache();
+    }
+
+    // note; Default settings only updates when cookie is not set.
     // User preference
-    if ( empty($request->user) ) {
+    if ( empty($locale) ) {
       $locale = @$request->user['locale'];
     }
 
@@ -53,9 +68,18 @@ class LocaleResolver implements \framework\interfaces\IRequestResolver {
       $locale = $this->defaultLocale;
     }
 
-    if ( !empty($locale) ) {
-      if ( $request->meta('locale') != $locale ) {
-        $response->cookie('__locale', $locale, FRAMEWORK_COOKIE_EXPIRE_TIME, '/');
+    if ( $locale ) {
+      if ( !$request->cookie('__locale') ) {
+        $response->cookie(
+          '__locale',
+          $locale,
+          FRAMEWORK_COOKIE_EXPIRE_TIME,
+          conf::get('system::domains.path_prefix'),
+          System::getHostname('cookies'),
+          $request->client('secure')
+        );
+
+        $request->updateParamCache();
       }
 
       $request->locale($locale);
