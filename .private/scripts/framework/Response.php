@@ -1,5 +1,4 @@
-<?php
-/*! Response.php | Response object for every request. */
+<?php /*! Response.php | Response object for every request. */
 
 namespace framework;
 
@@ -171,9 +170,30 @@ class Response {
   public function redirect($target, $options = array()) {
     // Default values
     $options+= array(
-        'status' => 307,
-        'secure' => (bool) System::getHostname('secure')
-      );
+      'status' => 307,
+      'secure' => (bool) System::getHostname('secure')
+    );
+
+    $target = $this->createLink($target, $options['secure']);
+
+    $this
+      ->header('Location', $target)
+      ->status($options['status']);
+  }
+
+  /**
+   * Create redirection link based on server configurations.
+   *
+   * @param {string} $target  The redirection target, can be either relative
+   *                          or absolute. If an array of URIs are given,
+   *                          the first truthy value will be used, this is
+   *                          handy for a list of fallback URI.
+   * @param {boolean} $secure Use secure connection when available.
+   */
+  public function createLink($target, $secure = null) {
+    if ( $secure === null ) {
+      $secure = (bool) System::getHostname('secure');
+    }
 
     // Normalize redirection target
     if ( is_string($target) ) {
@@ -183,7 +203,10 @@ class Response {
     // note; Ignore path building on relative redirections,
     //       we don't know where the browser is.
     if ( !preg_match('/^\.?\.\//', $target['path']) ) {
-      if ( @$options['secure'] && System::getHostname('secure') ) {
+      // note; Prepend path prefix if exists.
+      $target['path'] = conf::get('system::domains.path_prefix') . $target['path'];
+
+      if ( $secure && System::getHostname('secure') ) {
         $target['scheme'] = 'https';
 
         if ( empty($target['host']) ) {
@@ -202,9 +225,7 @@ class Response {
       $target = $target['path'];
     }
 
-    $this
-      ->header('Location', $target)
-      ->status($options['status']);
+    return $target;
   }
 
   /**
@@ -371,7 +392,7 @@ class Response {
     else {
       $statusMessage = static::getStatusMessage($this->status());
       if ( $statusMessage ) {
-        // FastCGI and CGI expects "Status:" instead of "HTTP/1.0" for status code.
+        // FastCGI and CGI expects "Status:" instead of "HTTP/1.X" for status code.
         $statusMessage =
           [ false !== strpos(@$_SERVER['GATEWAY_INTERFACE'], 'CGI') ? 'Status:' : 'HTTP/1.1'
           , $this->status()
