@@ -234,14 +234,14 @@ class Response {
    * Takes the same parameters as setcookie(), but this updates current cookies immediately.
    */
   public function cookie($name, $value = null) {
-    call_user_func_array('setcookie', func_get_args());
-
-    if ( $value ) {
+    if ( $value !== null ) {
       $_COOKIE[$name] = $value;
     }
     else {
       unset($_COOKIE[$name]);
     }
+
+    call_user_func_array('setcookie', func_get_args());
 
     return $this;
   }
