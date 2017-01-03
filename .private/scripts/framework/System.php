@@ -78,12 +78,16 @@ class System {
   /**
    * Returns a designated type of hostname from configuration.
    */
-  public static function getHostname($type = 'default') {
+  public static function getHostname($type = 'default', $fallback = 'default') {
     static $domains = array();
 
     $domain = &$domains[$type];
     if ( !$domain ) {
       switch ( strtolower($type) ) {
+        case 'cookies':
+          $domain = conf::get('system::domains.cookies');
+          break;
+
         case 'secure':
           $domain = conf::get('system::domains.secure');
           break;
@@ -97,12 +101,17 @@ class System {
           break;
 
         default:
-          $domain = conf::get("system::domains.$type", gethostname());
+          $domain = conf::get("system::domains.default", gethostname());
           break;
       }
     }
 
-    return $domain;
+    if ( empty($domain) && $type != $fallback ) {
+      return System::getHostname($fallback);
+    }
+    else {
+      return $domain;
+    }
   }
 
   /**
