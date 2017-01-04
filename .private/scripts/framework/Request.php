@@ -1,5 +1,4 @@
-<?php
-/* Request.php | Helper class that parses useful information from the current HTTP request. */
+<?php /* Request.php | Helper class that parses useful information from the current HTTP request. */
 
 namespace framework;
 
@@ -690,10 +689,10 @@ class Request {
       implode(
         '&',
         array_map(function($pair) {
-          $pair = explode('=', urldecode($pair));
+          $pair = explode('=', $pair);
           $pair[0] = preg_replace_callback('/^(.*?)(\[.*\])?$/', function($matches) {
             return bin2hex($matches[1]) . @$matches[2];
-          }, $pair[0]);
+          }, urldecode($pair[0]));
           return implode('=', $pair);
         }, explode('&', $query))
       ),
