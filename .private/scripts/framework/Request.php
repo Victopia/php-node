@@ -171,88 +171,7 @@ class Request {
       }
 
       // Request parameters
-      switch ( $this->client('type') ) {
-        case 'cli':
-          $this->paramCache['cli'] = new Optimist();
-          break;
-
-        default:
-          // Request parameters GET
-          // note; PHP replaces several characters into underscore,
-          //       parse the RAW query string if available. #stupidity #legacy
-          if ( isset($_SERVER['QUERY_STRING']) ) {
-            $this->paramCache['get'] = $this->parse($_SERVER['QUERY_STRING']);
-          }
-          else {
-            $this->paramCache['get'] = $_GET;
-          }
-
-          // Request parameters POST
-          $postString = @file_get_contents('php://input');
-          if ( $postString ) {
-            if ( preg_match('/^application\/json/', $this->header('Content-Type')) ) {
-              $this->paramCache['post'] = ContentDecoder::json($postString, true);
-            }
-            else if ( preg_match('/^text\/xml/', $this->header('Content-Type')) ) {
-              $this->paramCache['postXML'] = XMLConverter::fromXML($postString);
-              $this->paramCache['post'] = [];
-            }
-            else {
-              $this->paramCache['post'] = $this->parse($postString);
-            }
-          }
-          else {
-            $this->paramCache['post'] = $_POST;
-          }
-          unset($postString);
-
-          // Cookies
-
-          // note; Cookie string is separated by "; " instead of "&", parse_str() doesn't work.
-          // if ( isset($_SERVER['HTTP_COOKIE']) ) {
-          //   $this->paramCache['cookies'] = $this->parse($_SERVER['HTTP_COOKIE']);
-          // }
-          // else {
-          //   $this->paramCache['cookies'] = $_COOKIE;
-          // }
-          $this->paramCache['cookies'] = $_COOKIE;
-
-          // File uploads
-          if ( $this->method() == 'put' ) {
-            $this->paramCache['files'] = new RequestPutFile($this->header('Content-Type'));
-          }
-          else {
-            util::filesFix();
-
-            $parseFile = function($file) use(&$parseFile) {
-              if ( !is_array($file) ) {
-                return $file;
-              }
-
-              if ( util::isAssoc($file) ) {
-                switch ( $file['error'] ) {
-                  case UPLOAD_ERR_OK:
-                    return new RequestPostFile($file);
-
-                  case UPLOAD_ERR_NO_FILE:
-                    // Skip it.
-                    break;
-
-                  default:
-                    return $file['error'];
-                }
-              }
-              else {
-                return array_mapdef($file, $parseFile);
-              }
-            };
-
-            $this->paramCache['files'] = array_mapdef(array_filter_keys($_FILES, compose('not', startsWith('@'))), $parseFile);
-
-            unset($parseFile);
-          }
-          break;
-      }
+      $this->updateParamCache();
 
       // Request URI
       // CLI requires request parameters
@@ -288,44 +207,8 @@ class Request {
           break;
       }
 
-      // Parse special parameter values
-      array_walk_recursive($this->paramCache, function(&$value) {
-        if ( is_string($value) && strpos($value, $this->metaPrefix) === 0 ) {
-          $_value = substr($value, strlen($this->metaPrefix));
-          switch ( strtolower($_value) ) {
-            case 'true':
-              $value = true;
-              break;
-
-            case 'false':
-              $value = false;
-              break;
-
-            default:
-              if ( defined($_value) ) {
-                $value = constant($_value);
-              }
-              break;
-          }
-        }
-      });
-
       // Request timestamp
       $this->timestamp = (float) @$_SERVER['REQUEST_TIME_FLOAT'];
-    }
-
-    // Unified params ($_REQUEST mimic)
-    switch ( $this->client('type') ) {
-      case 'cli':
-        // $this->paramCache['request'] = $this->paramCache['cli'];
-        break;
-
-      default:
-        $this->paramCache['request'] = array_merge(
-          // (array) @$this->paramCache['cookies'],
-          (array) @$this->paramCache['get'],
-          (array) @$this->paramCache['post']);
-        break;
     }
 
     // Failover in case of request time not exists.
@@ -572,27 +455,18 @@ class Request {
    *
    * Parsed meta param cache
    */
-  protected $meta;
+  protected $metaCache;
 
   /**
    * Parameters starts with metaPrefix will not be returned from param() and
    * must be retrieved from this function.
    */
   public function meta($name = null) {
-    $value = &$this->meta;
-    if ( !$value ) {
-      $value = $this->_param();
-      $value = array_filter_keys($value, startsWith($this->metaPrefix));
-      $value = array_combine(
-        array_map(replaces('/^'.preg_quote($this->metaPrefix).'/', ''), array_keys($value)),
-        array_values($value));
-    }
-
     if ( $name === null ) {
-      return $value;
+      return $this->metaCache;
     }
     else {
-      return @$value[$name];
+      return @$this->metaCache[$name];
     }
   }
 
@@ -679,6 +553,129 @@ class Request {
   //
   //----------------------------------------------------------------------------
 
+  public function updateParamCache() {
+    if ( $this->client('type') == 'cli' ) {
+      $this->paramCache['cli'] = new Optimist();
+    }
+    else if ( $this->client('type') == 'http' ) {
+      // Request parameters GET
+      // note; PHP replaces several characters into underscore,
+      //       parse the RAW query string if available. #stupidity #legacy
+      if ( isset($_SERVER['QUERY_STRING']) ) {
+        $this->paramCache['get'] = $this->parse($_SERVER['QUERY_STRING']);
+      }
+      else {
+        $this->paramCache['get'] = $_GET;
+      }
+
+      // Request parameters POST
+      $postString = @file_get_contents('php://input');
+      if ( $postString ) {
+        if ( preg_match('/^application\/json/', $this->header('Content-Type')) ) {
+          $this->paramCache['post'] = ContentDecoder::json($postString, true);
+        }
+        else if ( preg_match('/^text\/xml/', $this->header('Content-Type')) ) {
+          $this->paramCache['postXML'] = XMLConverter::fromXML($postString);
+          $this->paramCache['post'] = [];
+        }
+        else {
+          $this->paramCache['post'] = $this->parse($postString);
+        }
+      }
+      else {
+        $this->paramCache['post'] = $_POST;
+      }
+      unset($postString);
+
+      // Cookies
+
+      // note; Cookie string is separated by "; " instead of "&", parse_str() doesn't work.
+      // if ( isset($_SERVER['HTTP_COOKIE']) ) {
+      //   $this->paramCache['cookies'] = $this->parse($_SERVER['HTTP_COOKIE']);
+      // }
+      // else {
+      //   $this->paramCache['cookies'] = $_COOKIE;
+      // }
+      $this->paramCache['cookies'] = $_COOKIE;
+
+      // File uploads
+      if ( $this->method() == 'put' ) {
+        $this->paramCache['files'] = new RequestPutFile($this->header('Content-Type'));
+      }
+      else {
+        util::filesFix();
+
+        $parseFile = function($file) use(&$parseFile) {
+          if ( !is_array($file) ) {
+            return $file;
+          }
+
+          if ( util::isAssoc($file) ) {
+            switch ( $file['error'] ) {
+              case UPLOAD_ERR_OK:
+                return new RequestPostFile($file);
+
+              case UPLOAD_ERR_NO_FILE:
+                // Skip it.
+                break;
+
+              default:
+                return $file['error'];
+            }
+          }
+          else {
+            return array_mapdef($file, $parseFile);
+          }
+        };
+
+        $this->paramCache['files'] = array_mapdef(array_filter_keys($_FILES, compose('not', startsWith($this->metaPrefix))), $parseFile);
+
+        unset($parseFile);
+      }
+
+      // Parse special parameter values
+      array_walk_recursive($this->paramCache, function(&$value) {
+        if ( is_string($value) && strpos($value, $this->metaPrefix) === 0 ) {
+          $_value = substr($value, strlen($this->metaPrefix));
+          switch ( strtolower($_value) ) {
+            case 'true':
+              $value = true;
+              break;
+
+            case 'false':
+              $value = false;
+              break;
+
+            default:
+              if ( defined($_value) ) {
+                $value = constant($_value);
+              }
+              break;
+          }
+        }
+      });
+
+      $this->paramCache['request'] = array_merge(
+        // note; Cookies might pollute the expected result in ->param()
+        // (array) @$this->paramCache['cookies'],
+        (array) @$this->paramCache['get'],
+        (array) @$this->paramCache['post']
+      );
+
+      // note; Reset meta cache
+      $this->metaCache = array_merge(
+        (array) @$this->paramCache['cookies'],
+        (array) @$this->paramCache['get'],
+        (array) @$this->paramCache['post']
+      );
+
+      $this->metaCache = array_combine(
+        array_map(replaces('/^'.preg_quote($this->metaPrefix).'/', ''), array_keys($this->metaCache)),
+        array_values($this->metaCache)
+      );
+    }
+  }
+
   /**
    * Decodes query string formats into variables.
    *
@@ -735,24 +732,24 @@ class Request {
 
     // Creates a CURL request upon current request context.
     Net::httpRequest(array(
-        'url' => http_build_url($this->uri()),
-        'data' => array_replace_recursive((array) $this->param(), (array) $this->file()),
-        'type' => $this->method(),
-        'headers' => $this->header(),
-            'success' => function($responseText, $options) use(&$response) {
-              if ( $response === null ) {
-                $response = new Response();
-              }
+      'url' => http_build_url($this->uri()),
+      'data' => array_replace_recursive((array) $this->param(), (array) $this->file()),
+      'type' => $this->method(),
+      'headers' => $this->header(),
+        'success' => function($responseText, $options) use(&$response) {
+          if ( $response === null ) {
+            $response = new Response();
+          }
 
-              foreach ( array_filter(preg_split('/\r?\n/', @$options['response']['headers'])) as $value ) {
-                $response->header($value);
-              }
+          foreach ( array_filter(preg_split('/\r?\n/', @$options['response']['headers'])) as $value ) {
+            $response->header($value);
+          }
 
-              $response->send($responseText, (int) @$options['response']['status']);
-            },
-            'failure' => function($errNum, $errMsg, $options) {
-              throw new FrameworkException($errMsg, $errNum);
-            }
+          $response->send($responseText, (int) @$options['response']['status']);
+        },
+        'failure' => function($errNum, $errMsg, $options) {
+          throw new FrameworkException($errMsg, $errNum);
+        }
       ));
 
     return $response;
