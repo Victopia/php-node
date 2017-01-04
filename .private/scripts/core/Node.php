@@ -1,5 +1,4 @@
-<?php
-/* Node.php | The node data framework. */
+<?php /* Node.php | The node data framework. */
 
 namespace core;
 
@@ -611,7 +610,14 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
           }
           else
 
-          // 5. Plain string.
+          // 5. Regular Expression
+          if ( @preg_match($content, null) !== false ) {
+            $subQuery[] = "REGEXP ?";
+            $params[] = substr($content, 1, -1);
+          }
+          else
+
+          // 6. Plain string.
           if ( is_string($content) ) {
             // note: Unescaped *, % or _ characters
             if ( ctype_print($content) && preg_match('/[^\\][\\*%_]/', $content) ) {
@@ -621,9 +627,15 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
               $operator = '=';
             }
 
-            if ( preg_match('/^!\'([^\']*)\'$/', $content, $matches) ) {
-              $subQuery[] = "NOT $operator ?";
-              $content = $matches[1];
+            if ( preg_match('/^(!|=)=?\'([^\']*)\'$/', $content, $matches) ) {
+              if ( $matches[1] == '!' ) {
+                $subQuery[] = "NOT $operator ?";
+              }
+              else {
+                $subQuery[] = "$operator ?";
+              }
+
+              $content = $matches[2];
             }
             else {
               $subQuery[] = "$operator ?";
@@ -800,6 +812,12 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
       // Regexp matching: "/^AB\d+/"
       else if ( $expr instanceof NodeRegularExpression ) {
         if ( preg_match($expr->pattern(), $value) == 0 ) {
+          return false;
+        }
+      }
+
+      else if ( preg_match($expr, null) !== false ) {
+        if ( preg_match($expr, $value) == 0 ) {
           return false;
         }
       }
