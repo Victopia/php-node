@@ -16,6 +16,9 @@ use framework\Process;
 use framework\exceptions\ProcessException;
 
 $opts = (new framework\Optimist)
+  ->options('nohup', array(
+      'describe' => 'Force nohup process spawn.'
+    ))
   ->options('cron', array(
       'alias' => 'c'
     , 'describe' => 'Indicates the process is invoked from cron job, only affects the log.'
@@ -127,12 +130,21 @@ $opts = (new framework\Optimist)
   Database::disconnect();
 
 // Forks then exits the parent.
-  if ( function_exists('pcntl_fork') ) {
-    $pid = pcntl_fork();
+  if ( @$opts['n'] ) {
+    $pid = 0; // fork mimic
+  }
+  // Use nohup if internal forking is not supported.
+  elseif ( !function_exists('pcntl_fork') || @$opts['nohup'] ) {
+    $ret = shell_exec('nohup ' . Process::EXEC_PATH . ' -n >/dev/null 2>&1 & echo $!');
+
+    if ( !$ret ) {
+      Log::error('Process cannot be spawn, please review your configuration.');
+    }
+
+    die;
   }
   else {
-    // note;dev; If it can't fork, then don't.
-    $pid = 0;
+    $pid = pcntl_fork();
   }
 
   // parent: $forked == false
