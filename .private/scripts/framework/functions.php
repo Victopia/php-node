@@ -775,7 +775,7 @@ function maps(/* callable */ $callback) {
  * Factory of functions that wrap provided $item with an array under property $name.
  */
 function wraps($name) {
-  return function ($item) {
+  return function ($item) use($name) {
     return array($name => $item);
   };
 }
