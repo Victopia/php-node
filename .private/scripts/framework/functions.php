@@ -930,7 +930,7 @@ if ( !function_exists('array_filter_keys') ) {
 
 function mapdef($list, /* callable */ $callback, /* callable */ $filter = null) {
   if ( $filter === null ) {
-    $filter = filters();
+    $filter = filters(compose('not', 'blank'));
   }
   else {
     $filter = filters($filter);
