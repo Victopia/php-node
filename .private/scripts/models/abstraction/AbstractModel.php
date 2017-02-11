@@ -1,5 +1,4 @@
-<?php
-/*! AbstractModel.php | Abstraction the data model structure. */
+<?php /*! AbstractModel.php | Abstraction the data model structure. */
 
 namespace models\abstraction;
 
@@ -36,15 +35,28 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    *
    * @param {?array} $data Designated data to be set into this model object.
    */
-  function __construct($data = null) {
+  function __construct($data = null, $context = array()) {
     if ( $data instanceof self ) {
       $data = $data->data();
     }
 
     $this->data($data);
 
-    $this->__request = Resolver::getActiveInstance()->request();
-    $this->__response = Resolver::getActiveInstance()->response();
+    $res = Resolver::getActiveInstance();
+
+    if ( isset($context['request']) ) {
+      $this->_request = $context['request'];
+    }
+    else if ( $res ) {
+      $this->_request = $res->request();
+    }
+
+    if ( isset($context['response']) ) {
+      $this->_response = $context['response'];
+    }
+    else if ( $res ) {
+      $this->_response = $res->response();
+    }
   }
 
   //----------------------------------------------------------------------------
@@ -52,6 +64,20 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   //  Properties
   //
   //----------------------------------------------------------------------------
+
+  /**
+   * @private
+   *
+   * (Read-only) Reqeust context.
+   */
+  protected $_request;
+
+  /**
+   * @private
+   *
+   * (Read-only) Response context.
+   */
+  protected $_response;
 
   /**
    * @private
@@ -122,8 +148,14 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     else {
       $this->data = new \stdClass;
 
+      $value = (array) $value;
+
+      if ( isset($value[Node::FIELD_COLLECTION]) && $value[Node::FIELD_COLLECTION] == self::collectionName() ) {
+        unset($value[Node::FIELD_COLLECTION]);
+      }
+
       // note: let __set() do the job.
-      foreach ( (array) $value as $key => $val ) {
+      foreach ( $value as $key => $val ) {
         $this->$key = util::arrayToObject($val);
       }
 
@@ -181,7 +213,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * properties and does not proxy into internal data.
    */
   function &__get($name) {
-    if ( !preg_match('/^(@|__)/', $name) ) {
+    if ( strpos($name, '__') !== 0 ) {
       return $this->data->$name;
     }
 
@@ -193,7 +225,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
 
       if ( class_exists($auth) ) {
         // note; Make a variable for reference returning.
-        $result = call_user_func("$auth::authenticate", $this->__request);
+        $result = call_user_func("$auth::authenticate", $this->request());
 
         return $result;
       }
@@ -210,7 +242,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * contextual assignment and avoid polluting the data.
    */
   function __set($name, $value) {
-    if ( !preg_match('/^(@|__)/', $name) ) {
+    if ( strpos($name, '__') !== 0 ) {
       if ( !$this->data ) {
         $this->data = new \stdClass;
       }
@@ -247,7 +279,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       }
     }
 
-    // RW takes precedence
+    // Read-Write properties takes precedence
     if ( isset($this->$name) ) {
       if ( !$args ) {
         return $this->data->$name;
@@ -260,7 +292,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       }
     }
     // Read-only properties
-    else if ( isset($this->{"_$name"}) ) {
+    else if ( property_exists($this, "_$name") ) {
       return $this->{"_$name"};
     }
 
@@ -349,12 +381,12 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
 
     $collection = new ModelCollection(get_called_class(), $filter);
 
-    if ( isset($this->__request) ) {
-      $collection->__request = $this->__request;
+    if ( $this->request() ) {
+      $collection->__request = $this->request();
     }
 
-    if ( isset($this->__request) ) {
-      $collection->__response = $this->__response;
+    if ( $this->response() ) {
+      $collection->__response = $this->response();
     }
 
     return $collection;
@@ -545,7 +577,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * @return {AbstractModel} Chainable.
    */
   protected function beforeSave(array &$errors = array()) {
-    $errors+= $this->validate();
+    $errors+= (array) $this->validate();
     return $this;
   }
 
