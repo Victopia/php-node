@@ -153,6 +153,9 @@ abstract class JsonSchemaModel extends AbstractRelationModel {
     if ($result->valid) {
       $this->data = $result->value;
     }
+    else {
+      $this->{'$errors'} = $result->errors;
+    }
 
     return $this;
   }
