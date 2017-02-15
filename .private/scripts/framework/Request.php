@@ -609,7 +609,7 @@ class Request {
             return $file;
           }
 
-          if ( util::isAssoc($file) ) {
+          if ( util::isAssoc($file) && array_key_exists('error', $file) && array_key_exists('tmp_name', $file) ) {
             switch ( $file['error'] ) {
               case UPLOAD_ERR_OK:
                 return new RequestPostFile($file);
