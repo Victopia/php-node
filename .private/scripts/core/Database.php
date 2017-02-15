@@ -350,6 +350,10 @@ final class Database {
           $parmType = \PDO::PARAM_BOOL;
           break;
 
+        case 'NULL':
+          $parmType = \PDO::PARAM_NULL;
+          break;
+
         default:
           $parmType = \PDO::PARAM_STR;
           break;
