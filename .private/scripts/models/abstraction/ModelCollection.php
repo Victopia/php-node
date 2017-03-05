@@ -26,13 +26,15 @@ class ModelCollection implements \Iterator, \ArrayAccess, \Countable, \JsonSeria
   /**
    * @constructor
    */
-  public function __construct($modelClass, $filter) {
+  public function __construct($modelClass, $filter, $context = array()) {
     if ( !class_exists($modelClass) ) {
       throw new \Exception("Class $modelClass does not exists.");
     }
 
     $this->modelClass = $modelClass;
     $this->collection = new Node($filter);
+
+    $this->context = $context;
   }
 
   //----------------------------------------------------------------------------
@@ -126,18 +128,11 @@ class ModelCollection implements \Iterator, \ArrayAccess, \Countable, \JsonSeria
 
   protected function createModel($data) {
     $model = new $this->modelClass(
-      $this->collection->current()
+      $this->collection->current(),
+      $this->context
     );
 
-    if ( isset($this->__request) ) {
-      $model->__request = $this->__request;
-    }
-
-    if ( isset($this->__response) ) {
-      $model->__response = $this->__response;
-    }
-
-    util::forceInvoke(array($model, 'afterLoad'));
+    $model->__afterLoad();
 
     return $model;
   }
