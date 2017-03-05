@@ -1,5 +1,4 @@
-<?php
-/*! _.php | Basic data service, manipulate data with specified model class. */
+<?php /*! _.php | Basic data service, manipulate data with specified model class. */
 
 namespace services;
 
@@ -38,12 +37,16 @@ class _ extends \framework\WebService {
       $this->response()->send('Please specifiy a model name.', 501);
       return;
     }
-    else if ( !class_exists("models\\$model") ) {
-      throw new ResolverException(404, "Model $model does not exist.");
+    else if ( class_exists("models\\$model") ) {
+      $model = "models\\$model";
+      $this->modelClass = new $model();
+      // throw new ResolverException(404, "Model $model does not exist.");
+    }
+    else {
+      $this->modelClass = new \models\NodeModel($model);
     }
 
-    $model = "models\\$model";
-    $this->modelClass = new $model();
+    unset($model);
 
     // Remove model name
     $args = array_slice(func_get_args(), 1);
@@ -150,12 +153,7 @@ class _ extends \framework\WebService {
     }
 
     $data = (array) $this->request()->param();
-    if ( $data ) {
-      // note; no null types and empty strings
-      $data = array_filter($data, function($value) {
-        return !is_null($value) && $value !== '';
-      });
-
+    if ( $data || $this->request()->file() ) {
       // This will append the existing data to the submitted one.
       if ( $identity ) {
         $this->modelClass->load($identity);
@@ -250,7 +248,14 @@ class _ extends \framework\WebService {
   protected function schema($type = 'data') {
     switch ( $this->request()->method() ) {
       case 'get':
-        return $this->modelClass->schema($type);
+        $schema = $this->modelClass->schema($type);
+        if ( !$schema ) {
+          $this->response()->status(404);
+        }
+        else {
+          return $schema;
+        }
+        break;
 
       case 'post':
         // TODO: Perform meta-schema validation
