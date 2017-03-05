@@ -525,6 +525,17 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
 
     /* Merge $filter into SQL statement. */
       array_walk($columnsFilter, function(&$contents, $field) use(&$query, &$params, $tableName) {
+        $queryOptions = [
+          'operator' => 'OR'
+        ];
+
+        if ( is_array($contents) && array_key_exists('@options', $contents) ) {
+          // note; Pick up query options before processing
+          $queryOptions = (array) @$contents['@options'] + $queryOptions;
+
+          unset($contents['@options']);
+        }
+
         $contents = Utility::wrapAssoc($contents);
 
         $subQuery = [];
@@ -667,7 +678,7 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
            Inclusive search in real columns, within the same column.
         */
         if ( $subQuery ) {
-          $query[] = '(' . implode(' OR ', $subQuery) . ')';
+          $query[] = '(' . implode(" $queryOptions[operator] ", $subQuery) . ')';
         }
       });
 
