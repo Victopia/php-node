@@ -74,7 +74,7 @@ class ScssResolver implements \framework\interfaces\IRequestResolver {
     // also takes care of .min requests
     $pathInfo['filename'] = preg_replace('/\.min$/', '', $pathInfo['filename']);
 
-    $_srcPath = "/$pathInfo[dirname]/$pathInfo[filename].scss";
+    $_srcPath = "$pathInfo[dirname]/$pathInfo[filename].scss";
     $dstPath = "./$this->dstPath/$pathInfo[dirname]/$pathInfo[filename].css";
 
     foreach ( $this->srcPath as $srcPath ) {
