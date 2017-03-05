@@ -1,5 +1,4 @@
-<?php
-/* Utility.php | https://github.com/victopia/php-node */
+<?php /* Utility.php | https://github.com/victopia/php-node */
 
 namespace core;
 
@@ -784,12 +783,17 @@ class Utility {
     //       mixed with both absolute and relative date. e.g. "+1 day 12:01:01", "+1 hour 01 Feb, 2001"
 
     if ( $date == 'now' ) {
-      $date = \DateTime::createFromFormat('U.u', sprintf('%.f', microtime(1)), new \DateTimeZone('GMT'))
-        ->setTimezone(new \DateTimeZone(date_default_timezone_get()));
+      $date = \DateTime::createFromFormat(
+          'U.u',
+          sprintf('%.f', microtime(1)),
+          new \DateTimeZone('GMT')
+        );
     }
     else {
       $date = new \DateTime($date);
     }
+
+    $date->setTimezone(new \DateTimeZone(date_default_timezone_get()));
 
     return $date->format($pattern);
   }
