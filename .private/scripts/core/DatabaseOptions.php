@@ -1,5 +1,4 @@
-<?php
-/* DatabaseOptions.php | https://github.com/victopia/php-node */
+<?php /* DatabaseOptions.php | https://github.com/victopia/php-node */
 
 namespace core;
 

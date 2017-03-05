@@ -36,19 +36,17 @@ final class Database {
   //
   //----------------------------------------------------------------------------
 
-  public static function setOptions($options) {
-    if ( !($options instanceof DatabaseOptions) ) {
-      throw new \PDOException('Options must be an instance of DatabaseOptions class.');
-    }
-
+  public static function setOptions(DatabaseOptions $options) {
     self::$options = $options;
 
     self::$con = null;
     self::$preparedStatments = array();
   }
 
-  public static /* DatabaseOptions */
-  function getOptions() {
+  /**
+   * Returns the current DatabaseOptions instance.
+   */
+  public static function getOptions() {
     return self::$options;
   }
 
@@ -59,10 +57,11 @@ final class Database {
   //----------------------------------------------------------------------------
 
   /**
-   * @private
+   * Create a PDO connection with specified options.
+   *
+   * @return {?PDO} The PDO object created, or null on exceptions.
    */
-  protected static /* PDO */
-  function getConnection() {
+  public static function getConnection() {
     if ( self::$con === null ) {
       if ( self::$options === null ) {
         if ( error_reporting() ) {
@@ -71,10 +70,6 @@ final class Database {
         else {
           return null;
         }
-      }
-
-      if ( !(self::$options instanceof DatabaseOptions) ) {
-        throw new \PDOException('Options must be an instance of DatabaseOptions class.');
       }
 
       try {
@@ -101,8 +96,7 @@ final class Database {
    *
    * If there is no active connection, nothing will happen.
    */
-  public static /* null */
-  function disconnect() {
+  public static function disconnect() {
     if ( static::isConnected() ) {
       self::$con = null;
     }
@@ -131,9 +125,10 @@ final class Database {
    *
    * @param {DatabaseOptions} Optionally provide new connection
    *                          options when reconnecting.
+   *
+   * @return {bool} True on success, false otherwise.
    */
-  public static /* Boolean */
-  function reconnect($dbOptions = null) {
+  public static function reconnect($dbOptions = null) {
     self::$con = null;
 
     // Temporarily apply new options
@@ -154,9 +149,13 @@ final class Database {
   /**
    * Escape a string to be used as table names and field names,
    * and should only be used to quote table names and field names.
+   *
+   * @param {string} $value The value to be escaped.
+   * @param {?string} Target tables to determine if $value is a field, defaults to null.
+   *
+   * @return {string} The escaped string.
    */
-  public static /* String */
-  function escapeField($value, $tables = null) {
+  public static function escapeField($value, $tables = null) {
     // Escape with column determination.
     if ( $tables !== null ) {
       // Force array casting.
@@ -205,6 +204,7 @@ final class Database {
    * Escape wildcard characters for exact string matching.
    *
    * @param {string} $value Input string containing wildcard characters.
+   *
    * @return {string} String with all wildcard characters escaped.
    */
   public static function escapeValue($value) {
@@ -214,9 +214,9 @@ final class Database {
   /**
    * Check whether specified table exists or not.
    *
-   * @param $table String that carrries the name of target table.
+   * @param {string} $table Name of target table.
    *
-   * @returns true on table exists, false otherwise.
+   * @returns {bool} true on table exists, false otherwise.
    */
   public static /* Boolean */
   function hasTable($table, $clearCache = false) {
@@ -241,9 +241,12 @@ final class Database {
 
   /**
    * Gets fields with specified key type.
+   *
+   * @param {string|array} String or array of target tables.
+   *
+   * @return {array} Fields of specified table.
    */
-  public static /* Array */
-  function getFields($tables, $key = null, $nameOnly = true) {
+  public static function getFields($tables, $key = null, $nameOnly = true) {
     $tables = Utility::wrapAssoc($tables);
 
     $cache = &self::$schemaCache;
@@ -315,24 +318,33 @@ final class Database {
     return $tables;
   }
 
-  public static /* PDOStatement */
-  function prepare($query, $options = array()) {
-    $stmt = &$preparedStatments[$query][serialize($options)];
+  /**
+   * Prepare a PDOStatement object for future queries.
+   *
+   * @see PDOStatement#prepare
+   */
+  public static function prepare($query, $driver_options = array()) {
+    $stmt = &$preparedStatments[$query][serialize($driver_options)];
 
     if (!$stmt instanceof PDOStatement) {
       $con = static::getConnection();
 
-      $stmt = $con->prepare($query, $options);
+      $stmt = $con->prepare($query, $driver_options);
     }
 
     return $stmt;
   }
 
   /**
-   * Return the PDOStatement result.
+   * Query a PDOStatement and return the result, throws exception on failure.
+   *
+   * @param {string} $query PDO compatible query string.
+   * @param {?array} $param Array of parameters to be bound with the generated PDOStatement.
+   * @param {?array} $options Driver options, see PDOStatement::prepare().
+   *
+   * @return {mixed} The executed PDOStatement object.
    */
-  public static /* PDOStatement */
-  function query($query, $param = null, $options = array()) {
+  public static function query($query, $param = null, $options = array()) {
     $stmt = static::prepare($query, $options);
 
     $param = (array) $param;
@@ -392,12 +404,14 @@ final class Database {
 
   /**
    * Fetch the result set as a two-deminsional array.
+   *
+   * @return {array} The result set.
    */
-  public static /* Array */
-  function fetchArray( $query
-                     , $param = null
-                     , $fetch_type = \PDO::FETCH_ASSOC
-                     , $fetch_argument = null ) {
+  public static function fetchArray( $query
+                                   , $param = null
+                                   , $fetch_type = \PDO::FETCH_ASSOC
+                                   , $fetch_argument = null )
+  {
     $res = static::query($query, $param);
 
     if ( $res === false ) {
@@ -413,12 +427,18 @@ final class Database {
 
   /**
    * Fetch the first row as an associative array or indexed array.
+   *
+   * @param {string} $query PDO compatible query string.
+   * @param {?array} $param Parameters to be bound with the generated PDOStatement.
+   * @param {int} $fetch_offset See PDO::query
+   *
+   * @return {mixed} The result row in specified format.
    */
-  public static /* Array */
-  function fetchRow( $query
-                   , $param = null
-                   , $fetch_offset = 0
-                   , $fetch_type = \PDO::FETCH_ASSOC ) {
+  public static function fetchRow( $query
+                                 , $param = null
+                                 , $fetch_offset = 0
+                                 , $fetch_type = \PDO::FETCH_ASSOC )
+  {
     /*! Note by Vicary @ 8.Nov.2012
      *  As of PHP 5.4.8, this shit is still not supported by SQLite and MySQL.
      *
@@ -442,12 +462,19 @@ final class Database {
 
   /**
    * Fetch a single field from the first row.
+   *
+   * @param {string} $query PDO compatible query string.
+   * @param {?array} $param Parameters to be bound with the generated PDOStatement.
+   * @param {?int} $field_offset Index of target field.
+   * @param {?int} $fetch_offset Row offset.
+   *
+   * @return {mixed} The fetched field.
    */
-  public static /* Mixed */
-  function fetchField( $query
-                     , $param = null
-                     , $field_offset = 0
-                     , $fetch_offset = 0 ) {
+  public static function fetchField( $query
+                                   , $param = null
+                                   , $field_offset = 0
+                                   , $fetch_offset = 0 )
+  {
     $res = static::query($query, $param);
 
     // fetch whatever I don't care.
@@ -463,8 +490,7 @@ final class Database {
   /**
    * Truncate target table.
    */
-  public static /* Mixed */
-  function truncateTable($tableName) {
+  public static function truncateTable($tableName) {
     $tableName = static::escapeField($tableName);
 
     return (bool) static::query("TRUNCATE TABLE $tableName");
@@ -473,8 +499,7 @@ final class Database {
   /**
    * Begin transaction, lock table.
    */
-  public static /* Boolean */
-  function beginTransaction() {
+  public static function beginTransaction() {
     $res = static::fetchRow('SHOW VARIABLES LIKE ?', ['autocommit']);
 
     self::$transactionStore['autocommit'] = $res['Value'];
@@ -488,15 +513,17 @@ final class Database {
   /**
    * Returns of current connection is in the middle of a transaction.
    */
-  public static /* boolean */ function inTransaction() {
+  public static function inTransaction() {
     return static::getConnection()->inTransaction();
   }
 
   /**
    * Commit changes.
+   *
+   * @return {boolean} True on success.
+   * @see PDO::commit()
    */
-  public static /* Boolean */
-  function commit() {
+  public static function commit() {
     // Restore whatever value it was when transaction ends.
     if ( isset(self::$transactionStore['autocommit']) ) {
       static::query('SET autocommit = ?', self::$transactionStore['autocommit']);
@@ -509,9 +536,11 @@ final class Database {
 
   /**
    * Rollback changes.
+   *
+   * @return {boolean} True on success, false otherwise.
+   * @see PDO::rollback()
    */
-  public static /* Boolean */
-  function rollback() {
+  public static function rollback() {
     // Restore whatever value it was when transaction ends.
     if ( isset(self::$transactionStore['autocommit']) ) {
       static::query('SET autocommit = ?', self::$transactionStore['autocommit']);
@@ -525,18 +554,20 @@ final class Database {
   /**
    * Getter function.
    *
-   * @param $tables Array of the target table names, or string on single target.
-   * @param $fields Array of field names or string, direct application into query when string is given.
-   * @param $criteria String of WHERE and ORDER BY clause, as well as GROUP BY statments.
-   * @param $param Array of parameters to be passed in to the prepared statement.
+   * @param {string|array} $tables Target table names.
+   * @param {string|array} $fields Array of field names or string, direct application into query when string is given.
+   * @param {string} $criteria String appended to query, such as WHERE and ORDER BY clause, as well as GROUP BY statments.
+   * @param {?array} $param Parameters to be bound with the generated PDOStatement.
+   *
+   * @return {array} The result set.
    */
-  public static /* Array */
-  function select( $tables
-                 , $fields = '*'
-                 , $criteria = null
-                 , $param = null
-                 , $fetch_type = \PDO::FETCH_ASSOC
-                 , $fetch_argument = null ) {
+  public static function select( $tables
+                               , $fields = '*'
+                               , $criteria = null
+                               , $param = null
+                               , $fetch_type = \PDO::FETCH_ASSOC
+                               , $fetch_argument = null )
+  {
     // Escape fields
     $fields = static::escapeField($fields, $tables);
 
@@ -563,10 +594,9 @@ final class Database {
    * @param {array} $data Key-value pairs of field names and values.
    * @param {?bool} $replace Use REPLACE INTO instead of ON DUPLICATE KEY UPDATE, defaults true.
    *
-   * @returns True on update succeed, insertId on a row inserted, false on failure.
+   * @return {bool|int} True on update succeed, insertId on a row inserted, false on failure.
    */
-  public static /* Mixed */
-  function upsert($table, array $data, $replace = true) {
+  public static function upsert($table, array $data, $replace = true) {
     $fields = static::escapeField(array_keys($data), $table);
 
     $values = array_values($data);
@@ -645,8 +675,7 @@ final class Database {
    *
    * @return The total number of affected rows.
    */
-  public static /* null */
-  function delete($table, $keySets) {
+  public static function delete($table, $keySets) {
     $columns = static::getFields($table, array('PRI', 'UNI'));
 
     $keySets = Utility::wrapAssoc($keySets);
@@ -701,16 +730,29 @@ final class Database {
     }, 0);
   }
 
-  public static /* int */
-  function lastInsertId() {
+  /**
+   * @see PDO::lastInsertId()
+   */
+  public static function lastInsertId() {
     return static::getConnection()->lastInsertId();
   }
 
-  public static /* Array */
-  function lastError() {
+  /**
+   * @see PDO::errorInfo()
+   */
+  public static function lastError() {
     return static::getConnection()->errorInfo();
   }
 
+  /**
+   * Lock specified tables.
+   *
+   * @param {string|array} $tables ... Supports array or spread across parameters.
+   *                                   e.g. lockTables(array('TABLE1 READ', 'TABLE2 WRITE')), or
+   *                                        lockTables('TABLE1 READ', 'TABLE2 WRITE')
+   *
+   * @return {bool} True on success, false othewise.
+   */
   public static function lockTables($tables) {
     if ( !is_array($tables) ) {
       $tables = func_get_args();

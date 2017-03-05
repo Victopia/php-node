@@ -29,9 +29,16 @@
 
   "database": {
     "driver": "mysql",
-    "host": "127.0.0.1",
-    "schema": "php-node",
-    "user": "root"
+    "user": "root",
+    "attributes": {
+      "host": "127.0.0.1",
+      "port": 3306,
+      "dbname": "php-node"
+    },
+    "options": {
+      "MYSQL_ATTR_USE_BUFFERED_QUERY": true,
+      "MYSQL_ATTR_INIT_COMMAND": "SET NAMES utf8;"
+    }
   },
 
   "i18n": {
