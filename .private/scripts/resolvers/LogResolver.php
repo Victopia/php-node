@@ -41,6 +41,12 @@ class LogResolver implements \framework\interfaces\IRequestResolver {
 				      'origin' =>  $request->client('referer')
 				    , 'userAgent' => util::cascade(@$request->client('userAgent'), 'Unknown')
 				    , 'timeElapsed' => round(microtime(1) - $request->timestamp(), 4) . ' secs'
+				    , 'params' =>
+				      [ 'get' => $request->get()
+				      , 'post' => $request->post()
+				      , 'cookie' => $request->cookie()
+				      , 'meta' => $request->meta()
+				      ]
 				    )));
 					break;
 			}
