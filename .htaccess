@@ -16,3 +16,8 @@
   RewriteRule .* .private/gateway.php [L]
 
 </IfModule>
+
+#
+# Take away slashes, leaves everything to resolvers.
+#
+DirectorySlash Off
