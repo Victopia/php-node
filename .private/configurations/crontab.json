@@ -1,10 +1,10 @@
 {
   "schedules": [
+    // Sweeps expired data (e.g. emails, notifications ...) every 5 mins
     {
-      // Sweeps ancient sessions every 5 mins
       "schedule": "*/5 * * * *",
-      "command": "php .private/crons/SessionSweeper.php",
-      "name": "session_sweeper"
+      "command": "php .private/crons/GarbageCollector.php",
+      "name": "gc"
     }
   ]
 }
