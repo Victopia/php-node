@@ -15,7 +15,15 @@ use framework\exceptions\ServiceException;
  */
 class sessions extends \framework\WebService {
 
-  function validate($username, $password = null) {
+  function validate($username = null, $password = null) {
+    if ( !$username ) {
+      $username = $this->request()->post('username');
+    }
+
+    if ( !$username ) {
+      throw new ServiceException('No username provided.');
+    }
+
     if ( !$password ) {
       $password = $this->request()->post('password');
     }
@@ -24,20 +32,7 @@ class sessions extends \framework\WebService {
       throw new ServiceException('No password provided.');
     }
 
-    return $res = Session::validate($username, $password, $this->request()->fingerprint());
-    if ( is_int($res) ) {
-      switch ( $res ) {
-        case Session::ERR_MISMATCH:
-          throw new ServiceException('Username and password mismatch.', $res);
-          break;
-
-        case Session::ERR_EXISTS:
-          throw new ServiceException('Session already exists.', $res);
-          break;
-      }
-    }
-
-    return $res;
+    return Session::validate($username, $password, $this->request()->fingerprint());
   }
 
   function ensure($sid = null, $token = null) {
@@ -45,20 +40,7 @@ class sessions extends \framework\WebService {
       $sid = $this->request()->meta('sid');
     }
 
-    $res = Session::ensure($sid, $token, $this->request()->fingerprint());
-    if ( is_int($res) ) {
-      switch ( $res ) {
-        case Session::ERR_INVALID:
-          throw new ServiceException('Specified session ID is not valid.', $res);
-          break;
-
-        case Session::ERR_EXPIRED:
-          throw new ServiceException('Session has expired, restore it before making other calls.', $res);
-          break;
-      }
-    }
-
-    return $res;
+    return Session::ensure($sid, $token, $this->request()->fingerprint());
   }
 
   function current() {
