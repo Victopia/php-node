@@ -45,7 +45,7 @@ $opts = (new framework\Optimist)
     if ( $pids ) {
       // Delete normal orphan processes
       $res = Database::query('DELETE FROM `'.FRAMEWORK_COLLECTION_PROCESS.'`
-        WHERE `type` NOT IN (\'permanent\', \'cron\')
+        WHERE `type` NOT IN (\'permanent\')
           AND `pid` IS NOT NULL
           AND `pid` NOT IN ('.Utility::fillArray($pids).')', $pids);
       if ( $res ) {
@@ -55,8 +55,7 @@ $opts = (new framework\Optimist)
       // Delete cron process only when current time is ahead of start_time
       $res = Database::query('DELETE FROM `'.FRAMEWORK_COLLECTION_PROCESS.'`
         WHERE `type` = \'cron\'
-          AND `pid` = 0
-          AND `pid` NOT IN ('.Utility::fillArray($pids).')', $pids);
+          AND `pid` = 0', $pids);
       if ( $res ) {
         $affectedRows+= $res->rowCount();
       }
