@@ -611,7 +611,7 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
           else
 
           // 5. Regular Expression
-          if ( @preg_match($content, null) !== false ) {
+          if ( ctype_print($content) && @preg_match($content, null) !== false ) {
             $subQuery[] = "REGEXP ?";
             $params[] = substr($content, 1, -1);
           }
@@ -620,7 +620,7 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
           // 6. Plain string.
           if ( is_string($content) ) {
             // note: Unescaped *, % or _ characters
-            if ( ctype_print($content) && preg_match('/[^\\][\\*%_]/', $content) ) {
+            if ( preg_match('/[^\\][\\*%_]/', $content) ) {
               $operator = 'LIKE';
             }
             else {
@@ -816,7 +816,7 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
         }
       }
 
-      else if ( preg_match($expr, null) !== false ) {
+      else if ( @preg_match($expr, null) !== false ) {
         if ( preg_match($expr, $value) == 0 ) {
           return false;
         }
