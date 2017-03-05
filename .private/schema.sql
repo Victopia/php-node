@@ -142,6 +142,27 @@ CREATE TABLE `User` (
 
 
 
+# Dump of table UserForm
+# ------------------------------------------------------------
+
+DROP TABLE IF EXISTS `UserForm`;
+
+CREATE TABLE `UserForm` (
+  `uuid` binary(16) NOT NULL,
+  `title` varchar(255) NOT NULL DEFAULT '',
+  `type` enum('schema','template') NOT NULL DEFAULT 'schema',
+  `@contents` longtext,
+  `sortIndex` tinyint(3) unsigned NOT NULL DEFAULT '0',
+  `timestamp` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (`uuid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
+
+
+INSERT INTO `UserForm` (`uuid`, `title`, `type`, `@contents`, `sortIndex`)
+VALUES
+  (UNHEX(REPLACE(UUID(), '-', '')), '::User Forms', 'schema', '{\"description\":\"Back End User Forms\",\"formSchema\":[{\"key\":\"uuid\",\"type\":\"label\",\"condition\":\"model.uuid\"},\"title\",{\"key\":\"description\",\"type\":\"textarea\"},\"sortIndex\",{\"key\":\"type\",\"titleMap\":{\"schema\":\"Schema\",\"template\":\"Template\"}},{\"key\":\"templateHref\",\"condition\":\"model.type == \'template\'\"},{\"key\":\"module\",\"condition\":\"model.type == \'schema\'\"},{\"key\":\"searchSchemaJson\",\"title\":\"Search Schema\",\"condition\":\"model.type == \'schema\'\",\"type\":\"ace\",\"aceOptions\":{\"useWrapMode\":true,\"showGutter\":true,\"useSoftTabs\":true,\"mode\":\"json\",\"advanced\":{\"tabSize\":2}}},{\"key\":\"formSchemaJson\",\"title\":\"Form Schema\",\"condition\":\"model.type == \'schema\'\",\"type\":\"ace\",\"aceOptions\":{\"useWrapMode\":true,\"showGutter\":true,\"useSoftTabs\":true,\"mode\":\"json\",\"advanced\":{\"tabSize\":2}}},{\"type\":\"template\",\"template\":\"<div class=\'form-group text-right\'>Last Update: {{model.timestamp}}<\\/div>\",\"condition\":\"model.uuid\"}],\"module\":\"UserForm\",\"searchSchema\":[{\"type\":\"section\",\"htmlClass\":\"row\",\"items\":[{\"type\":\"section\",\"htmlClass\":\"col-lg-3 col-sm-4\",\"items\":[{\"key\":\"filter.title\",\"type\":\"text\",\"fieldAddonRight\":\"<i class=\'glyphicon glyphicon-search\'><\\/i>\",\"placeholder\":\"Type to search ...\",\"feedback\":false,\"disableSuccessState\":true,\"disableErrorState\":true}]},{\"type\":\"section\",\"htmlClass\":\"col-lg-9 col-sm-8\",\"items\":[]}]}]}', 255);
+
+
 
 /*!40111 SET SQL_NOTES=@OLD_SQL_NOTES */;
 /*!40101 SET SQL_MODE=@OLD_SQL_MODE */;
