@@ -1,5 +1,4 @@
-<?php
-/*! gateway.php | Starting point of all URI access. */
+<?php /*! gateway.php | Starting point of all URI access. */
 
 /***********************************************************************\
 **                                                                     **
@@ -57,6 +56,7 @@ require_once('scripts/Initialize.php');
   // Access rules and policy
     $resolver->registerResolver(new resolvers\AuthenticationResolver(array(
         'paths' => conf::get('web::auth.paths'),
+        'prefix' => conf::get('web::auth.prefix'),
         'statusCode' => conf::get('web::auth.statusCode')
       )), 80);
 
@@ -110,29 +110,36 @@ require_once('scripts/Initialize.php');
   // Markdown handling
     $resolver->registerResolver(new resolvers\MarkdownResolver(), 30);
 
+  /* note; These requires proper directory permissions, disabled by default.
   // SCSS Compiler
     $resolver->registerResolver(new resolvers\ScssResolver(array(
         'source' => conf::get('system::paths.scss.src'),
-        'output' => conf::get('system::paths.scss.dst', 'assets/css')
+        'output' => conf::get('system::paths.scss.dst', 'assets/css'),
+        'prefix' => conf::get('system::paths.__prefix', '/')
       )), 30);
 
   // LESS Compiler
     $resolver->registerResolver(new resolvers\LessResolver(array(
         'source' => conf::get('system::paths.less.src'),
-        'output' => conf::get('system::paths.less.dst', 'assets/css')
+        'output' => conf::get('system::paths.less.dst', 'assets/css'),
+        'prefix' => conf::get('system::paths.__prefix', '/')
       )), 30);
 
   // Css Minifier
     $resolver->registerResolver(new resolvers\CssMinResolver(array(
         'source' => conf::get('system::paths.cssmin.src'),
-        'output' => conf::get('system::paths.cssmin.dst', 'assets/css')
+        'output' => conf::get('system::paths.cssmin.dst', 'assets/css'),
+        'prefix' => conf::get('system::paths.__prefix', '/')
       )), 20);
 
   // Js Minifier
     $resolver->registerResolver(new resolvers\JsMinResolver(array(
         'source' => conf::get('system::paths.jsmin.src'),
-        'output' => conf::get('system::paths.jsmin.dst', 'assets/js')
+        'output' => conf::get('system::paths.jsmin.dst', 'assets/js'),
+        'prefix' => conf::get('system::paths.__prefix', '/')
       )), 20);
+
+  */
 
   // Physical file handling
     $fileResolver = array(
