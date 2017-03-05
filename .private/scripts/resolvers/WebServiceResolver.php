@@ -3,6 +3,8 @@
 
 namespace resolvers;
 
+use authenticators\IsInternal;
+
 use core\Log;
 use core\Utility;
 
@@ -144,9 +146,23 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
     }, $parameters);
 
     // Access log
-    if ( System::environment() == 'debug' || !@$request->__local ) {
-      Log::debug(sprintf('[WebService] %s %s->%s', $request->method(), $classname, is_array($function) ? end($function) : get_class($function)),
-        array_filter(array('parameters' => $parameters)));
+    if ( System::environment() == 'debug' || IsInternal::authenticate(@$request) ) {
+      Log::debug(
+        sprintf(
+          '[WebService] %s %s->%s',
+          $request->method(),
+          $classname,
+          is_array($function) ? end($function) : get_class($function)
+        ),
+        filter(
+          [ 'parameters' => $parameters
+          , 'client' => $request->client()
+          , 'get' => $request->get()
+          , 'post' => $request->post()
+          , 'meta' => $request->meta()
+          ]
+        )
+      );
     }
 
     // Shooto!
