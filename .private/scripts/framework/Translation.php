@@ -79,9 +79,9 @@ class Translation {
 
     $contents = array(
         Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_TRANSLATION
-      , 'identifier' => md5($string)
+      , 'key' => md5($string)
       , 'value' => $string
-      , 'key' => $bundle
+      , 'bundle' => $bundle
       , 'locale' => $locale
       );
 
@@ -128,7 +128,7 @@ class Translation {
       $cache = array_filter($cache, propIn('locale', $localeChain));
 
       // Search by preferred key, if nothing is found just fall back to the whole cache.
-      $_cache = array_filter($cache, propIs('key', $bundle));
+      $_cache = array_filter($cache, propIs('bundle', $bundle));
       if ( $_cache ) {
         $cache = $_cache;
       }
@@ -175,7 +175,7 @@ class Translation {
     if ( !$cache ) {
       $cache = Node::get(array(
           Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_TRANSLATION
-        , 'identifier' => $identifier
+        , 'key' => $identifier
         , 'locale' => $this->localeChain
         ))->toArray();
 
