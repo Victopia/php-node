@@ -30,6 +30,7 @@ CREATE TABLE `Logs` (
   `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
   `type` enum('Debug','Info','Notice','Warning','Error','Critical','Alert','Emergency') NOT NULL DEFAULT 'Info',
   `subject` char(255) NOT NULL,
+  `message` varchar(2048) NOT NULL,
   `action` char(78) NOT NULL,
   `@contents` longtext NOT NULL,
   `timestamp` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
@@ -60,11 +61,11 @@ CREATE TABLE `NodeRelations` (
 DROP TABLE IF EXISTS `Nodes`;
 
 CREATE TABLE `Nodes` (
-  `id` bigint(20) unsigned NOT NULL AUTO_INCREMENT,
+  `uuid` binary(16) NOT NULL,
   `@collection` varchar(255) NOT NULL,
   `@contents` longtext NOT NULL,
   `timestamp` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
-  PRIMARY KEY (`id`),
+  PRIMARY KEY (`uuid`),
   FULLTEXT KEY `content` (`@contents`)
 ) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Data nodes';
 
@@ -109,15 +110,17 @@ CREATE TABLE `Sessions` (
 # Dump of table Translations
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `Translations`;
+DROP TABLE IF EXISTS `Translation`;
 
-CREATE TABLE `Translations` (
-  `identifier` varchar(32) NOT NULL COMMENT 'MD5 hash of target string',
-  `key` varchar(255) NOT NULL DEFAULT 'default' COMMENT 'Version key of the same identifier',
+CREATE TABLE `Translation` (
+  `uuid` binary(16) NOT NULL,
+  `bundle` varchar(255) COLLATE latin1_general_cs NOT NULL DEFAULT 'default' COMMENT 'Version key of the same identifier',
+  `key` varchar(255) CHARACTER SET utf8mb4 NOT NULL DEFAULT '' COMMENT 'MD5 hash of target string',
   `value` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Translation content',
-  `locale` varchar(255) NOT NULL COMMENT 'Locale of target translation',
+  `locale` varchar(128) COLLATE latin1_general_cs NOT NULL DEFAULT '' COMMENT 'Locale of target translation',
   `timestamp` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
-  PRIMARY KEY (`identifier`,`key`)
+  PRIMARY KEY (`uuid`),
+  KEY `bundle` (`bundle`,`key`(191),`locale`)
 ) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
 
 
