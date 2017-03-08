@@ -21,6 +21,20 @@ class LessResolver implements \framework\interfaces\IRequestResolver {
   protected $srcPath;
 
   /**
+   * @protected
+   *
+   * Output directory for minified js
+   */
+  protected $dstPath = '.';
+
+  /**
+   * @protected
+   *
+   * Request path prefix for minified js
+   */
+  protected $prefix = '/';
+
+  /**
    * @constructor
    *
    * @param {array} $options Options
@@ -50,17 +64,25 @@ class LessResolver implements \framework\interfaces\IRequestResolver {
 
       $this->dstPath = $options['output'];
     }
+
+    if ( !empty($options['prefix']) ) {
+      $this->prefix = $options['prefix'];
+    }
+
+    if ( !preg_match('/\/$/', $this->prefix) ) {
+      $this->prefix.= '/';
+    }
   }
 
   public function resolve(Request $request, Response $response) {
     $pathInfo = $request->uri('path');
 
     // Inex 1 because request URI starts with a slash
-    if ( strpos($pathInfo, $this->dstPath) !== 1 ) {
+    if ( strpos($pathInfo, $this->prefix . $this->dstPath) !== 0 ) {
       return;
     }
     else {
-      $pathInfo = substr($pathInfo, strlen($this->dstPath) + 1);
+      $pathInfo = substr($pathInfo, strlen($this->prefix . $this->dstPath));
     }
 
     $pathInfo = pathinfo($pathInfo);
@@ -74,7 +96,7 @@ class LessResolver implements \framework\interfaces\IRequestResolver {
     $pathInfo['filename'] = preg_replace('/\.min$/', '', $pathInfo['filename']);
 
     $_srcPath = "/$pathInfo[dirname]/$pathInfo[filename].less";
-    $dstPath = "./$this->dstPath/$pathInfo[dirname]/$pathInfo[filename].css";
+    $dstPath = "./$this->dstPath$pathInfo[dirname]/$pathInfo[filename].css";
 
     foreach ( $this->srcPath as $srcPath ) {
       $srcPath = "./$srcPath$_srcPath";
@@ -83,8 +105,10 @@ class LessResolver implements \framework\interfaces\IRequestResolver {
       if ( !file_exists($dstPath) || @filemtime($srcPath) > @filemtime($dstPath) ) {
         $result = @trim((new lessc)->compile(file_get_contents($srcPath)));
         // note; write empty file if target exists
-        if ( $result || file_exists($dstPath) ) {
-          if ( !@file_put_contents($dstPath, $result) ) {
+        if ( $result ) {
+          // note; reuse variable $srcPath
+          $srcPath = dirname($dstPath);
+          if ( (!file_exists($srcPath) && !@mkdir($srcPath, 0770, true)) || !@file_put_contents($dstPath, $result) ) {
             Log::warn('Permission denied, unable to compile LESS.');
           }
         }

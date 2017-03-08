@@ -28,6 +28,13 @@ class JsMinResolver implements \framework\interfaces\IRequestResolver {
   protected $dstPath = '.';
 
   /**
+   * @protected
+   *
+   * Request path prefix for minified js
+   */
+  protected $prefix = '/';
+
+  /**
    * @constructor
    *
    * @param {array} $options Options
@@ -57,17 +64,25 @@ class JsMinResolver implements \framework\interfaces\IRequestResolver {
 
       $this->dstPath = $options['output'];
     }
+
+    if ( !empty($options['prefix']) ) {
+      $this->prefix = $options['prefix'];
+    }
+
+    if ( !preg_match('/\/$/', $this->prefix) ) {
+      $this->prefix.= '/';
+    }
   }
 
   public function resolve(Request $request, Response $response) {
     $pathInfo = $request->uri('path');
 
     // Index 1 because request URI starts with a slash
-    if ( strpos($pathInfo, $this->dstPath) !== 1 ) {
+    if ( strpos($pathInfo, $this->prefix . $this->dstPath) !== 0 ) {
       return;
     }
     else {
-      $pathInfo = substr($pathInfo, strlen($this->dstPath) + 1);
+      $pathInfo = substr($pathInfo, strlen($this->prefix . $this->dstPath));
     }
 
     $pathInfo = pathinfo($pathInfo);
@@ -79,16 +94,16 @@ class JsMinResolver implements \framework\interfaces\IRequestResolver {
 
     $pathInfo['filename'] = preg_replace('/\.min$/', '', $pathInfo['filename']);
 
-    $_srcPath = "/$pathInfo[dirname]/$pathInfo[filename].js";
-    $dstPath = "$this->dstPath/$pathInfo[dirname]/$pathInfo[filename].min.js";
+    $_srcPath = "$pathInfo[dirname]/$pathInfo[filename].js";
+    $dstPath = "./$this->dstPath$pathInfo[dirname]/$pathInfo[filename].min.js";
 
     foreach ( $this->srcPath as $srcPath ) {
       $srcPath = "./$srcPath$_srcPath";
 
       // compile when: target file not exists, or source is newer
-      if ( file_exists($srcPath) && (!file_exists($dstPath) || @filemtime($srcPath) > @filemtime($dstPath)) ) {
+      if ( file_exists($srcPath) && @filemtime($srcPath) > @filemtime($dstPath) ) {
         // empty results are ignored
-        $result = trim(@JSMin::minify(file_get_contents($srcPath)));
+        $result = @trim(JSMin::minify(file_get_contents($srcPath)));
         if ( $result ) {
           // note; reuse variable $srcPath
           $srcPath = dirname($dstPath);

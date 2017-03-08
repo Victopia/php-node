@@ -28,6 +28,13 @@ class CssMinResolver implements \framework\interfaces\IRequestResolver {
   protected $dstPath = '.';
 
   /**
+   * @protected
+   *
+   * Request path prefix for minified js
+   */
+  protected $prefix = '/';
+
+  /**
    * @constructor
    *
    * @param {array} $options Options
@@ -57,17 +64,25 @@ class CssMinResolver implements \framework\interfaces\IRequestResolver {
 
       $this->dstPath = $options['output'];
     }
+
+    if ( !empty($options['prefix']) ) {
+      $this->prefix = $options['prefix'];
+    }
+
+    if ( !preg_match('/\/$/', $this->prefix) ) {
+      $this->prefix.= '/';
+    }
   }
 
   public function resolve(Request $request, Response $response) {
     $pathInfo = $request->uri('path');
 
-    // Inex 1 because request URI starts with a slash
-    if ( strpos($pathInfo, $this->dstPath) !== 1 ) {
+    // Index 1 because request URI starts with a slash
+    if ( strpos($pathInfo, $this->prefix . $this->dstPath) !== 0 ) {
       return;
     }
     else {
-      $pathInfo = substr($pathInfo, strlen($this->dstPath) + 1);
+      $pathInfo = substr($pathInfo, strlen($this->prefix . $this->dstPath));
     }
 
     $pathInfo = pathinfo($pathInfo);
@@ -79,24 +94,47 @@ class CssMinResolver implements \framework\interfaces\IRequestResolver {
 
     $pathInfo['filename'] = preg_replace('/\.min$/', '', $pathInfo['filename']);
 
-    $_srcPath = "/$pathInfo[dirname]/$pathInfo[filename].css";
+    $_srcPath = "$pathInfo[dirname]/$pathInfo[filename].css";
     $dstPath = "./$this->dstPath/$pathInfo[dirname]/$pathInfo[filename].min.css";
 
+    $break = false;
+
     foreach ( $this->srcPath as $srcPath ) {
-      $srcPath = "./$srcPath$_srcPath";
+      $srcPath = "/$srcPath$_srcPath";
 
-      // compile when: target file not exists, or source is newer
-      if ( file_exists($srcPath) && (!file_exists($dstPath) || @filemtime($srcPath) > @filemtime($dstPath)) ) {
-        // empty results are ignored
-        $result = trim(@CssMin::minify(file_get_contents($srcPath)));
-        if ( $result ) {
-          // note; reuse variable $srcPath
-          $srcPath = dirname($dstPath);
-          if ( (!file_exists($srcPath) && !@mkdir($srcPath, 0770, true)) || !@file_put_contents($dstPath, $result) ) {
-            Log::warn('Permission denied, unable to minify CSS.');
+      // note;dev; Response outputBuffer will mess up parent OB in some PHP versions, don't rely on that.
+      \core\Net::httpRequest(
+        [ 'url' => $response->createLink($srcPath)
+        , 'success' => function($response, $options) use($srcPath, $dstPath, &$break) {
+            $res = new \framework\Response();
+
+            foreach ( array_filter(preg_split('/\r?\n/', @$options['response']['headers'])) as $value ) {
+              $res->header($value);
+            }
+
+            $res = @strtotime($res->header('Last-Modified'));
+
+            if ( $options['response']['status'] < 300 ) {
+              if ( empty($res) || $res > @filemtime($dstPath) ) {
+                $res = trim(@CssMin::minify($response));
+                $srcPath = ".$srcPath";
+                if ( $res && (!file_exists($srcPath) && !@mkdir($srcPath, 0770, true)) || !@file_put_contents($dstPath, $res) ) {
+                  Log::warn('Permission denied, unable to minify CSS.');
+                }
+              }
+
+              $break = true;
+            }
           }
-        }
+        , 'failure' => function($num, $str) use($srcPath, &$break) {
+            \core\Log::warning("[CssMin] Error reading source file in $srcPath.");
 
+            $break = true;
+          }
+        ]
+      );
+
+      if ( $break ) {
         break;
       }
     }
