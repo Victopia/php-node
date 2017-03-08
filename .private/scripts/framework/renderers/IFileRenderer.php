@@ -1,5 +1,4 @@
-<?php
-/*! IFileRenderer.php | Interface for all renderers. */
+<?php /*! IFileRenderer.php | Interface for all renderers. */
 
 namespace framework\renderers;
 

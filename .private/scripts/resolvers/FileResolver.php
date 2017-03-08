@@ -1,5 +1,4 @@
-<?php
-/*! FileResolver.php \ IRequestResolver | Physical file resolver, creating minified versions on demand. */
+<?php /*! FileResolver.php | Physical file resolver, creating minified versions on demand. */
 
 namespace resolvers;
 

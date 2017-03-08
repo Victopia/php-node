@@ -1,5 +1,4 @@
-<?php
-/* MustacheResource.php | Mustache compatible Resource accessor. */
+<?php /* MustacheResource.php | Mustache compatible Resource accessor. */
 
 namespace framework;
 

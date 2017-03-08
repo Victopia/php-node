@@ -1,5 +1,4 @@
-<?php
-/*! MessageQueue.php | Wrapper class that utilitze msg queue functions. */
+<?php /*! MessageQueue.php | Wrapper class that utilitze msg queue functions. */
 
 /*** CAUTION ***
 

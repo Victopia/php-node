@@ -1,5 +1,4 @@
-<?php
-/* SharedMemory.php | Wrapper class that utilitze shared memory functions. */
+<?php /* SharedMemory.php | Wrapper class that utilitze shared memory functions. */
 
 namespace core;
 

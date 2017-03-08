@@ -1,5 +1,4 @@
-<?php
-/*! LogResolver.php | Generate system logs for all requests. */
+<?php /*! LogResolver.php | Generate system logs for all requests. */
 
 namespace resolvers;
 

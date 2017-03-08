@@ -1,5 +1,4 @@
-<?php
-/* Promise.php | An implementation of Promise object in jQuery. */
+<?php /* Promise.php | An implementation of Promise object in jQuery. */
 
 namespace core;
 

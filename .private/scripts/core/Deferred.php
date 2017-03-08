@@ -1,5 +1,4 @@
-<?php
-/* Deferred.php | An implementation of jQuery deferred object. */
+<?php /* Deferred.php | An implementation of jQuery deferred object. */
 
 namespace core;
 

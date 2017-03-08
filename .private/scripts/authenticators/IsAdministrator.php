@@ -1,5 +1,4 @@
-<?php
-/* IsAdministrator.php | Authenticates administrators access. */
+<?php /* IsAdministrator.php | Authenticates administrators access. */
 
 namespace authenticators;
 

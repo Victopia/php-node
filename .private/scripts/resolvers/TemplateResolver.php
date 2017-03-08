@@ -1,5 +1,4 @@
-<?php
-/* TempalteResovler.php | Renders template files with specified renderer and options. */
+<?php /* TempalteResovler.php | Renders template files with specified renderer and options. */
 
 namespace resolvers;
 

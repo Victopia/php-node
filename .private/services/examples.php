@@ -1,5 +1,4 @@
-<?php
-/*! examples.php | Sample web service. */
+<?php /*! examples.php | Sample web service. */
 
 namespace services;
 

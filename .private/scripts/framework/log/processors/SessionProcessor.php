@@ -1,5 +1,4 @@
-<?php
-/*! SessionProcessor.php | Add session related info to the log record. */
+<?php /*! SessionProcessor.php | Add session related info to the log record. */
 
 namespace framework\log\processors;
 

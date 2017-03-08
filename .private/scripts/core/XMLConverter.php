@@ -1,5 +1,4 @@
-<?php
-/* XMLConverter.php | Converts between XML and PHP arrays. */
+<?php /* XMLConverter.php | Converts between XML and PHP arrays. */
 
 namespace core;
 

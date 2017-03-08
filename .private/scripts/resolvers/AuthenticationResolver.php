@@ -1,5 +1,4 @@
-<?php
-/*! AuthenticationResolver.php | Global authentication of all requests. */
+<?php /*! AuthenticationResolver.php | Global authentication of all requests. */
 
 namespace resolvers;
 

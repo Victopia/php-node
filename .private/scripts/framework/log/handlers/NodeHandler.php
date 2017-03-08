@@ -1,5 +1,4 @@
-<?php
-/*! NodeHandler.php | Insert the log record into database. */
+<?php /*! NodeHandler.php | Insert the log record into database. */
 
 namespace framework\log\handlers;
 

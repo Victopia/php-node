@@ -1,5 +1,4 @@
-<?php
-/*! CoreException.php | Thrown on core classes encounter errors. */
+<?php /*! CoreException.php | Thrown on core classes encounter errors. */
 
 namespace core\exceptions;
 

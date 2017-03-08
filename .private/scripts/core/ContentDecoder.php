@@ -1,5 +1,4 @@
-<?php
-/*! ContentDecoder.php | Parse encoded contents into PHP values. */
+<?php /*! ContentDecoder.php | Parse encoded contents into PHP values. */
 
 namespace core;
 

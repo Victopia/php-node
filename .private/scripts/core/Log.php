@@ -1,5 +1,4 @@
-<?php
-/* Log.php | Shorthand class for writing system logs. */
+<?php /* Log.php | Shorthand class for writing system logs. */
 
 namespace core;
 

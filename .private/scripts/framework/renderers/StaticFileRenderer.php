@@ -1,5 +1,4 @@
-<?php
-/*! StaticFileRenderer.php | Sends the file as binary content. */
+<?php /*! StaticFileRenderer.php | Sends the file as binary content. */
 
 namespace framework\renderers;
 

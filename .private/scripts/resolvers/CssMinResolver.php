@@ -1,5 +1,4 @@
-<?php
-/*! CssMinResolver.php | Minify CSS on demand. */
+<?php /*! CssMinResolver.php | Minify CSS on demand. */
 
 namespace resolvers;
 

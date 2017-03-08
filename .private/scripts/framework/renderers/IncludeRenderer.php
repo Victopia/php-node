@@ -1,5 +1,4 @@
-<?php
-/*! PHPRenderer.php | Render target file as PHP. */
+<?php /*! IncludeRenderer.php | Render target file as PHP. */
 
 namespace framework\renderers;
 

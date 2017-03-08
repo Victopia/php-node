@@ -1,5 +1,4 @@
-<?php
-/*! ValidationException.php | An exception that carries a list of validation messages. */
+<?php /*! ValidationException.php | An exception that carries a list of validation messages. */
 
 namespace framework\exceptions;
 

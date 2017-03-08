@@ -1,5 +1,4 @@
-<?php
-/* IsGet.php | Only allow POST requests. */
+<?php /* IsGet.php | Only allow POST requests. */
 
 namespace authenticators;
 

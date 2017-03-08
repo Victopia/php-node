@@ -1,5 +1,4 @@
-<?php
-/* Relation.php | Relations independant from node objects. */
+<?php /* Relation.php | Relations independant from node objects. */
 
 namespace core;
 

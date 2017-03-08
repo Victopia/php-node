@@ -1,5 +1,4 @@
-<?php
-/*! BacktraceProcessor.php | Monolog processor about backtrace context of the current log. */
+<?php /*! BacktraceProcessor.php | Monolog processor about backtrace context of the current log. */
 
 namespace framework\log\processors;
 

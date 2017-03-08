@@ -1,5 +1,4 @@
-<?php
-/* MarkdownResolver.php | Handles markdown files. */
+<?php /* MarkdownResolver.php | Handles markdown files. */
 
 /*! Note @ 14 May, 2015
  *  Stuffing everything into FileResolver may seems a bit clumpsy, should break

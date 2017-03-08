@@ -1,5 +1,4 @@
-<?php
-/*! AbstractRelationModel.php | Data models with relation functions built in. */
+<?php /*! AbstractRelationModel.php | Data models with relation functions built in. */
 
 namespace models\abstraction;
 

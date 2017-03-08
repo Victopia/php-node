@@ -1,5 +1,4 @@
-<?php
-/*! MaintenanceResolver.php \ IRequestResolver | Enable maintenance mode from database level. */
+<?php /*! MaintenanceResolver.php | Enable maintenance mode from database level. */
 
 namespace resolvers;
 

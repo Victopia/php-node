@@ -1,5 +1,4 @@
-<?php
-/*! UuidModel.php | Data models that uses uuid as identifiers. */
+<?php /*! UuidModel.php | Data models that uses uuid as identifiers. */
 
 namespace models\abstraction;
 

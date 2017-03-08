@@ -1,5 +1,4 @@
-<?php
-/*! CliRouter.php | Route CLI commands to execute. */
+<?php /*! CliRouter.php | Route CLI commands to execute. */
 
 namespace resolvers;
 

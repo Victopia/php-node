@@ -1,5 +1,4 @@
-<?php
-/*! ExternalResolver.php \ IRequestResolver | Simple CDN for remote files. */
+<?php /*! ExternalResolver.php | Simple CDN for remote files. */
 
 namespace resolvers;
 

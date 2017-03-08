@@ -1,5 +1,4 @@
-<?php
-/*! Optimist.php | Port from nodejs optimist https://github.com/substack/node-optimist. */
+<?php /*! Optimist.php | Port from nodejs optimist https://github.com/substack/node-optimist. */
 
 namespace framework;
 

@@ -1,5 +1,4 @@
-<?php
-/*! Session.php | Manage login sessions. */
+<?php /*! Session.php | Manage login sessions. */
 
 /*! System flow:
  * - 1.  Client attemp to login

@@ -1,5 +1,4 @@
-<?php
-/*! AssertionException.php | Thrown when assertion fails. */
+<?php /*! AssertionException.php | Thrown when assertion fails. */
 
 namespace core\exception;
 

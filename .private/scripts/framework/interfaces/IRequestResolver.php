@@ -1,5 +1,4 @@
-<?php
-/*! IRequestResolver | Path resolver interface */
+<?php /*! IRequestResolver | Path resolver interface */
 
 namespace framework\interfaces;
 

@@ -1,4 +1,4 @@
-<?php
+<?php /* ResolverException.php | An exception that updates response status code. */
 
 namespace framework\exceptions;
 

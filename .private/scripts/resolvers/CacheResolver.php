@@ -1,4 +1,4 @@
-<?php
+<?php /* CacheResolver.php | Universial resolver that returns cached contents. */
 
 namespace resolvers;
 

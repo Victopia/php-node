@@ -1,5 +1,4 @@
-<?php
-/* Translation.php | Universal access to locale based resources. */
+<?php /* Translation.php | Universal access to locale based resources. */
 
 namespace framework;
 

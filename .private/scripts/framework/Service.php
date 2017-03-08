@@ -1,5 +1,4 @@
-<?php
-/* Service.php | Cater all web service functions. */
+<?php /* Service.php | Cater all web service functions. */
 
 namespace framework;
 

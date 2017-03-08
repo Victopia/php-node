@@ -1,5 +1,4 @@
-<?php
-/*! NodeExpression.php | Base class for expressions with custom logics. */
+<?php /*! NodeExpression.php | Base class for expressions with custom logics. */
 
 namespace core;
 

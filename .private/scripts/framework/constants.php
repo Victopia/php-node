@@ -1,5 +1,4 @@
-<?php
-/* constants.php | Define framework wide constants. */
+<?php /* constants.php | Define framework wide constants. */
 
 // Seconds between real Epoch and 1970-01-01, GMT.
 define('EPOACH', -62167219200); // -62167246602

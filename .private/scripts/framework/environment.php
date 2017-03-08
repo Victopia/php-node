@@ -1,5 +1,4 @@
-<?php
-/*! environment.php | Perform base functionality check, terminate the script if any of these doesn't presence. */
+<?php /*! environment.php | Perform base functionality check, terminate the script if any of these doesn't presence. */
 
 use core\Utility;
 

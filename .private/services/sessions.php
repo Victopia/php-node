@@ -1,5 +1,4 @@
-<?php
-/*! sessions.php | Service to manage login sessions. */
+<?php /*! sessions.php | Service to manage login sessions. */
 
 namespace services;
 

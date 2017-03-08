@@ -1,5 +1,4 @@
-<?php
-/* IsSuperUser.php | Check if requesting user has super privilege. */
+<?php /* IsSuperUser.php | Check if requesting user has super privilege. */
 
 namespace authenticators;
 

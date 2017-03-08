@@ -1,5 +1,4 @@
-<?php
-/*! RequestPostFile.php | Wrapper class for uploaded files. */
+<?php /*! RequestPostFile.php | Wrapper class for uploaded files. */
 
 namespace framework;
 

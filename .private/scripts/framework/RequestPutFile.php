@@ -1,5 +1,4 @@
-<?php
-/*! RequestPutFile.php | SplFileObject interface for files uploaded via HTTP PUT method. */
+<?php /*! RequestPutFile.php | SplFileObject interface for files uploaded via HTTP PUT method. */
 
 namespace framework;
 

@@ -1,5 +1,4 @@
-<?php
-/*! ScssResolver.php | When a CSS is requested, compile from SCSS source on demand. */
+<?php /*! ScssResolver.php | When a CSS is requested, compile from SCSS source on demand. */
 
 namespace resolvers;
 

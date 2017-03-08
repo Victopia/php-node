@@ -1,5 +1,4 @@
-<?php
-/*! WebServiceResolver.php \ IRequestResovler | Resolves service API requests. */
+<?php /*! WebServiceResolver.php | Resolves service API requests. */
 
 namespace resolvers;
 

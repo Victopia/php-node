@@ -1,5 +1,4 @@
-<?php
-/*! AuthorizableWebService.php | Base class for web services. */
+<?php /*! AuthorizableWebService.php | Base class for web services. */
 
 namespace framework;
 

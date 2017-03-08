@@ -1,5 +1,4 @@
-<?php
-/*! InvokerPostProcessor.php | Invokes specified method from the output object. */
+<?php /*! InvokerPostProcessor.php | Invokes specified method from the output object. */
 
 namespace resolvers;
 

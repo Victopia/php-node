@@ -1,5 +1,4 @@
-<?php
-/* Net.php | The Net class provides network related functionalities. */
+<?php /* Net.php | The Net class provides network related functionalities. */
 
 namespace core;
 

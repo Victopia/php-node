@@ -1,5 +1,4 @@
-<?php
-/*! UriRewriteResolver.php | Rewrite request with matched URI to target URI. */
+<?php /*! UriRewriteResolver.php | Rewrite request with matched URI to target URI. */
 
 namespace resolvers;
 

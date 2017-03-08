@@ -1,5 +1,4 @@
-<?php
-/*! ModelCollection.php | Traversable collection class for database cursors. */
+<?php /*! ModelCollection.php | Traversable collection class for database cursors. */
 
 namespace models\abstraction;
 

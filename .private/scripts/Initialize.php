@@ -1,5 +1,4 @@
-<?php
-/*! Initialize.php | Define general methods and setup global usage classes. */
+<?php /*! Initialize.php | Define general methods and setup global usage classes. */
 
 use core\Node;
 use core\Log;

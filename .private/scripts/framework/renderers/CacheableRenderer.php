@@ -1,5 +1,4 @@
-<?php
-/*! CacheableRenderer.php | Handles conditional requests and sends cache headers. */
+<?php /*! CacheableRenderer.php | Handles conditional requests and sends cache headers. */
 
 namespace framework\renderers;
 

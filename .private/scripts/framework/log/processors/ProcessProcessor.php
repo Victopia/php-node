@@ -1,5 +1,4 @@
-<?php
-/*! ProcessProcessor.php | Adds process related data if the current thread is invoked from Process. */
+<?php /*! ProcessProcessor.php | Adds process related data if the current thread is invoked from Process. */
 
 namespace framework\log\processors;
 

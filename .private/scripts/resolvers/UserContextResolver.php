@@ -1,5 +1,4 @@
-<?php
-/*! UserContextResolver.php | Identify current user with the current request context. */
+<?php /*! UserContextResolver.php | Identify current user with the current request context. */
 
 namespace resolvers;
 

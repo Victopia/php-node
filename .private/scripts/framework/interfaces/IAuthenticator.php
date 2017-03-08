@@ -1,5 +1,4 @@
-<?php
-/*! IAuthenticator.php | Authenticators for AuthenticationResovler */
+<?php /*! IAuthenticator.php | Authenticators for AuthenticationResovler */
 
 namespace framework\interfaces;
 

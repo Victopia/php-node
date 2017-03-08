@@ -1,5 +1,4 @@
-<?php
-/* EventEmitter.php | Basic event emitter class, inspired by nodejs. */
+<?php /* EventEmitter.php | Basic event emitter class, inspired by nodejs. */
 
 namespace core;
 

@@ -1,5 +1,4 @@
-<?php
-/*! framework\Configuration.php | Configuration accessor utility. */
+<?php /*! Configuration.php | Configuration accessor utility. */
 
 namespace framework;
 

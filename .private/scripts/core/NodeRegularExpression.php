@@ -1,5 +1,4 @@
-<?php
-/*! NodeRegularExpression.php | Regular expressions. */
+<?php /*! NodeRegularExpression.php | Regular expressions. */
 
 namespace core;
 

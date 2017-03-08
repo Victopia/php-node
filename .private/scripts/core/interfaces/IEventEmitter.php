@@ -1,5 +1,4 @@
-<?php
-/* IEventEmitter.php | Base interface for event handling implementations. */
+<?php /* IEventEmitter.php | Base interface for event handling implementations. */
 
 namespace core\interfaces;
 

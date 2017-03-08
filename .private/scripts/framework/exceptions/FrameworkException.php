@@ -1,5 +1,4 @@
-<?php
-/* FrameworkException.php | Exceptions with message resolved with its code from database. */
+<?php /* FrameworkException.php | Exceptions with message resolved with its code from database. */
 
 namespace framework\exceptions;
 

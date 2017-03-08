@@ -1,5 +1,4 @@
-<?php
-/*! ExceptionsHandler.php | Exception handler class of the framework. */
+<?php /*! ExceptionsHandler.php | Exception handler class of the framework. */
 
 namespace framework;
 

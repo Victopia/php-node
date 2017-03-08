@@ -1,5 +1,4 @@
-<?php
-/* Process.php | Perform tasks queued on the database. */
+<?php /* Process.php | Perform tasks queued on the database. */
 
 namespace framework;
 

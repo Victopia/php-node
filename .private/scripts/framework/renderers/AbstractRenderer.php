@@ -1,5 +1,4 @@
-<?php
-/*! AbstractRenderer.php | Base class for all renderers. */
+<?php /*! AbstractRenderer.php | Base class for all renderers. */
 
 namespace framework\renderers;
 

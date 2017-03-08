@@ -1,5 +1,4 @@
-<?php
-/*! WebService.php | Base class for web services. */
+<?php /*! WebService.php | Base class for web services. */
 
 namespace framework;
 

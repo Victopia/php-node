@@ -1,5 +1,4 @@
-<?php
-/*! Login.php | Simple user login. */
+<?php /*! login.php | Simple user login. */
 
 use framework\Session;
 use framework\exceptions\FrameworkException;

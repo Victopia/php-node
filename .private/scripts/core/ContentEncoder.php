@@ -1,5 +1,4 @@
-<?php
-/*! ContentEncoder.php | Encodes contents for the response output. */
+<?php /*! ContentEncoder.php | Encodes contents for the response output. */
 
 namespace core;
 

@@ -1,5 +1,4 @@
-<?php
-/*! User.php | The user data model. */
+<?php /*! User.php | The user data model. */
 
 namespace models;
 

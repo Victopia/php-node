@@ -1,5 +1,4 @@
-<?php
-/*! IAuthorizableWebService.php | Provides an interface for gateway to query a method is allowed for access or not. */
+<?php /*! IAuthorizableWebService.php | Provides an interface for gateway to query a method is allowed for access or not. */
 
 namespace framework\interfaces;
 

@@ -1,5 +1,4 @@
-<?php
-/*! StatusDocumentResolver.php | Standard contents according to HTTP response status code. */
+<?php /*! StatusDocumentResolver.php | Standard contents according to HTTP response status code. */
 
 namespace resolvers;
 

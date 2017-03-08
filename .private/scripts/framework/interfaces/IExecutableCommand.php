@@ -1,5 +1,4 @@
-<?php
-/*! IExecutableCommand.php | Interface for executable command classes. */
+<?php /*! IExecutableCommand.php | Interface for executable command classes. */
 
 /*! Note @ 9 May, 2015
  *  Try to remove the necessity of response context, take care of output in CliRouter instead.

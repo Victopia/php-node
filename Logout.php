@@ -1,5 +1,4 @@
-<?php
-/*! Logout.php | Invalidate and remove user session. */
+<?php /*! logout.php | Invalidate and remove user session. */
 
 framework\Session::invalidate() &&
   setcookie('sid', '', time() - 3600);

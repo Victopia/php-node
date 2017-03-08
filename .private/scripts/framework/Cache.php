@@ -1,5 +1,4 @@
-<?php
-/*! Cache.php | https://github.com/victopia/php-node */
+<?php /*! Cache.php | https://github.com/victopia/php-node */
 
 namespace framework;
 

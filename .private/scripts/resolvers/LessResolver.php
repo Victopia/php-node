@@ -1,5 +1,4 @@
-<?php
-/*! LessResolver.php | When a CSS is requested, compile from LESS source on demand. */
+<?php /*! LessResolver.php | When a CSS is requested, compile from LESS source on demand. */
 
 namespace resolvers;
 

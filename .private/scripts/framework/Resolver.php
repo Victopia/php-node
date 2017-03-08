@@ -1,5 +1,4 @@
-<?php
-/* Resolver.php | Resolve a path from registered processors. */
+<?php /* Resolver.php | Resolve a path from registered processors. */
 
 namespace framework;
 

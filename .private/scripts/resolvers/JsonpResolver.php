@@ -1,5 +1,4 @@
-<?php
-/*! JsonpResolver.php | Pipe appropriate JSONP header into repsonse for output. */
+<?php /*! JsonpResolver.php | Pipe appropriate JSONP header into repsonse for output. */
 
 namespace resolvers;
 

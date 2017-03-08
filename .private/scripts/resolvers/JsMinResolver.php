@@ -1,5 +1,4 @@
-<?php
-/*! JsMinResolver.php | Minify Javascripts on demand. */
+<?php /*! JsMinResolver.php | Minify Javascripts on demand. */
 
 namespace resolvers;
 
