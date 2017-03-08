@@ -192,7 +192,7 @@ class Response {
    */
   public function createLink($target, $secure = null) {
     if ( $secure === null ) {
-      $secure = (bool) System::getHostname('secure');
+      $secure = (bool) System::getHostname('secure', null);
     }
 
     // Normalize redirection target
