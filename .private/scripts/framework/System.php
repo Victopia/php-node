@@ -106,7 +106,7 @@ class System {
       }
     }
 
-    if ( empty($domain) && $type != $fallback ) {
+    if ( !$domain && $fallback && $type != $fallback ) {
       return System::getHostname($fallback);
     }
     else {
