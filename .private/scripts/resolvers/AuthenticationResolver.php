@@ -29,6 +29,13 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
   /**
    * @protected
    *
+   * Path Prefix
+   */
+  protected $prefix = '/';
+
+  /**
+   * @protected
+   *
    * HTTP Status Code to send when access is denied.
    */
   protected $statusCode = 401;
@@ -49,6 +56,10 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
     if ( !empty($options['statusCode']) ) {
       $this->statusCode = (int) $options['statusCode'];
     }
+
+    if ( !empty($options['prefix']) ) {
+      $this->prefix = "$options[prefix]";
+    }
   }
 
   /*! Example Usage:
@@ -64,7 +75,8 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
   public function resolve(Request $req, Response $res) {
     $auth = $this->paths;
 
-    $pathNodes = trim($req->uri('path'), '/');
+    $pathNodes = ltrim($req->uri('path'), "$this->prefix/");
+    $pathNodes = trim($pathNodes, '/');
     if ( $pathNodes ) {
       $pathNodes = explode('/', $pathNodes);
     }
