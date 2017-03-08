@@ -58,14 +58,14 @@ class LocaleResolver implements \framework\interfaces\IRequestResolver {
       $locale = @$request->user['locale'];
     }
 
-    // Accept from HTTP headers
-    if ( empty($locale) ) {
-      $locale = Locale::acceptFromHttp($request->header('Accept-Language'));
-    }
-
     // Default locale
     if ( empty($locale) ) {
       $locale = $this->defaultLocale;
+    }
+
+    // Accept from HTTP headers
+    if ( empty($locale) ) {
+      $locale = Locale::acceptFromHttp($request->header('Accept-Language'));
     }
 
     if ( $locale ) {
