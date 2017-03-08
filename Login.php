@@ -31,10 +31,6 @@ if ( $req->post('username') && $req->post('password') ) {
         Session::ensure($session['sid'], null, $req->fingerprint());
         break;
 
-      case Session::ERR_EXPIRED:
-        $ret = 'Your session has expired, login again to restore it.';
-        break;
-
       default:
         throw $e;
     }
