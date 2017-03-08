@@ -524,8 +524,12 @@ class Response {
    * Translation shorthand
    */
   public function __(/* $key, ... $args */) {
+    $args = func_get_args();
+
     $translation = $this->translation;
     if ( !is_callable($translation) ) {
+      $args[0] = gettext($args[0]);
+
       $translation = 'sprintf';
     }
 
