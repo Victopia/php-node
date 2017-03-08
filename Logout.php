@@ -1,7 +1,6 @@
 <?php /*! logout.php | Invalidate and remove user session. */
 
-framework\Session::invalidate() &&
-  setcookie('sid', '', time() - 3600);
+framework\Session::invalidate();
 
 $req = $this->request();
 $res = $this->response();
@@ -15,4 +14,4 @@ if ( !$target ) {
   $target = '/';
 }
 
-$res->redirect($target);
+$res->cookie('__sid', null, time() - 3600)->redirect($target);
