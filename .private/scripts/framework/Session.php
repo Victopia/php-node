@@ -207,6 +207,17 @@ class Session {
   }
 
   /**
+   * Logout all sessions of specified user.
+   */
+  static function invalidateUser($username) {
+    $user = (new User)->load($username);
+
+    if ( $user->identity() ) {
+      Database::query('DELETE FROM `'.FRAMEWORK_COLLECTION_SESSION.'` WHERE `username` = ?', array($user->username));
+    }
+  }
+
+  /**
    * Permission ensuring function, and session keep-alive point.
    * This function should be called on the initialization stage of every page load.
    *
