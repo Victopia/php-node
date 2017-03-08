@@ -107,7 +107,11 @@ class Session {
    */
   static function validate($username, $password, $fingerprint = null) {
     // Search by username
-    $user = (new User)->load($username);
+    $user = new User;
+
+    unset($user->__request);
+
+    $user->load($username);
     if ( !$user->identity() ) {
       throw new exceptions\FrameworkException('Username and password mismatch.', static::ERR_MISMATCH);
     }
