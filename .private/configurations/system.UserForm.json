@@ -22,17 +22,50 @@
       , "type": "string"
       , "minLength": 1
       }
+    , "sortIndex":
+      { "title": "Order Index"
+      , "type": "integer"
+      , "minimum": 0
+      , "default": 0
+      }
+    , "type":
+      { "title": "Form Type"
+      , "type": "string"
+      , "enum": [ "schema", "template", "templateUrl" ]
+      , "default": "schema"
+      }
+    , "template":
+      { "title": "Template"
+      , "description": "Angular compatible template, the use of custom components is encouraged."
+      , "type": "string"
+      }
+    , "templateUrl":
+      { "title": "Template URL"
+      , "description": "URL to target angular compatible template."
+      , "type": "string"
+      , "format": "uri"
+      }
+    , "injects":
+      { "description": "Angular dependencies that will be made available in module.$inject object."
+      , "type": "array"
+      , "items": { "type": "string" }
+      }
     , "module":
       { "description": "Back end module as form submit target."
       , "type": "string"
       , "minLength": 1
       , "maxLength": 255
       }
-    , "sortIndex":
-      { "title": "Order Index"
-      , "type": "integer"
-      , "minimum": 0
-      , "default": 0
+    , "formSchema":
+      { "description": "Form schema of Angular schema form, see http://schemaform.io/."
+      , "type": "array"
+      , "items": { }
+      , "minItems": 1
+      }
+    , "searchSchema":
+      { "description": "Form schema for search fields."
+      , "type": "array"
+      , "items": { }
       }
     , "timestamp":
       { "description": "Last update date-time down to microseconds."
@@ -40,87 +73,9 @@
       }
     }
   , "oneOf":
-    [ { "properties":
-        { "uuid":
-          { "type": "string"
-          , "minLength": 32
-          , "maxLength": 32
-          , "pattern": "^[a-fA-F0-9]{32}$"
-          , "description": "User instance identity key."
-          }
-        , "title":
-          { "title": "Form Title"
-          , "type": "string"
-          , "minLength": 1
-          , "maxLength": 255
-          }
-        , "description":
-          { "title": "Form Description"
-          , "type": "string"
-          , "minLength": 1
-          }
-        , "templateHref":
-          { "description": "Angular template URI of this form"
-          , "type": "string"
-          , "format": "uri"
-          }
-        , "ng-deps":
-          { "description": "Service dependencies in frontend."
-          , "type": "array"
-          , "items":
-            { "type": "string"
-            , "minLength": 1
-            }
-          }
-        , "timestamp":
-          { "description": "Last update date-time down to microseconds."
-          , "type": "string"
-          }
-        }
-      , "additionalProperties": false
-      , "required": [ "uuid", "title", "templateHref" ]
-      }
-    , { "properties":
-        { "uuid":
-          { "type": "string"
-          , "minLength": 32
-          , "maxLength": 32
-          , "pattern": "^[a-fA-F0-9]{32}$"
-          , "description": "User instance identity key."
-          }
-        , "title":
-          { "title": "Form Title"
-          , "type": "string"
-          , "minLength": 1
-          , "maxLength": 255
-          }
-        , "description":
-          { "title": "Form Description"
-          , "type": "string"
-          , "minLength": 1
-          }
-        , "module":
-          { "description": "Back end module as form submit target."
-          , "type": "string"
-          , "minLength": 1
-          , "maxLength": 255
-          }
-        , "formSchema":
-          { "description": "Form schema of Angular schema form, see http://schemaform.io/."
-          , "type": "array"
-          , "minItems": 1
-          }
-        , "searchSchema":
-          { "description": "Form schema for search fields."
-          , "type": "array"
-          }
-        , "timestamp":
-          { "description": "Last update date-time down to microseconds."
-          , "type": "string"
-          }
-        }
-      , "required": [ "uuid", "title", "module", "formSchema" ]
-      }
+    [ { "required": [ "uuid", "title", "templateUrl" ] }
+    , { "required": [ "uuid", "title", "template" ] }
+    , { "required": [ "uuid", "title", "module", "formSchema" ] }
     ]
   }
 }
