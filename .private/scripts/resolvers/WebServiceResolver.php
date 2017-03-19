@@ -19,7 +19,7 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
   /**
    * @constructor
    */
-  public function __construct($options) {
+  public function __construct(array $options = array()) {
     if ( empty($options['prefix']) ) {
       throw new ResolverException('Please provide a proper path prefix.');
     }
