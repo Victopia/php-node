@@ -117,7 +117,7 @@ class Session {
     }
 
     // Password crypt matching
-    if ( crypt($password, $user->password) !== $user->password ) {
+    if ( !$user->verifyPassword($password) ) {
       throw new exceptions\FrameworkException('Username and password mismatch.', static::ERR_MISMATCH);
     }
 

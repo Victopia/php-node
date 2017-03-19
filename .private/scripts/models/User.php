@@ -51,11 +51,25 @@ class User extends abstraction\UuidModel {
    * Note: Make this alterable, pay attention to key-strenthening.
    */
   protected function hash($username, $password) {
-    $hash = sha1(time() + mt_rand());
-    $hash = md5("$username:$hash");
-    $hash = substr($hash, 16);
-    $hash = "$this->__hashPrefix$hash";
-    return crypt($password, $hash);
+    if ( function_exists('password_hash') ) {
+      return password_hash("$username:$password", PASSWORD_DEFAULT);
+    }
+    else {
+      $hash = sha1(time() + mt_rand());
+      $hash = md5("$username:$hash");
+      $hash = substr($hash, 16);
+      $hash = "$this->__hashPrefix$hash";
+      return crypt($password, $hash);
+    }
+  }
+
+  protected function verifyPassword($password) {
+    if ( strpos($password, $this->__hashPrefix) === 0 ) {
+      return crypt($password, $this->password) === $this->password;
+    }
+    else if ( function_exists('password_verify') ) {
+      return password_verify($password, $this->password);
+    }
   }
 
   public function isSuperUser() {
