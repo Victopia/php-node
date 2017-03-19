@@ -18,7 +18,10 @@ class JsonpResolver implements \framework\interfaces\IRequestResolver {
    * @constuctor
    */
   public function __construct(array $options = array()) {
-    if ( !empty($options['defaultCallback']) ) {
+    if ( empty($options['defaultCallback']) ) {
+      $this->defaultCallback = 'callback';
+    }
+    else {
       $this->defaultCallback = $options['defaultCallback'];
     }
   }
