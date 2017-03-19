@@ -1,30 +1,129 @@
 {
-  "http": {
-    "output": {
-      "buffer": {
-        "enable": true,
-        "size": 1024
+  "resolvers": [
+    // note; Uncomment this section for maintenance mode
+    // {
+    //   "class": "MaintenanceResolver",
+    //   "options": {
+    //     "templatePath": "/assets/templates/maintenance.html",
+    //     "whitelist": []
+    //   }
+    // },
+    // Session authentication
+    {
+      "class": "UserContextResolver",
+      "options": {
+        "setup": true // note; should be false in production
       }
-    }
-  },
+    },
+    // Access rules and policy
+    {
+      "class": "AuthenticationResolver",
+      "options": {
+        "paths": {
+          ".private": [ "IsInternal" ],
+          "*": true
+        },
+        "statusCode": 404
+      }
+    },
+    // Locale
+    {
+      "class": "LocaleResolver",
+      "options": {
+        "default": "en_US"
+      }
+    },
+    // JSONP Headers
+    { "class": "JsonpResolver" },
+    // Web Services
+    {
+      "class": "WebServiceResolver",
+      "options": {
+        "prefix": "/service"
+      }
+    },
+    // Post Processers
+    {
+      "class": "InvokerPostProcessor",
+      "options": {
+        "invokes": "invokes",
+        "unwraps": "core\\Utility::unwrapAssoc"
+      }
+    },
 
-  "auth": {
-    "paths": {
-      ".private": [ "IsInternal" ],
-      "*": true
-    },
-    "statusCode": 404
-  },
+    // todo; Template Resolver Here
 
-  "resolvers": {
-    "file": {
-      "indexes": "Home index"
+    // todo; External URL
+    // {
+    //   "class": "ExternalResolver",
+    //   "options": {
+    //     "source": ""
+    //   }
+    // },
+
+    // Markdown handling
+    // { "class": "MarkdownResolver" },
+
+    // note; Source build resolvers requires proper directory permissions, disabled by default.
+    // // Scss Compiler
+    // {
+    //   "class": "ScssResolver",
+    //   "options": {
+    //     "source": ".private/src/stylesheets",
+    //     "output": "assets/css",
+    //     "prefix": "/"
+    //   }
+    // },
+    // // LESS Compiler
+    // {
+    //   "class": "LessResolver",
+    //   "options": {
+    //     "source": ".private/src/stylesheets",
+    //     "output": "assets/css",
+    //     "prefix": "/"
+    //   }
+    // },
+    // // Css Minifier
+    // {
+    //   "class": "CssMinResolver",
+    //   "options": {
+    //     "source": "assets/css",
+    //     "output": "assets/css",
+    //     "prefix": "/"
+    //   }
+    // },
+    // // Js Minifier
+    // {
+    //   "class": "JsMinResolver",
+    //   "options": {
+    //     "src": ".private/src/javascripts",
+    //     "dst": "assets/js",
+    //     "prefix": "/"
+    //   }
+    // },
+
+    // Physical file handling
+    {
+      "class": "FileResolver",
+      "options": {
+        "directoryIndex": "Home index",
+        "output": {
+          "buffer": {
+            "enable": false,
+            "size": 1024
+          }
+        },
+        "prefix": "/"
+      }
     },
-    "service": {
-      "prefix": "/service"
+    // HTTP error pages in HTML or JSON
+    {
+      "class": "StatusDocumentResolver",
+      "options": {
+        "prefix": "/"
+      }
     },
-    "errordocs": {
-      "directory": ".private/templates/errordocs"
-    }
-  }
+    // Logging
+    { "class": "LogResolver" }
+  ]
 }

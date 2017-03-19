@@ -38,48 +38,17 @@ require_once('scripts/Initialize.php');
 // Resolver chain
   $resolver = new framework\Resolver();
 
-  // Maintenance resolver
-    // Simply don't put it into chain when disabled.
-    if ( conf::get('system::maintenance.enable') ) {
-      $resolver->registerResolver(new resolvers\MaintenanceResolver(array(
-          'templatePath' => conf::get('system::maintenance.templatePath'),
-          'whitelist' => (array) conf::get('system::maintenance.whitelist')
-        )), 999);
+  // Insert resolvers from options
+  foreach ( (array) conf::get('web::resolvers') as $index => $_resolver ) {
+    $resolverClass = @"resolvers\\$_resolver[class]";
+    if ( class_exists($resolverClass) ) {
+      $resolverClass = new $resolverClass((array) @$_resolver['options']);
+
+      $resolver->registerResolver($resolverClass);
     }
 
-  // Session authentication
-    $resolver->registerResolver(new resolvers\UserContextResolver(array(
-        // This enables the "startup" super user when no user in database.
-        'setup' => System::environment() != System::ENV_PRODUCTION
-      )), 100);
-
-  // Access rules and policy
-    $resolver->registerResolver(new resolvers\AuthenticationResolver(array(
-        'paths' => conf::get('web::auth.paths'),
-        'prefix' => conf::get('web::auth.prefix'),
-        'statusCode' => conf::get('web::auth.statusCode')
-      )), 80);
-
-  // Locale
-    $resolver->registerResolver(new resolvers\LocaleResolver(array(
-        'default' => conf::get('system::i18n.localeDefault', 'en_US')
-      )), 70);
-
-  // JSONP Headers
-    $resolver->registerResolver(new resolvers\JsonpResolver(array(
-        'defaultCallback' => conf::get('web::resolvers.jsonp.defaultCallback', 'callback')
-      )), 65);
-
-  // Web Services
-    $resolver->registerResolver(new resolvers\WebServiceResolver(array(
-        'prefix' => conf::get('web::resolvers.service.prefix', '/service')
-      )), 60);
-
-  // Post Processers
-    $resolver->registerResolver(new resolvers\InvokerPostProcessor(array(
-        'invokes' => 'invokes',
-        'unwraps' => 'core\Utility::unwrapAssoc'
-      )), 50);
+    unset($resolverClass, $_resolver);
+  }
 
   // Template resolver
     // $templateResolver = new resolvers\TemplateResolver(array(
@@ -95,78 +64,11 @@ require_once('scripts/Initialize.php');
     //       }
     //   , 'extensions' => 'mustache html'
     //   ));
-
     // $templateResolver->directoryIndex('Home index');
-
     // $resolver->registerResolver($templateResolver, 50);
-
     // unset($templateResolver);
 
-  // External URL
-    $resolver->registerResolver(new resolvers\ExternalResolver(array(
-        'source' => conf::get('system::paths.external.src')
-      )), 40);
-
-  // Markdown handling
-    $resolver->registerResolver(new resolvers\MarkdownResolver(), 30);
-
-  /* note; These requires proper directory permissions, disabled by default.
-  // SCSS Compiler
-    $resolver->registerResolver(new resolvers\ScssResolver(array(
-        'source' => conf::get('system::paths.scss.src'),
-        'output' => conf::get('system::paths.scss.dst', 'assets/css'),
-        'prefix' => conf::get('system::paths.__prefix', '/')
-      )), 30);
-
-  // LESS Compiler
-    $resolver->registerResolver(new resolvers\LessResolver(array(
-        'source' => conf::get('system::paths.less.src'),
-        'output' => conf::get('system::paths.less.dst', 'assets/css'),
-        'prefix' => conf::get('system::paths.__prefix', '/')
-      )), 30);
-
-  // Css Minifier
-    $resolver->registerResolver(new resolvers\CssMinResolver(array(
-        'source' => conf::get('system::paths.cssmin.src'),
-        'output' => conf::get('system::paths.cssmin.dst', 'assets/css'),
-        'prefix' => conf::get('system::paths.__prefix', '/')
-      )), 20);
-
-  // Js Minifier
-    $resolver->registerResolver(new resolvers\JsMinResolver(array(
-        'source' => conf::get('system::paths.jsmin.src'),
-        'output' => conf::get('system::paths.jsmin.dst', 'assets/js'),
-        'prefix' => conf::get('system::paths.__prefix', '/')
-      )), 20);
-
-  */
-
-  // Physical file handling
-    $fileResolver = array(
-        'prefix' => conf::get('web::resolvers.file.prefix', '/'),
-        'directoryIndex' => conf::get('web::resolvers.file.indexes', 'Home index')
-      );
-
-    if ( conf::get('web::http.output.buffer.enable') ) {
-      $fileResolver['outputBuffer']['size'] = conf::get('web::http.output.buffer.size', 1024);
-    }
-
-    $fileResolver = new resolvers\FileResolver($fileResolver);
-
-    $resolver->registerResolver($fileResolver, 10);
-
-    unset($fileResolver);
-
-  // HTTP error pages in HTML or JSON
-    $resolver->registerResolver(new resolvers\StatusDocumentResolver(array(
-        'prefix' => conf::get('web::resolvers.errordocs.directory')
-      )), 5);
-
-  // Logging
-    $resolver->registerResolver(new resolvers\LogResolver(), 0);
-
-// Request context
-  // We have no request context options currently, use defaults.
+// Request context is built from constructor, let resolver instantiate it.
 
 // Response context
   if ( conf::get('web::http.output.buffer.enable') ) {

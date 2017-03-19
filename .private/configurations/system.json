@@ -8,22 +8,6 @@
     "autoload": {
       "services": ".private/services",
       "*": ".private/scripts"
-    },
-    "scss": {
-      "src": ".private/src/stylesheets",
-      "dst": "assets/css"
-    },
-    "less": {
-      "src": ".private/src/stylesheets",
-      "dst": "assets/css"
-    },
-    "jsmin": {
-      "src": ".private/src/javascripts",
-      "dst": "assets/js"
-    },
-    "cssmin": {
-      "src": "assets/css",
-      "dst": "assets/css"
     }
   },
 
@@ -39,15 +23,5 @@
       "MYSQL_ATTR_USE_BUFFERED_QUERY": true,
       "MYSQL_ATTR_INIT_COMMAND": "SET NAMES utf8;"
     }
-  },
-
-  "i18n": {
-    "localeDefault": "en_US"
-  },
-
-  "maintenance": {
-    "enable": false,
-    "templatePath": "/assets/templates/maintenance.html",
-    "whitelist": []
   }
 }
