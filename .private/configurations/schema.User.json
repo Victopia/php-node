@@ -1,6 +1,6 @@
 { "data":
   { "$schema": "http://json-schema.org/draft-04/schema#"
-  , "id": "/medicare-app/service/_/Users/schema"
+  , "id": "/service/_/Users/schema"
   , "type": "object"
   , "title": "User"
   , "titleField": "name"
