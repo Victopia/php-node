@@ -162,7 +162,7 @@ class User extends abstraction\UuidModel {
     }
 
     // note: do not store groups into virtual fields
-    if ( !empty(filter($this->groups)) ) {
+    if ( !empty($this->groups) && !empty(filter($this->groups)) ) {
       $this->__groups = $this->groups; unset($this->groups);
     }
 
