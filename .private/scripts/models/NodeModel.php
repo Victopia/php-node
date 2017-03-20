@@ -46,6 +46,14 @@ class NodeModel extends abstraction\UuidModel {
   //
   //----------------------------------------------------------------------------
 
+  public function find(array $filter = array()) {
+    if ( empty($filter['@sorter']) ) {
+      $filter['@sorter'] = [ 'timestamp' => false ];
+    }
+
+    return parent::find($filter);
+  }
+
   protected function beforeSave(array &$errors = array()) {
     $this->timestamp = util::formatDate('Y-m-d H:i:s.u');
 
