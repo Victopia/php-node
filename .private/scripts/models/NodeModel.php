@@ -20,9 +20,9 @@ class NodeModel extends abstraction\UuidModel {
   //
   //----------------------------------------------------------------------------
 
-  function __construct($collection, $data = null) {
+  function __construct($collection, $context = array()) {
     // note; ModelCollection will feed data here, but at least we need ['@collection'] to work.
-    if ( is_array($collection) && $data === null ) {
+    if ( is_array($collection) ) {
       if ( empty($collection[Node::FIELD_COLLECTION]) ) {
         throw new FrameworkException('Collection name is missing.');
       }
@@ -30,6 +30,9 @@ class NodeModel extends abstraction\UuidModel {
         $data = $collection;
         $collection = $data[Node::FIELD_COLLECTION];
       }
+    }
+    else {
+      $data = [];
     }
 
     $this->_collectionName = $collection;
