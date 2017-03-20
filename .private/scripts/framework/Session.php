@@ -107,9 +107,7 @@ class Session {
    */
   static function validate($username, $password, $fingerprint = null) {
     // Search by username
-    $user = new User;
-
-    unset($user->__request);
+    $user = new User(null, [ 'request' => null, 'response' => null ]);
 
     $user->load($username);
     if ( !$user->identity() ) {

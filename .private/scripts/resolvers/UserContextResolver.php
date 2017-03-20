@@ -32,7 +32,7 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
   }
 
   public function resolve(Request $req, Response $res) {
-    $req->user = new User();
+    $req->user = new User(null, [ 'request' => null, 'response' => null ]);
 
     // User from CLI
     switch ( $req->client('type') ) {

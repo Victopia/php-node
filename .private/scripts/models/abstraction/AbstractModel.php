@@ -44,14 +44,14 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
 
     $res = Resolver::getActiveInstance();
 
-    if ( isset($context['request']) ) {
+    if ( array_key_exists('request', $context) ) {
       $this->_request = $context['request'];
     }
     else if ( $res ) {
       $this->_request = $res->request();
     }
 
-    if ( isset($context['response']) ) {
+    if ( array_key_exists('response', $context) ) {
       $this->_response = $context['response'];
     }
     else if ( $res ) {

@@ -23,7 +23,7 @@ abstract class JsonSchemaModel extends AbstractRelationModel {
    *
    * Try to read from configuration files if schema is not already set.
    */
-  public function __construct($data = null) {
+  public function __construct($data = null, $context = array()) {
     if ( !$this->schema ) {
       $className = get_class($this);
 
@@ -36,7 +36,7 @@ abstract class JsonSchemaModel extends AbstractRelationModel {
       unset($className);
     }
 
-    parent::__construct($data);
+    parent::__construct($data, $context);
   }
 
   //----------------------------------------------------------------------------
