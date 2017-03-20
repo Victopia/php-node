@@ -448,7 +448,13 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
       return false;
     }
 
-    $tableName = static::resolveCollection(@$filter[static::FIELD_COLLECTION]);
+    $collectionName = @$filter[static::FIELD_COLLECTION];
+
+    $tableName = static::resolveCollection($collectionName);
+
+    if ( empty($collectionName) ) {
+      $collectionName = $tableName;
+    }
 
     if ( $tableName !== static::BASE_COLLECTION ) {
       unset($filter[static::FIELD_COLLECTION]);
@@ -748,6 +754,7 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
       [ 'filter' => $filter
       , 'select' => $selectField
       , 'indexHints' => $indexHints
+      , 'collection' => $collectionName
       , 'table' => $tableName
       , 'query' => $queryString
       , 'limits' => $limits
@@ -774,7 +781,7 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
       }
     }
 
-    $row[static::FIELD_COLLECTION] = $this->context['table'];
+    $row[static::FIELD_COLLECTION] = $this->context['collection'];
 
     return $row;
   }
