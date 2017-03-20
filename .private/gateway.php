@@ -39,16 +39,21 @@ require_once('scripts/Initialize.php');
   $resolver = new framework\Resolver();
 
   // Insert resolvers from options
-  foreach ( (array) conf::get('web::resolvers') as $index => $_resolver ) {
+  $resolvers = (array) conf::get('web::resolvers');
+  $resolvers = array_reverse($resolvers);
+
+  foreach ( $resolvers as $index => $_resolver ) {
     $resolverClass = @"resolvers\\$_resolver[class]";
     if ( class_exists($resolverClass) ) {
       $resolverClass = new $resolverClass((array) @$_resolver['options']);
 
-      $resolver->registerResolver($resolverClass);
+      $resolver->registerResolver($resolverClass, $index);
     }
 
     unset($resolverClass, $_resolver);
   }
+
+  unset($resolvers, $index);
 
   // Template resolver
     // $templateResolver = new resolvers\TemplateResolver(array(
