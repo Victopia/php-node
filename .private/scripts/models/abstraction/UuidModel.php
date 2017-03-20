@@ -64,15 +64,7 @@ abstract class UuidModel extends JsonSchemaModel {
   }
 
   protected function beforeSave(array &$errors = array()) {
-    $key = $this->primaryKey();
-
-    if ( $this->isCreate() ) {
-      // note; loop until we find a unique uuid
-      do {
-        $this->$key = Database::fetchField("SELECT LOWER(REPLACE(UUID(), '-', ''))");
-      }
-      while ($this->find([ $key => $this->$key ])->count());
-    }
+    $this->generateUuid();
 
     foreach ( $this->binaryFields() as $binaryField ) {
       if ( isset($this->$binaryField) ) {
@@ -116,6 +108,15 @@ abstract class UuidModel extends JsonSchemaModel {
 
   protected function binaryFields() {
     return [ $this->primaryKey() ];
+  }
+
+  protected function generateUuid() {
+    $key = $this->primaryKey();
+
+    // note; loop until we find a unique uuid
+    while (!$this->identity() || $this->isCreate() && $this->find([ $key => $this->$key ])->count()) {
+      $this->$key = Database::fetchField("SELECT LOWER(REPLACE(UUID(), '-', ''))");
+    }
   }
 
 }
