@@ -25,15 +25,15 @@ abstract class JsonSchemaModel extends AbstractRelationModel {
    */
   public function __construct($data = null, $context = array()) {
     if ( !$this->schema ) {
-      $className = get_class($this);
+      $collectionName = $this->collectionName();
 
-      if ( strpos($className, '\\') !== false ) {
-        $className = substr(strrchr($className, '\\'), 1);
+      if ( strpos($collectionName, '\\') !== false ) {
+        $collectionName = substr(strrchr($collectionName, '\\'), 1);
       }
 
-      $this->schema = util::arrayToObject((array) conf::get("schema.$className")->getContents());
+      $this->schema = util::arrayToObject((array) conf::get("schema.$collectionName")->getContents());
 
-      unset($className);
+      unset($collectionName);
     }
 
     parent::__construct($data, $context);
