@@ -47,20 +47,21 @@ class UriRewriteResolver implements \framework\interfaces\IRequestResolver {
       if ( is_string($rule['source']) ) {
         // regex
         if ( @preg_match($rule['source'], null) !== false ) {
-          $rule['source'] = matches($rule['source']);
-
           if ( is_string($rule['target']) ) {
             $rule['target'] = compose(
               replaces($rule['source'], $rule['target']),
               invokes('uri', [ 'path' ]));
           }
+
+          $rule['source'] = matches($rule['source']);
         }
         // plain string
         else if ( !is_callable($rule['source']) ) {
           if ( is_string($rule['target']) ) {
             $rule['target'] = compose(
-              replaces('/^' . preg_quote($rule['source'], '/') . '/', $rule['target']),
-              invokes('uri', [ 'path' ]));
+                replaces('/^' . preg_quote($rule['source'], '/') . '/', $rule['target']),
+                invokes('uri', [ 'path' ])
+              );
           }
 
           $rule['source'] = startsWith($rule['source']);
@@ -81,7 +82,7 @@ class UriRewriteResolver implements \framework\interfaces\IRequestResolver {
     foreach ( $this->rules as $rule ) {
       if ( $rule['source']($request->uri('path')) ) {
         if ( is_callable(@$rule['target']) ) {
-          $target = $rule['target']($request, $response);
+          $target = call_user_func_array($rule['target'], [$request, $response]);
         }
         else {
           $target = @$rule['target'];
