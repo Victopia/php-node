@@ -38,7 +38,6 @@
       { "title": "Middle name(s)"
       , "description": "Middle names of the user, multiple middle names supported"
       , "type": "array"
-      , "minItems": 1
       , "items": { "type": "string" }
       }
     , "last_name":
@@ -53,8 +52,7 @@
       , "format": "date-time"
       }
     , "groups":
-      { "title": "User groups"
-      , "description": "Groups this user is assigned."
+      { "title": "User Groups"
       , "type": "array"
       , "items":
         { "type": "string"
@@ -62,6 +60,19 @@
         , "maxLength": 255
         }
       , "uniqueItems": true
+      , "default": []
+      }
+    , "forms":
+      { "title": "User Forms"
+      , "description": "User accessible forms UUID"
+      , "type": "array"
+      , "items":
+        { "type": "string"
+        , "minLength": 32
+        , "maxLength": 32
+        , "pattern": "^[a-fA-F0-9]{32}$"
+        }
+      , "uniqueItmes": true
       }
     }
   , "oneOf":

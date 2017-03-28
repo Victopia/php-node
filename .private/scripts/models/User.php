@@ -63,7 +63,7 @@ class User extends abstraction\UuidModel {
     }
   }
 
-  protected function verifyPassword($password) {
+  public function verifyPassword($password) {
     if ( strpos($password, $this->__hashPrefix) === 0 ) {
       return crypt($password, $this->password) === $this->password;
     }
