@@ -214,7 +214,15 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    */
   function &__get($name) {
     if ( strpos($name, '__') !== 0 ) {
-      return $this->data->$name;
+      if ( blank($this->data) ) {
+        // note;dev; variable for reference returning.
+        $null = NULL;
+
+        return $null;
+      }
+      else {
+        return $this->data->$name;
+      }
     }
 
     if ( strpos($name, '__is') === 0 ) {
