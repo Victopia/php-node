@@ -48,14 +48,18 @@ class _ extends \framework\WebService {
 
     unset($model);
 
-    // Remove model name
-    $args = array_slice(func_get_args(), 1);
+    $args = array_values(func_get_args());
 
-    $method = @$args[0];
+    if (version_compare(PHP_VERSION, '7') < 0) {
+      // Remove model name
+      $args = array_slice(func_get_args(), 1);
+    }
+
+    $method = reset($args);
     $reservedMethods = array('get', 'set', 'unset', 'isset', 'invoke', 'call', 'callStatic');
 
     // Exposed model methods: public function __*() { }
-    if ( $args && !in_array($method, $reservedMethods) && method_exists($this->modelClass, "__$method") ) {
+    if ( !in_array($method, $reservedMethods) && method_exists($this->modelClass, "__$method") ) {
       // note; custom functions can writes directly into output buffer without taking care of 404.
       $this->response()->status(200);
       $method = array($this->modelClass, '__' . array_shift($args));
