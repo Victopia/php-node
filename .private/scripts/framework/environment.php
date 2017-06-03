@@ -51,6 +51,18 @@ if ( !function_exists('curl_file_create') ) {
   }
 }
 
+if ( !function_exists('getallheaders') ) {
+  function getallheaders() {
+    $headers = [];
+    foreach ($_SERVER as $name => $value) {
+      if (substr($name, 0, 5) == 'HTTP_') {
+        $headers[str_replace(' ', '-', ucwords(strtolower(str_replace('_', ' ', substr($name, 5)))))] = $value;
+      }
+    }
+    return $headers;
+  }
+}
+
 if ( !function_exists('http_build_url') ) {
   function http_build_url($url = null, $parts = array()) {
     if ( is_array($url) ) {
