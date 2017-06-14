@@ -171,7 +171,7 @@ class Response {
     // Default values
     $options+= array(
       'status' => 307,
-      'secure' => (bool) System::getHostname('secure')
+      'secure' => (bool) System::getHostname('secure', null)
     );
 
     $target = $this->createLink($target, $options['secure']);
