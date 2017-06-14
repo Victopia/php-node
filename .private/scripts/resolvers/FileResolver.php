@@ -128,11 +128,16 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
         $request->__directoryIndex = true;
 
         foreach ( $this->directoryIndex() as $file ) {
-          $request->setUri(preg_replace('/^\.\//', '', $path) . $file);
+          $_path = preg_replace('/^\.\//', '', $path);
+          $_path = preg_replace('/\/$/', '', $_path);
+
+          $request->setUri("$_path/$file");
           // Exit whenever an index is handled successfully, this will exit.
           if ( $this->resolve($request, $response) ) {
             return;
           }
+
+          unset($_path);
         }
 
         unset($request->__directoryIndex);
