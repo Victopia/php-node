@@ -64,11 +64,14 @@ class User extends abstraction\UuidModel {
   }
 
   public function verifyPassword($password) {
-    if ( strpos($password, $this->__hashPrefix) === 0 ) {
+    if ( function_exists('password_verify') ) {
+      return password_verify($password, $this->password);
+    }
+    else if ( strpos($password, $this->__hashPrefix) === 0 ) {
       return crypt($password, $this->password) === $this->password;
     }
-    else if ( function_exists('password_verify') ) {
-      return password_verify($password, $this->password);
+    else {
+      return FALSE;
     }
   }
 
