@@ -52,7 +52,7 @@ class User extends abstraction\UuidModel {
    */
   protected function hash($username, $password) {
     if ( function_exists('password_hash') ) {
-      return password_hash("$username:$password", PASSWORD_DEFAULT);
+      return password_hash($password, PASSWORD_DEFAULT);
     }
     else {
       $hash = sha1(time() + mt_rand());
