@@ -62,6 +62,18 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
       default:
         // Session ID provided, validate it.
         $sid = $req->meta('sid');
+        if ( !$sid ) {
+          $sid = $req->header('Authorization');
+          if ( preg_match('/^Session ([a-zA-Z0-9]{32})$/', $sid, $matches) ) {
+            $sid = $matches[1];
+          }
+          else {
+            $sid = '';
+          }
+
+          unset($matches);
+        }
+
         if ( $sid ) {
           $ret = Session::ensure($sid, $req->meta('token'), $req->fingerprint());
 
