@@ -117,21 +117,20 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
 
     // Numeric array
     if ( is_array($auth) && !util::isAssoc($auth) ) {
-      $auth = array_reduce($auth, function($result, $auth) use($req) {
-        if ( !$result ) {
-          return $result;
+      $authenticator = function($rule) use(&$auth, $req) {
+        if ( is_bool($rule) ) {
+          return $rule;
         }
-
-        if ( is_callable($auth) ) {
-          $auth = $auth($req);
+        else if ( is_callable($rule) ) {
+          return $rule($req);
         }
-        else if ( is_string($auth) ) {
-          if ( strpos($auth, '/') === false ) {
-            $auth = "authenticators\\$auth";
+        else if ( is_string($rule) ) {
+          if ( strpos($rule, '/') === false ) {
+            $rule = "authenticators\\$rule";
           }
 
-          if ( is_a($auth, 'framework\interfaces\IAuthenticator', true) ) {
-            $result = $result && $auth::authenticate($req);
+          if ( is_a($rule, 'framework\interfaces\IAuthenticator', true) ) {
+            return $rule::authenticate($req);
           }
           else {
             throw new FrameworkException('Unknown authenticator type, must be ' .
@@ -142,9 +141,19 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
           throw new FrameworkException('Unknown authenticator type, must be ' .
             'instance of IAuthenticator or callable.');
         }
+      };
 
-        return $result && $auth;
-      }, true);
+      $auth = array_reduce($auth, function($result, $auth) use(&$authenticator, $req) {
+        if ( is_array($auth) && !is_callable($auth) ) {
+          $auth = array_reduce($auth, function($result, $auth) use(&$authenticator, $req) {
+            return $result && $authenticator($auth);
+          }, true);
+        }
+
+        return $result || $authenticator($auth);
+      }, false);
+
+      unset($authenticator);
     }
 
     // Boolean

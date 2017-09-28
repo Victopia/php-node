@@ -21,9 +21,15 @@
       "options": {
         "paths": {
           ".private": [ "IsInternal" ],
+          "service": {
+            "_": [
+              [ "IsPost", "IsSuperUser" ],
+              [ "IsGet", true ]
+            ]
+          },
           "*": true
         },
-        "statusCode": 404
+        "statusCode": 403
       }
     },
     // Locale
