@@ -135,6 +135,9 @@ class User extends abstraction\UuidModel {
       if ( (new User)->load($this->username)->identity() ) {
         $errors[100] = 'This email has already been registerd.';
       }
+      else if (empty($this->password)) {
+        $errors[101] = 'Password is required.';
+      }
     }
     else if ( !$this->isSuperUser() && !$this->isRequestUser() ) {
       throw new ResolverException(401, 'You are not allowed to edit this user.');

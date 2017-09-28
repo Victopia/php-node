@@ -75,10 +75,7 @@
       , "uniqueItmes": true
       }
     }
-  , "oneOf":
-    [ { "required": ["username", "password"] }
-    , { "required": ["username", "password_hash"] }
-    ]
+  , "required": [ "username" ]
   }
 , "form":
   [ { "type": "section"
