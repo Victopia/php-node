@@ -29,8 +29,21 @@ class StaticFileRenderer extends CacheableRenderer {
 
     // Ouptut the file
     if ( $res->status() < 300 ) {
+      /*
+      // todo; Supports byte-range header.
+      if ( $req->header('Range') ) {
+        if ( !preg_match('/^bytes=(.*)/', $req->header('Range'), $matches) ) {
+          if ( strpos($matches[1], ',') !== false ) {
+            $res->status(416); // note; 416 Requested Range Not Satisfiable, we don't handle multipart response yet.
+          }
+        }
+      }
+      else {
+        $res->header('Content-Length', filesize($path));
+        $res->send($path);
+      }
+      */
       $res->header('Content-Length', filesize($path));
-
       $res->send($path);
     }
   }

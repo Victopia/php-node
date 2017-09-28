@@ -37,7 +37,7 @@ class Translation {
    * @param {?string} $bundle Language bundle name, defaults to "default".
    */
   public function __construct($localeChain = 'en_US', $bundle = 'default') {
-    if ( !is_array($localeChain) ) {
+    if ( is_string($localeChain) ) {
       $localeChain = preg_split('/\s*,\s*/', trim($localeChain));
     }
 

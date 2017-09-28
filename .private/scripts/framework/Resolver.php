@@ -110,6 +110,7 @@ class Resolver {
   private function resolve() {
     $request = $this->request;
     $response = $this->response;
+
     foreach ( $this->resolvers as $resolver ) {
       try {
         $resolver->resolve($request, $response);
