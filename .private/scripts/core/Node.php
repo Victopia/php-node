@@ -637,7 +637,7 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
           // 6. Plain string.
           if ( is_string($content) ) {
             // note: Unescaped *, % or _ characters
-            if ( preg_match('/[^\\][\\*%_]/', $content) ) {
+            if ( preg_match('/[\*\%\_]/', preg_replace('/\\\[\\\*\%\_]/', '', $content)) ) {
               $operator = 'LIKE';
             }
             else {
