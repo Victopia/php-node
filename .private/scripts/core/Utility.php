@@ -1166,10 +1166,17 @@ class Utility {
   }
 
   /**
+   * Check if the string is a legit UUID without dashes.
+   */
+  static function isUuid($value) {
+    return is_string($value) && ctype_print($value) && preg_match('/^[0-9A-F]{32,32}$/i', $value);
+  }
+
+  /**
    * Pack Uuid in hex to binary string for storage.
    */
   static function packUuid($value) {
-    if ( ctype_print($value) && strlen($value) == 32 ) {
+    if ( self::isUuid($value) ) {
       $value = pack('H*', str_replace('-', '', $value));
     }
 
@@ -1180,7 +1187,7 @@ class Utility {
    * Unpack UUID from binary into HEX string.
    */
   static function unpackUuid($value) {
-    if ( $value && !ctype_print($value) && strlen($value) < 32 ) {
+    if ( $value && !self::isUuid($value) && strlen($value) < 32 ) {
       $value = unpack('H*', $value);
       $value = reset($value);
     }
