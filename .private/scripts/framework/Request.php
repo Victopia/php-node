@@ -139,6 +139,7 @@ class Request {
             , 'host' => @$_SERVER['REMOTE_HOST']
             , 'port' => @$_SERVER['REMOTE_PORT']
             , 'user' => @$_SERVER['REMOTE_USER']
+            , 'origin' => @$_SERVER['HTTP_ORIGIN']
             , 'referer' => @$_SERVER['HTTP_REFERER']
             , 'version' => @$_SERVER['SERVER_PROTOCOL']
             , 'userAgent' => @$_SERVER['HTTP_USER_AGENT']
