@@ -1,5 +1,12 @@
 {
   "resolvers": [
+    {
+      "class": "CorsResolver",
+      "options": {
+        "domains": [ "*" ],
+        "headers": "Content-Type"
+      }
+    },
     // note; Uncomment this section for maintenance mode
     // {
     //   "class": "MaintenanceResolver",
@@ -119,6 +126,7 @@
             "size": 1024
           }
         },
+        // note; This usually in sync with RewriteBase in .htaccess
         "prefix": "/"
       }
     },

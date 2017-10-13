@@ -24,6 +24,13 @@ class CorsResolver implements \framework\interfaces\IRequestResolver {
   protected $headers = [];
 
   /**
+   * @protected
+   *
+   * comma-separated string of Access-Control-Allow-Methods
+   */
+  protected $methods = 'GET';
+
+  /**
    * @constructor
    *
    * @param {array}        $options[patterns] Domains to be allowed, regex patterns are allowed.
@@ -41,6 +48,18 @@ class CorsResolver implements \framework\interfaces\IRequestResolver {
       else {
         $this->headers = @"$options[headers]";
       }
+    }
+
+    if ( !empty($options['methods']) ) {
+      if ( is_string($options['methods']) ) {
+        $options['methods'] = preg_split('\s*,\s*', trim($options['methods']));
+      }
+
+      if ( is_array($options['methods']) ) {
+        $options['methods'] = implode(',', $options['methods']);
+      }
+
+      $this->methods = $options['methods'];
     }
   }
 
@@ -72,6 +91,7 @@ class CorsResolver implements \framework\interfaces\IRequestResolver {
       foreach ( $this->patterns as $pattern ) {
         if ( (@preg_match($pattern, null) !== false && preg_match($pattern, $origin)) || $pattern == $origin || $pattern == '*' ) {
           $res->header('Access-Control-Allow-Origin', $origin);
+          $res->header('Access-Control-Allow-Methods', $this->methods);
           $res->header('Access-Control-Allow-Headers', $this->headers);
 
           break;
