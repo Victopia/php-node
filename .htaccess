@@ -7,6 +7,8 @@
   # Rewrite starts
   RewriteEngine On
 
+  # note; When working with sub-directories, make sure you also edits
+  #       $options[prefix] in FileResolver.
   RewriteBase /
 
   #
@@ -21,3 +23,10 @@
 # Take away slashes, leaves everything to resolvers.
 #
 DirectorySlash Off
+
+#
+# Shared hosting shits
+#
+<Limit OPTIONS HEAD DELETE PUT>
+  Order Deny,Allow
+</Limit>
