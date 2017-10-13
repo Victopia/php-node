@@ -285,20 +285,20 @@ function walk(&$input, $callback, $deep = false) {
 
   if ( $deep ) {
     $walker = function(&$value, $key, &$parent) use(&$walker, &$callback) {
-      if ( is_object($value) ) {
+      if ( is_array($value) || $value instanceof \Iterator ) {
+        foreach ( $value as $k => &$v ) {
+          $walker($v, $k, $value);
+        }
+
+        $callback($value, $key, $parent);
+      }
+      else if ( is_object($value) ) {
         $_value = get_object_vars($value);
         foreach ( $_value as $k => $v ) {
           $walker($v, $k, $_value);
         }
         $value = (object) $_value;
         unset($_value);
-
-        $callback($value, $key, $parent);
-      }
-      else if ( is_array($value) ) {
-        foreach ( $value as $k => &$v ) {
-          $walker($v, $k, $value);
-        }
 
         $callback($value, $key, $parent);
       }
@@ -309,7 +309,12 @@ function walk(&$input, $callback, $deep = false) {
   }
   else {
     $walker = function(&$value) use(&$callback) {
-      if ( is_object($value) ) {
+      if ( is_array($value) || $value instanceof \Iterator ) {
+        foreach ( $value as $k => &$v ) {
+          $callback($v, $k, $value);
+        }
+      }
+      else if ( is_object($value) ) {
         $_value = get_object_vars($value);
         foreach ( $_value as $k => $v ) {
           $callback($v, $k, $_value);
@@ -318,9 +323,7 @@ function walk(&$input, $callback, $deep = false) {
         unset($_value);
       }
       else {
-        foreach ( $value as $k => &$v ) {
-          $callback($v, $k, $value);
-        }
+        return $callback($value, null, $value);
       }
     };
   }
@@ -558,6 +561,7 @@ function appends($suffix, $prop = null) {
 }
 
 function assigns($value, $prop = null) {
+  // setter pattern
   if ( $prop === null ) {
     return function($object) use($value) {
       if ( is_callable($value) ) {
@@ -567,13 +571,19 @@ function assigns($value, $prop = null) {
       return $value;
     };
   }
+  // normal assignment
   else {
     return function($object) use($prop, $value) {
       if ( is_callable($value) ) {
         $value = $value($object);
       }
 
-      $object[$prop] = $value;
+      if ( is_object($object) ) {
+        $object->$prop = $value;
+      }
+      else {
+        $object[$prop] = $value;
+      }
 
       return $object;
     };
