@@ -18,8 +18,7 @@
     "peridot-php/object-path": "^1.0",
     "intervention/image": "^2.3"
   },
-  "require-dev": {
-  },
+  "require-dev": {},
   "license": "WTFPL",
   "authors": [
     {
