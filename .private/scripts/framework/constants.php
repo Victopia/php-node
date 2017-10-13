@@ -22,7 +22,7 @@ define('FRAMEWORK_COLLECTION_USER', 'Users');
 // Collection of http user sessions
 define('FRAMEWORK_COLLECTION_SESSION', 'Sessions');
 // Collection of locale resources.
-define('FRAMEWORK_COLLECTION_TRANSLATION', 'Translations');
+define('FRAMEWORK_COLLECTION_TRANSLATION', 'Translation');
 
 // Predefined error messages in libcurl.
 define('FRAMEWORK_NET_CURL_ERRORS', serialize(array(

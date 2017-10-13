@@ -107,7 +107,7 @@ CREATE TABLE `Sessions` (
 
 
 
-# Dump of table Translations
+# Dump of table Translation
 # ------------------------------------------------------------
 
 DROP TABLE IF EXISTS `Translation`;
