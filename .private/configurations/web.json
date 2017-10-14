@@ -100,7 +100,7 @@
     // {
     //   "class": "CssMinResolver",
     //   "options": {
-    //     "source": "assets/css",
+    //     "source": ".private/src/stylesheets",
     //     "output": "assets/css",
     //     "prefix": "/"
     //   }
@@ -109,8 +109,8 @@
     // {
     //   "class": "JsMinResolver",
     //   "options": {
-    //     "src": ".private/src/javascripts",
-    //     "dst": "assets/js",
+    //     "source": ".private/src/javascripts",
+    //     "output": "assets/js",
     //     "prefix": "/"
     //   }
     // },

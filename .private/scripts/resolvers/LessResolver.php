@@ -9,7 +9,7 @@ use framework\Response;
 
 use framework\exceptions\ResolverException;
 
-use lessc;
+use Less_Parser;
 
 class LessResolver implements \framework\interfaces\IRequestResolver {
 
@@ -77,7 +77,6 @@ class LessResolver implements \framework\interfaces\IRequestResolver {
   public function resolve(Request $request, Response $response) {
     $pathInfo = $request->uri('path');
 
-    // Inex 1 because request URI starts with a slash
     if ( strpos($pathInfo, $this->prefix . $this->dstPath) !== 0 ) {
       return;
     }
@@ -92,27 +91,45 @@ class LessResolver implements \framework\interfaces\IRequestResolver {
       return;
     }
 
-    // also takes care of .min requests
-    $pathInfo['filename'] = preg_replace('/\.min$/', '', $pathInfo['filename']);
+    $options = [
+      'cache_dir' => '/tmp'
+    ];
 
-    $_srcPath = "/$pathInfo[dirname]/$pathInfo[filename].less";
-    $dstPath = "./$this->dstPath$pathInfo[dirname]/$pathInfo[filename].css";
+    $buildPath = compose(
+      partial('implode', DIRECTORY_SEPARATOR),
+      'filter',
+      partial('explode', DIRECTORY_SEPARATOR)
+    );
+
+    // Request for minified version.
+    if ( preg_match('/\.min$/', $pathInfo['filename']) ) {
+      $options['compress'] = true;
+
+      $_srcPath = preg_replace('/\.min$/', '', $pathInfo['filename']);
+    }
+    else {
+      $_srcPath = $pathInfo['filename'];
+    }
+
+    $_srcPath = $buildPath("$pathInfo[dirname]/$_srcPath.less");
+    $dstPath = $buildPath("$this->dstPath$pathInfo[dirname]/$pathInfo[filename].css");
 
     foreach ( $this->srcPath as $srcPath ) {
-      $srcPath = "./$srcPath$_srcPath";
+      $srcPath = $buildPath("./$srcPath/$_srcPath");
 
       // compile when: target file not exists, or source is newer
-      if ( !file_exists($dstPath) || @filemtime($srcPath) > @filemtime($dstPath) ) {
-        $result = @trim((new lessc)->compile(file_get_contents($srcPath)));
-        // note; write empty file if target exists
+      if ( file_exists($srcPath) && !file_exists($dstPath) || @filemtime($srcPath) > @filemtime($dstPath) ) {
+        $parser = new Less_Parser($options);
+        $parser->parseFile($srcPath);
+        $result = $parser->getCss();
+        unset($parser);
+
         if ( $result ) {
-          // note; reuse variable $srcPath
           $srcPath = dirname($dstPath);
-          if ( (!file_exists($srcPath) && !@mkdir($srcPath, 0770, true)) || !@file_put_contents($dstPath, $result) ) {
-            Log::warn('Permission denied, unable to compile LESS.');
+          if ( !file_exists($srcPath) && !@mkdir($srcPath, 0770, true) || !@file_put_contents($dstPath, $result) ) {
+            Log::warn('Permission denied, unable to write LESS output.');
           }
         }
-
         break;
       }
     }

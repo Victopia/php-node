@@ -4,7 +4,6 @@
   "type": "project",
   "prefer-stable": true,
   "require": {
-    "leafo/lessphp": "~0.5",
     "mustache/mustache": "~2.8",
     "mtdowling/cron-expression": "~1",
     "erusev/parsedown": "~1.5",
@@ -16,7 +15,8 @@
     "linkorb/jsmin-php": "dev-master",
     "natxet/cssmin": "^3.0@dev",
     "peridot-php/object-path": "^1.0",
-    "intervention/image": "^2.3"
+    "intervention/image": "^2.3",
+    "oyejorge/less.php": "v1.7.0.14"
   },
   "require-dev": {},
   "license": "WTFPL",
