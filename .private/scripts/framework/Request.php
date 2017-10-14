@@ -570,17 +570,15 @@ class Request {
 
       // Request parameters POST
       $postString = @file_get_contents('php://input');
-      if ( $postString ) {
-        if ( preg_match('/^application\/json/', $this->header('Content-Type')) ) {
-          $this->paramCache['post'] = ContentDecoder::json($postString, true);
-        }
-        else if ( preg_match('/^text\/xml/', $this->header('Content-Type')) ) {
-          $this->paramCache['postXML'] = XMLConverter::fromXML($postString);
-          $this->paramCache['post'] = [];
-        }
-        else {
-          $this->paramCache['post'] = $this->parse($postString);
-        }
+      if ( preg_match('/^application\/json/', $this->header('Content-Type')) ) {
+        $this->paramCache['post'] = ContentDecoder::json($postString, true);
+      }
+      else if ( preg_match('/^text\/xml/', $this->header('Content-Type')) ) {
+        $this->paramCache['postXML'] = XMLConverter::fromXML($postString);
+        $this->paramCache['post'] = [];
+      }
+      else if ( preg_match('/^application/x-www-form-urlencoded/', $this->header('Content-Type')) ) {
+        $this->paramCache['post'] = $this->parse($postString);
       }
       else {
         $this->paramCache['post'] = $_POST;
@@ -691,7 +689,7 @@ class Request {
         '&',
         array_map(function($pair) {
           $pair = explode('=', $pair);
-          $pair[0] = preg_replace_callback('/^(.*?)(\[.*\])?$/', function($matches) {
+          $pair[0] = preg_replace_callback('/^(.*?)(\[.*?\])?$/', function($matches) {
             return bin2hex($matches[1]) . @$matches[2];
           }, urldecode($pair[0]));
           return implode('=', $pair);
