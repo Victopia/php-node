@@ -249,7 +249,7 @@ class Response {
   /**
    * HTTP request headers
    *
-   * Subsequent updates to the same header will append to it, to remove a header,
+   * Subsequent updates to the same header will append to it. To remove a header,
    * pass a falsy value as $value.
    *
    * Usage:
@@ -574,7 +574,7 @@ class Response {
    * Retrieves HTTP status message depends on the given code, also removes message
    * body on statuses that do not allows it.
    */
-  public static function getStatusMessage($statusCode) {
+  public function getStatusMessage($statusCode) {
     switch ( $statusCode ) {
       // 1xx
       case 100: return 'Continue';

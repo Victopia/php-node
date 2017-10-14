@@ -8,7 +8,6 @@ use core\Log;
 use core\Net;
 use core\Utility;
 
-use framework\Cache;
 use framework\Configuration as conf;
 use framework\Request;
 use framework\Response;
