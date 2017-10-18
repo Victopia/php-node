@@ -11,6 +11,9 @@
   #       $options[prefix] in FileResolver.
   RewriteBase /
 
+  RewriteCond %{HTTP:Authorization} ^(.*)
+  RewriteRule .* - [e=HTTP_AUTHORIZATION:%1]
+
   #
   # Prevent redirection loops
   RewriteCond %{REQUEST_URI} !.private/gateway.php$ [NC]

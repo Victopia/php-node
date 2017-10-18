@@ -167,6 +167,10 @@ class Request {
 
         default:
           $this->headers = getallheaders();
+
+          if ( !empty($_SERVER['HTTP_AUTHORIZATION']) ) {
+            $this->headers['Authorization'] = $_SERVER['HTTP_AUTHORIZATION'];
+          }
           break;
       }
 
