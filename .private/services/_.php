@@ -50,9 +50,9 @@ class _ extends \framework\WebService {
 
     $args = array_values(func_get_args());
 
-    if (version_compare(PHP_VERSION, '7') < 0) {
-      // Remove model name
-      $args = array_slice(func_get_args(), 1);
+    // PHP builds that has $model included in $args.
+    if (version_compare(PHP_VERSION, '7') < 0 || @$args[0] === null) {
+      array_shift($args);
     }
 
     $method = reset($args);
