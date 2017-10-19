@@ -183,6 +183,16 @@ function plucks($prop) {
   };
 }
 
+function diffs($value) {
+  return function($list) use($value) {
+    if ( is_callable($value) ) {
+      $value = $value();
+    }
+
+    return array_diff($list, $value);
+  };
+}
+
 function func($name) {
   return function($object) use($name) {
     if ( is_callable(array($object, $name)) ) {
@@ -370,7 +380,7 @@ function filter($input, $callback = null, $deep = false) {
   }
 
   walk($input, function($value, $key, &$parent) use(&$callback) {
-    if ( !$callback($value) ) {
+    if ( !$callback($value, $key, $parent) ) {
       remove($key, $parent);
     }
   }, $deep);
@@ -387,8 +397,8 @@ function map($input, callable $callback) {
   }
   else if ( $input instanceof \Iterator ) {
     $result = [];
-    foreach ( $input as $k => $i ) {
-      $result[$k] = $callback($i);
+    foreach ( $input as $key => $value ) {
+      $result[$key] = $callback($value, $key, $input);
     }
     return $result;
   }
@@ -417,6 +427,26 @@ function remove($names, &$object) {
     }
     else {
       unset($object[$name]);
+    }
+  }
+}
+
+/**
+ * Return a subset of the supplied array where items match supplied filter.
+ */
+function find(array $input, $filter) {
+  return filter($input, function($item) use(&$filter) {
+    return (array) array_select($item, array_keys($filter)) === (array) $filter;
+  });
+}
+
+/**
+ * Return the first matching item of supplied array.
+ */
+function findOne(array $input, $filter) {
+  foreach ( $input as $item ) {
+    if ( (array) array_select($item, array_keys($filter)) === (array) $filter ) {
+      return $item;
     }
   }
 }
@@ -825,8 +855,8 @@ function object($list) {
 // PHP equalivent of Javascript Array.prototype.every()
 if ( !function_exists('array_every') ) {
   function array_every(array $array, callable $callback) {
-    foreach ( $array as $item ) {
-      if ( !$callback($item) ) {
+    foreach ( $array as $key => $item ) {
+      if ( !$callback($item, $key, $array) ) {
         return false;
       }
     }
@@ -838,8 +868,8 @@ if ( !function_exists('array_every') ) {
 // PHP equalivent of Javascript Array.prototype.some()
 if ( !function_exists('array_some') ) {
   function array_some(array $array, callable $callback) {
-    foreach ( $array as $item ) {
-      if ( $callback($item) ) {
+    foreach ( $array as $key => $item ) {
+      if ( $callback($item, $key, $array) ) {
         return true;
       }
     }
@@ -864,25 +894,12 @@ if ( !function_exists('array_select') ) {
    * @param {array} $keys Array of keys to select.
    * @param {?bool} $preserveKeys Will preserve original key ordering when TRUE.
    */
-  function array_select(array $list, array $keys, $preserveKeys = false) {
+  function array_select($list, array $keys) {
     $result = array();
 
-    if ( $preserveKeys ) {
-      foreach ( $list as $key => $value ) {
-        if ( in_array($key, $keys, true) ) {
-          $result[$key] = $value;
-        }
-      }
-    }
-    else {
-      foreach ( $keys as $key ) {
-        if ( array_key_exists($key, $list) ) {
-          $result[$key] = $list[$key];
-        }
-      }
-    }
-
-    return $result;
+    return filter($list, function($value, $key) use($keys) {
+      return in_array($key, $keys);
+    });
   }
 }
 
