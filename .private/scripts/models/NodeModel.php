@@ -10,7 +10,7 @@ use framework\exceptions\FrameworkException;
 /**
  * Disposable keys which will be cleared after a certain period.
  *
- * Error code: 9xx
+ * Error code: 1xx
  */
 class NodeModel extends abstraction\UuidModel {
 

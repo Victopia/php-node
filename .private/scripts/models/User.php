@@ -15,6 +15,9 @@ use framework\exceptions\ResolverException;
 
 use Intervention\Image\ImageManagerStatic as Image;
 
+/**
+ * error code: 9xx
+ */
 class User extends abstraction\UuidModel {
 
   /**
@@ -133,10 +136,10 @@ class User extends abstraction\UuidModel {
 
     if ( $this->isCreate() ) {
       if ( (new User)->load($this->username)->identity() ) {
-        $errors[100] = 'This email has already been registerd.';
+        $errors[900] = 'This email has already been registerd.';
       }
       else if (empty($this->password)) {
-        $errors[101] = 'Password is required.';
+        $errors[901] = 'Password is required.';
       }
     }
     else if ( !$this->isSuperUser() && !$this->isRequestUser() ) {
