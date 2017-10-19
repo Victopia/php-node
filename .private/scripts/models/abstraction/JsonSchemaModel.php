@@ -59,6 +59,9 @@ abstract class JsonSchemaModel extends AbstractRelationModel {
   public function validate() {
     $errors = parent::validate();
 
+    // note; remove previous errors to prevent serialization of error objects.
+    unset($this->{'$errors'});
+
     $result = Jsv4::coerce($this->data, $this->schema());
     if ( $result->valid ) {
       $this->data = $result->value;
@@ -85,6 +88,17 @@ abstract class JsonSchemaModel extends AbstractRelationModel {
           $this->$field = array_map(wraps('$'), $this->$field);
         }
       }
+    }
+
+    // note; remove previous errors to prevent serialization of error objects.
+    unset($this->{'$errors'});
+
+    $result = Jsv4::coerce($this->data, $this->schema());
+    if ($result->valid) {
+      $this->data = $result->value;
+    }
+    else {
+      $this->{'$errors'} = $result->errors;
     }
 
     return parent::populate();
@@ -144,20 +158,6 @@ abstract class JsonSchemaModel extends AbstractRelationModel {
     }
 
     return parent::afterSave($result);
-  }
-
-  protected function afterLoad() {
-    parent::afterLoad();
-
-    $result = Jsv4::coerce($this->data, $this->schema());
-    if ($result->valid) {
-      $this->data = $result->value;
-    }
-    else {
-      $this->{'$errors'} = $result->errors;
-    }
-
-    return $this;
   }
 
 }
