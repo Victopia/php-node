@@ -35,7 +35,7 @@ class User extends abstraction\UuidModel {
    *
    * Prepended to hash for crypt() method to understand which algorithm to use.
    */
-  protected $__hashPrefix = '$6$rounds=10000$'; // CRYPT_SHA512
+  protected $__hashPrefix = '$6$rounds=512$'; // CRYPT_SHA512
 
   //----------------------------------------------------------------------------
   //
@@ -150,11 +150,12 @@ class User extends abstraction\UuidModel {
    * Hash the user password if not yet.
    */
   protected function beforeSave(array &$errors = array()) {
-    $password = $this->password;
-    if ( strpos($password, $this->__hashPrefix) !== 0 ) {
-      $this->password = $this->hash($this->username, $password);
+    // note;dev; hash the heck out of it when algo is unknown.
+    $info = password_get_info($this->password);
+    if ( !$info['algo'] ) {
+      $this->password = $this->hash($this->username, $this->password);
     }
-    unset($password);
+    unset($info);
 
     // note; Cleanse empty arrays
     foreach ( ['middle_names', 'groups', 'forms'] as $field ) {
