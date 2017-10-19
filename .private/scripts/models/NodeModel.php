@@ -20,7 +20,7 @@ class NodeModel extends abstraction\UuidModel {
   //
   //----------------------------------------------------------------------------
 
-  function __construct($collection, $context = array()) {
+  function __construct($collection, $data = array()) {
     // note; ModelCollection will feed data here, but at least we need ['@collection'] to work.
     if ( is_array($collection) ) {
       if ( empty($collection[Node::FIELD_COLLECTION]) ) {
