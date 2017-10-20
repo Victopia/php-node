@@ -529,7 +529,7 @@ final class Database {
       static::query('SET autocommit = ?', self::$transactionStore['autocommit']);
     }
 
-    self::$transactionStore = [];
+    unset(self::$transactionStore['autocommit']);
 
     return static::getConnection()->commit();
   }
@@ -546,7 +546,7 @@ final class Database {
       static::query('SET autocommit = ?', self::$transactionStore['autocommit']);
     }
 
-    self::$transactionStore = [];
+    unset(self::$transactionStore['autocommit']);
 
     return static::getConnection()->rollBack();
   }
