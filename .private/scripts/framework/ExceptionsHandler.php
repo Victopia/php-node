@@ -159,9 +159,24 @@ class ExceptionsHandler {
             $output['error'] = $errorMessage;
           }
         }
+        else if ( $e instanceof FrameworkException ) {
+          $output['params'] = $e->params();
+        }
 
-        $response->clearHeaders();
-        $response->header('Content-Type', 'application/json; charset=utf-8');
+        $fn = compose(
+          maps(function($header) use($response) {
+            $response->header($header, false);
+          }),
+          filters(matches('/^content\-/i')),
+          'array_keys'
+        );
+
+        $fn($response->header());
+
+        unset($fn);
+
+        $response->header('Content-Type', 'application/json; charset=utf-8', true);
+
         $response->send($output, $statusCode);
       }
       else {
@@ -171,7 +186,6 @@ class ExceptionsHandler {
       }
     }
     else {
-      // echo "$logString\n";
       $logString.= "\n";
 
       if ( $e instanceof ValidationException ) {

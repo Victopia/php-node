@@ -12,7 +12,10 @@ use framework\Resolver;
  */
 class FrameworkException extends \Exception {
 
-  public function __construct($message, $code = 0, \Exception $previous = null) {
+  /**
+   * @constructor
+   */
+  public function __construct($message, $code = 0, \Exception $previous = null, array $params = null) {
     $res = Resolver::getActiveInstance();
 
     // Resolve message from database, with the exception code.
@@ -37,6 +40,26 @@ class FrameworkException extends \Exception {
     }
 
     parent::__construct($message, $code, $previous);
+
+    $this->params($params);
+  }
+
+  //----------------------------------------------------------------------------
+  //
+  //  Properties
+  //
+  //----------------------------------------------------------------------------
+
+  private $_params = [];
+
+  public function params(array $value = null) {
+    $result = $this->_params;
+
+    if ( $value !== null ) {
+      $this->_params = $value;
+    }
+
+    return $result;
   }
 
 }
