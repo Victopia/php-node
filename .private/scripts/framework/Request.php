@@ -581,7 +581,7 @@ class Request {
         $this->paramCache['postXML'] = XMLConverter::fromXML($postString);
         $this->paramCache['post'] = [];
       }
-      else if ( preg_match('/^application/x-www-form-urlencoded/', $this->header('Content-Type')) ) {
+      else if ( preg_match('/^application\/x-www-form-urlencoded/', $this->header('Content-Type')) ) {
         $this->paramCache['post'] = $this->parse($postString);
       }
       else {
