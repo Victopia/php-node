@@ -52,17 +52,27 @@ class CssMinResolver implements \framework\interfaces\IRequestResolver {
         )
       )
     {
-      throw new ResolverException('Invalid source directory.');
+      throw new ResolverException("Source directory '$options[source]' is invalid.");
     }
 
-    $this->srcPath = $options['source'];
-
-    if ( !empty($options['output']) ) {
-      if ( !is_string($options['output']) || !is_dir($options['output']) || !is_writable($options['output']) ) {
-        throw new ResolverException('Invalid output directory.');
+    $this->srcPath = array_map(function($path) {
+      if ( !preg_match('/\/$/', $path) ) {
+        $path.= '/';
       }
 
+      return $path;
+    }, $options['source']);
+
+    if ( !empty($options['output']) ) {
       $this->dstPath = $options['output'];
+    }
+
+    if ( !is_string($this->dstPath) || !is_dir($this->dstPath) || !is_writable($this->dstPath) ) {
+      throw new ResolverException("Output directory '$this->dstPath' is invalid.");
+    }
+
+    if ( $this->dstPath == '.' ) {
+      $this->dstPath = '';
     }
 
     if ( !empty($options['prefix']) ) {
@@ -100,8 +110,9 @@ class CssMinResolver implements \framework\interfaces\IRequestResolver {
     $break = false;
 
     foreach ( $this->srcPath as $srcPath ) {
+      // note; Cannot prefix with a dot because createLink() needs absolute URL.
       $srcPath = "/$srcPath$_srcPath";
-
+// var_dump($response->createLink($srcPath)); die;
       // note;dev; Response outputBuffer will mess up parent OB in some PHP versions, don't rely on that.
       \core\Net::httpRequest(
         [ 'url' => $response->createLink($srcPath)
@@ -117,7 +128,7 @@ class CssMinResolver implements \framework\interfaces\IRequestResolver {
             if ( $options['response']['status'] < 300 ) {
               if ( empty($res) || $res > @filemtime($dstPath) ) {
                 $res = trim(@CssMin::minify($response));
-                $srcPath = ".$srcPath";
+                $srcPath = dirname($dstPath);
                 if ( $res && (!file_exists($srcPath) && !@mkdir($srcPath, 0770, true)) || !@file_put_contents($dstPath, $res) ) {
                   Log::warn('Permission denied, unable to minify CSS.');
                 }
@@ -127,7 +138,7 @@ class CssMinResolver implements \framework\interfaces\IRequestResolver {
             }
           }
         , 'failure' => function($num, $str) use($srcPath, &$break) {
-            \core\Log::warning("[CssMin] Error reading source file in $srcPath.");
+            \core\Log::warning("[CssMin] Error reading source file in $srcPath, ($num) $str.");
 
             $break = true;
           }

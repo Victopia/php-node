@@ -58,7 +58,7 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
     }
 
     if ( !empty($options['prefix']) ) {
-      $this->prefix = "$options[prefix]";
+      $this->prefix = preg_replace('/^\/*([\w-_\.]+(:?\/[\w-_\.]+)*)\/*$/', '/$1/', "$options[prefix]");
     }
   }
 
@@ -75,8 +75,14 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
   public function resolve(Request $req, Response $res) {
     $auth = $this->paths;
 
-    $pathNodes = ltrim($req->uri('path'), "$this->prefix/");
+    $pathNodes = preg_replace(
+      '/^' . preg_quote($this->prefix, '/') . '/',
+      '',
+      $req->uri('path')
+    );
+
     $pathNodes = trim($pathNodes, '/');
+
     if ( $pathNodes ) {
       $pathNodes = explode('/', $pathNodes);
     }

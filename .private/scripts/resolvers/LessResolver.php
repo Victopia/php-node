@@ -52,17 +52,27 @@ class LessResolver implements \framework\interfaces\IRequestResolver {
         )
       )
     {
-      throw new ResolverException('Invalid source directory.');
+      throw new ResolverException("Source directory '$options[source]' is invalid.");
     }
 
-    $this->srcPath = $options['source'];
-
-    if ( !empty($options['output']) ) {
-      if ( !is_string($options['output']) || !is_dir($options['output']) || !is_writable($options['output']) ) {
-        throw new ResolverException('Invalid output directory.');
+    $this->srcPath = array_map(function($path) {
+      if ( !preg_match('/\/$/', $path) ) {
+        $path.= '/';
       }
 
+      return $path;
+    }, $options['source']);
+
+    if ( !empty($options['output']) ) {
       $this->dstPath = $options['output'];
+    }
+
+    if ( !is_string($this->dstPath) || !is_dir($this->dstPath) || !is_writable($this->dstPath) ) {
+      throw new ResolverException("Output directory '$this->dstPath' is invalid.");
+    }
+
+    if ( $this->dstPath == '.' ) {
+      $this->dstPath = '';
     }
 
     if ( !empty($options['prefix']) ) {
@@ -87,7 +97,7 @@ class LessResolver implements \framework\interfaces\IRequestResolver {
     $pathInfo = pathinfo($pathInfo);
 
     // Only serves .css requests
-    if ( $pathInfo['extension'] != 'css' ) {
+    if ( @$pathInfo['extension'] != 'css' ) {
       return;
     }
 
