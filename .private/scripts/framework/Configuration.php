@@ -140,10 +140,15 @@ class Configuration implements \Iterator, \ArrayAccess {
 
 			// Database support
 			if ( Database::isConnected() ) {
-				$res = (array) @Node::getOne(array(
-						Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_CONFIGURATION
-					, '@key' => $this->key
-					));
+				try {
+					$res = (array) Node::getOne(array(
+							Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_CONFIGURATION
+						, '@key' => $this->key
+						));
+				}
+				catch (\PDOException $e) {
+					$res = [];
+				}
 
 				unset($res['@key'], $res[Node::FIELD_COLLECTION]);
 
