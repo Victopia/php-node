@@ -387,15 +387,10 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
 
     $filter[Node::FIELD_COLLECTION] = self::collectionName();
 
-    $collection = new ModelCollection(get_called_class(), $filter);
-
-    if ( $this->request() ) {
-      $collection->__request = $this->request();
-    }
-
-    if ( $this->response() ) {
-      $collection->__response = $this->response();
-    }
+    $collection = new ModelCollection(get_called_class(), $filter, [
+      'request' => $this->request(),
+      'response' => $this->response()
+    ]);
 
     return $collection;
   }
