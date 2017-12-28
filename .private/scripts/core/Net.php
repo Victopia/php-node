@@ -136,6 +136,10 @@ class Net {
         , CURLOPT_FOLLOWLOCATION => true
         );
 
+      if ( isset($options['userAgent']) ) {
+        $curlOption[CURLOPT_USERAGENT] = $options['userAgent'];
+      }
+
       // Request method: 'GET', 'POST', 'PUT', 'HEAD', 'DELETE'
       if ( !isset($option['type']) && is_array(@$option['data']) || preg_match('/^post$/i', @$option['type']) ) {
         $curlOption[CURLOPT_POST] = true;
