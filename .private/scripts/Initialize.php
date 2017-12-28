@@ -27,9 +27,19 @@ require_once(__DIR__ . '/framework/System.php');
 
 // Backward compatible autoloading
 if ( !function_exists('spl_autoload_register') ) {
-  function __autoload($name) {
-    System::__autoload($name);
+  $tmp = tmpfile();
+
+  fwrite($tmp, '<?php function __autoload($name) { System::__autoload($name); }');
+
+  $info = stream_get_meta_data($tmp);
+
+  if ( is_readable(@$info['uri']) ) {
+    require_once($info['uri']);
   }
+
+  fclose($tmp);
+
+  unset($info, $tmp);
 }
 
 // Autoloaders and module prefixes are setup here.
