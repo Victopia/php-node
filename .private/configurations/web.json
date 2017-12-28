@@ -134,7 +134,7 @@
     {
       "class": "StatusDocumentResolver",
       "options": {
-        "prefix": "/"
+        "prefix": ".private/templates/errordocs"
       }
     },
     // Logging
