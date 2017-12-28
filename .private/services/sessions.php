@@ -36,7 +36,7 @@ class sessions extends \framework\WebService {
 
   function ensure($sid = null, $token = null) {
     if ( $sid === null ) {
-      $sid = $this->request()->meta('sid');
+      $sid = Session::current('sid');
     }
 
     return Session::ensure($sid, $token, $this->request()->fingerprint());
