@@ -574,7 +574,7 @@ class Response {
    * Retrieves HTTP status message depends on the given code, also removes message
    * body on statuses that do not allows it.
    */
-  public function getStatusMessage($statusCode) {
+  public static function getStatusMessage($statusCode) {
     switch ( $statusCode ) {
       // 1xx
       case 100: return 'Continue';
