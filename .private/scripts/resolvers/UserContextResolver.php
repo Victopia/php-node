@@ -103,7 +103,7 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
             $count = 0;
           }
 
-          if ( $count ) {
+          if ( !$count ) {
             $req->user->data(
               [ 'id' => 0
               , 'groups' => ['Administrators']
