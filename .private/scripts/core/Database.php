@@ -275,7 +275,7 @@ final class Database {
         );
 
       $res = array_map(function($info) {
-        $info['Key'] = preg_split('/\s*,\s*/', $info['Key']);
+        $info['Key'] = array_filter(preg_split('/\s*,\s*/', $info['Key']));
 
         foreach ($info as &$value) {
           switch ($value) {
@@ -287,6 +287,10 @@ final class Database {
               $value = false;
               break;
           }
+        }
+
+        if ( @$info['Extra'] === '' ) {
+          unset($info['Extra']);
         }
 
         return $info;
