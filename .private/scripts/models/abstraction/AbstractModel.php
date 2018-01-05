@@ -484,9 +484,16 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
         if ( is_numeric($res) ) {
           $_result['action'] = 'insert';
 
-          // Primary keys other than auto_increment will return 0
+          // Primary keys other than auto_increment will return 0, but
+          // auto_increment fields which are not primary key will also returned
+          // here.
           if ( $res ) {
-            $this->identity($res);
+            $_res = Node::resolveCollection(self::collectionName());
+            $_res = Database::getFields($_res, 'PRI', false);
+            if ( strpos(@"$_res[Extra]", 'auto_increment') !== false ) {
+              $this->identity($res);
+            }
+            unset($_res);
           }
         }
         else if ( $res ) {

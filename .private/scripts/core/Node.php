@@ -1092,7 +1092,7 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
   //
   //-----------------------------------------------------------------------
 
-  private static /* String */
+  public static /* String */
   function resolveCollection($tableName) {
     if ( !is_string($tableName) ) {
       throw new CoreException('Collection name must be string.');
