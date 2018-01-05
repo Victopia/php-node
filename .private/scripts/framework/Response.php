@@ -528,7 +528,9 @@ class Response {
 
     $translation = $this->translation;
     if ( !is_callable($translation) ) {
-      $args[0] = gettext($args[0]);
+      if ( function_exists('gettext') ) {
+        $args[0] = gettext($args[0]);
+      }
 
       $translation = 'sprintf';
     }
