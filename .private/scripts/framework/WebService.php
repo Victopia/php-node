@@ -28,7 +28,7 @@ abstract class WebService implements interfaces\IWebService {
   /**
    * Maximum length for lists, hard limit.
    */
-  const MAXIMUM_LIST_LENGTH = 100;
+  const MAXIMUM_LIST_LENGTH = 1000;
 
 	//----------------------------------------------------------------------------
 	//
