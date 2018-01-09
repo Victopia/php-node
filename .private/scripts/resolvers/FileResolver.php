@@ -100,8 +100,8 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
       $request->__uri = $request->uri();
     }
 
-    if ( stripos($path, $this->pathPrefix) === 0 ) {
-      $path = substr($path, strlen($this->pathPrefix));
+    if ( stripos($path, $this->pathPrefix()) === 0 ) {
+      $path = substr($path, strlen($this->pathPrefix()));
     }
 
     if ( strpos($path, '?') !== false ) {
