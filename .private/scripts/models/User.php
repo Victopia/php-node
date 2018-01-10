@@ -208,7 +208,7 @@ class User extends abstraction\UuidModel {
    */
   protected function afterDelete() {
     Node::delete(array(
-        NODE_FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION,
+        Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION,
         'username' => $this->identity()
       ));
 

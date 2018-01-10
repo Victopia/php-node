@@ -12,7 +12,7 @@ class NodeHandler extends AbstractProcessingHandler {
   protected $collectionName = FRAMEWORK_COLLECTION_LOG;
 
   public function write(array $record) {
-    $record[NODE_FIELD_COLLECTION] = $this->collectionName;
+    $record[Node::FIELD_COLLECTION] = $this->collectionName;
     $record['type'] = $record['level_name'];
     $record['subject'] = strtolower("$record[channel].$record[level_name]");
 

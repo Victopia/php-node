@@ -6,9 +6,6 @@ define('EPOACH', -62167219200); // -62167246602
 // Shorthand constants
 define('DS', DIRECTORY_SEPARATOR);
 
-// Added for frequent use, this is too common to delete.
-define('NODE_FIELD_COLLECTION', core\Node::FIELD_COLLECTION);
-
 // Collection of system configurations
 define('FRAMEWORK_COLLECTION_CONFIGURATION', 'Configurations');
 // Collection of Node hirarchy relations
@@ -17,12 +14,10 @@ define('FRAMEWORK_COLLECTION_RELATION', 'NodeRelations');
 define('FRAMEWORK_COLLECTION_LOG', 'Logs');
 // Collection of processes
 define('FRAMEWORK_COLLECTION_PROCESS', 'Processes');
-// Collection of users
-define('FRAMEWORK_COLLECTION_USER', 'Users');
 // Collection of http user sessions
 define('FRAMEWORK_COLLECTION_SESSION', 'Sessions');
 // Collection of locale resources.
-define('FRAMEWORK_COLLECTION_TRANSLATION', 'Translation');
+define('FRAMEWORK_COLLECTION_TRANSLATION', 'Translations');
 
 // Predefined error messages in libcurl.
 define('FRAMEWORK_NET_CURL_ERRORS', serialize(array(
