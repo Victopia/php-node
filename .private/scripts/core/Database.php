@@ -208,7 +208,7 @@ final class Database {
    * @return {string} String with all wildcard characters escaped.
    */
   public static function escapeValue($value) {
-    return preg_replace('/([\\@*_])/', '\\\$1', $value);
+    return preg_replace('/([\\_%])/', '\\\$1', $value);
   }
 
   /**
