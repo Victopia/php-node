@@ -787,11 +787,14 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
   }
 
   private static function filterWalker($data, $field, $expr) {
-    $value = @$data[$field];
+    $prop = prop(explode('.', $field));
+
+    $value = $prop($data);
+
+    unset($prop);
 
     if ( is_array($expr) ) {
       // OR operation here.
-      $result = true;
       foreach ( $expr as $value ) {
         if ( static::filterWalker($data, $field, $value) ) {
           return true; // pop a true right away.
@@ -802,7 +805,7 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
     }
     else {
       // Check field existance.
-      if ( $expr && !isset($data[$field]) ) {
+      if ( $expr && !isset($value) ) {
         return false;
       }
 
