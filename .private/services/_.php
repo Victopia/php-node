@@ -7,14 +7,11 @@ use framework\exceptions\ServiceException;
 use framework\exceptions\ValidationException;
 
 /**
- * Inspired by sails.js, but the DataService is implemented as an abstract class.
+ * Inspired by sails.js, specific data models are to be defined.
  *
  * That way we don't store anything without question upon first setup, users
- * are required to make data services with extends this class to enable that
+ * are required to make data models with extends this class to enable that
  * collection.
- *
- * Further policy and logics can be done by overriding the CRUD methods, or
- * createFilter() method.
  */
 class _ extends \framework\WebService {
 
@@ -63,6 +60,9 @@ class _ extends \framework\WebService {
       // note; custom functions can writes directly into output buffer without taking care of 404.
       $this->response()->status(200);
       $method = array($this->modelClass, '__' . array_shift($args));
+    }
+    else if ( is_callable($this->modelClass) ) {
+      $method = $this->modelClass;
     }
     else {
       // note; remove file extensions which should be taken care by ContentTypeProcessor.
@@ -130,7 +130,7 @@ class _ extends \framework\WebService {
   protected function findOne($identity) {
     $this->modelClass->load($identity);
 
-    if ( !$this->modelClass->identity() ) {
+    if ( blank($this->modelClass->data()) ) {
       $this->response()->status(404);
     }
     else {
@@ -141,13 +141,10 @@ class _ extends \framework\WebService {
   /*! Note
    *  This should work just like find() and findOne(), that it passes the whole thing
    *  into Node::set() instead. Inherited classes can make modifications to
-   *  parameter values before passing down to this.
+   *  parameter values before passing down.
    *
    *  One thing this differs from Node::set() is that it returns the whole entity
    *  with processed values, including the last insert id.
-   *
-   *  A problem is that it assumes the primary key is already named "ID", should
-   *  tackle of this.
    */
   protected function upsert($identity = null) {
     if ( $identity === null ) {
