@@ -2,6 +2,7 @@
 
 namespace framework;
 
+use core\Database;
 use core\Node;
 
 use framework\exceptions\FrameworkException;
@@ -78,7 +79,7 @@ class Translation {
 
     $contents = array(
         Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_TRANSLATION
-      , 'key' => md5($string)
+      , 'key' => $string
       , 'value' => $string
       , 'bundle' => $bundle
       , 'locale' => $locale
@@ -95,7 +96,7 @@ class Translation {
    * Check whether a resource key is set.
    */
   public function __isset($string) {
-    return (bool) $this->loadCache(md5($string));
+    return (bool) $this->loadCache($string);
   }
 
   /**
@@ -119,7 +120,7 @@ class Translation {
     $localeChain = (array) $this->localeChain;
 
     // Map translations with the hash of $string.
-    $cache = (array) $this->loadCache(md5($string));
+    $cache = (array) $this->loadCache($string);
 
     // Only search when something is loaded.
     if ( $cache ) {

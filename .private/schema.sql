@@ -107,22 +107,19 @@ CREATE TABLE `Sessions` (
 
 
 
-# Dump of table Translation
+# Dump of table Translations
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `Translation`;
+DROP TABLE IF EXISTS `Translations`;
 
-CREATE TABLE `Translation` (
-  `uuid` binary(16) NOT NULL,
-  `bundle` varchar(255) COLLATE latin1_general_cs NOT NULL DEFAULT 'default' COMMENT 'Version key of the same identifier',
-  `key` varchar(255) CHARACTER SET utf8mb4 NOT NULL DEFAULT '' COMMENT 'MD5 hash of target string',
-  `value` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL COMMENT 'Translation content',
-  `locale` varchar(128) COLLATE latin1_general_cs NOT NULL DEFAULT '' COMMENT 'Locale of target translation',
-  `timestamp` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
-  PRIMARY KEY (`uuid`),
-  KEY `bundle` (`bundle`,`key`(191),`locale`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
-
+CREATE TABLE `Translations` (
+  `bundle` varchar(255) NOT NULL DEFAULT 'default' COMMENT 'Bundle key of this translation',
+  `locale` varchar(128) NOT NULL DEFAULT '' COMMENT 'Locale of target translation',
+  `key` varchar(255) NOT NULL DEFAULT '' COMMENT 'Content identifier',
+  `value` text NOT NULL COMMENT 'Translated literal',
+  `timestamp` timestamp(6) NOT NULL DEFAULT current_timestamp(6) ON UPDATE current_timestamp(6),
+  PRIMARY KEY (`bundle`,`locale`,`key`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
 # Dump of table User
