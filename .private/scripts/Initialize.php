@@ -73,38 +73,11 @@ require_once(__DIR__ . '/framework/functions.php');
  *  Database class will act as a wrapper for the designated adapter.
  */
 
-$dbOptions = conf::get('system::database');
-
-if ( $dbOptions ) {
-  // Driver options
-  if ( @$dbOptions['options'] ) {
-    $driverOptions = array();
-
-    foreach ( (array) @$dbOptions['options'] as $key => $value ) {
-      if ( is_string($key) && defined("PDO::$key") ) {
-        $driverOptions[constant("PDO::$key")] = $value;
-      }
-    } unset($key, $value);
-
-    if ( $driverOptions ) {
-      $dbOptions['options'] = $driverOptions;
-    }
-
-    unset($driverOptions);
-  }
-
-  $dbOptions = new core\DatabaseOptions(
-    $dbOptions['driver'],
-    (array) @$dbOptions['attributes'],
-    $dbOptions['user'],
-    @$dbOptions['password'],
-    (array) @$dbOptions['options']
-    );
-
-  core\Database::setOptions($dbOptions);
-}
-
-unset($dbOptions);
+core\Database::setOptions(
+  core\DatabaseOptions::fromArray(
+    (array) conf::get('system::database.default')
+  )
+);
 
 //------------------------------------------------------------------------------
 //

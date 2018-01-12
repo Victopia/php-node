@@ -25,7 +25,7 @@ final class DatabaseOptions {
   /**
    * PDO driver attributes.
    */
-  public $driverAttributes = array();
+  public $attributes = array();
 
   /**
    * PDO driver specific options.
@@ -49,15 +49,54 @@ final class DatabaseOptions {
   //----------------------------------------------------------------------------
 
   function __construct($driver = 'mysql',
-                       $driverAttributes = array(),
+                       $attributes = array(),
                        $username = null,
                        $password = null,
                        $options = array()) {
     $this->driver = $driver;
-    $this->driverAttributes = $driverAttributes;
+    $this->attributes = $attributes;
     $this->username = $username;
     $this->password = $password;
     $this->options = $options;
+  }
+
+  /**
+   * Shorthand method for reading JSON/static array options.
+   */
+  static function fromArray(array $options = []) {
+    if ( is_array(@$options['options']) ) {
+      $driverOptions = [];
+
+      foreach ( (array) @$options['options'] as $key => $value ) {
+        if ( defined("PDO::$key") ) {
+          $driverOptions[constant("PDO::$key")] = $value;
+        }
+      }
+
+      $options['options'] = $driverOptions;
+
+      unset($key, $value, $driverOptions);
+    }
+
+    if ( empty($options['options']) ) {
+      unset($options['options']);
+    }
+
+    $options = filter_var_array($options, [
+      'driver' => FILTER_SANITIZE_STRING,
+      'attributes' => [ 'flags' => FILTER_FORCE_ARRAY ],
+      'username' => FILTER_SANITIZE_STRING,
+      'password' => FILTER_SANITIZE_STRING,
+      'options' => [ 'flags' => FILTER_FORCE_ARRAY ]
+    ]);
+
+    return new static(
+      $options['driver'],
+      $options['attributes'],
+      $options['username'],
+      $options['password'],
+      $options['options']
+    );
   }
 
   /**
@@ -66,13 +105,13 @@ final class DatabaseOptions {
    * We don't restrict driver attributes because PDO documentation is just not stable enough.
    */
   function toPdoDsn() {
-    $attrs = array();
+    $attributes = array();
 
-    foreach ( array_filter($this->driverAttributes) as $key => $value ) {
-      $attrs[] = "$key=$value";
+    foreach ( array_filter($this->attributes) as $key => $value ) {
+      $attributes[] = "$key=$value";
     }
 
-    return $this->driver . ':' . implode(';', $attrs);
+    return $this->driver . ':' . implode(';', $attributes);
   }
 
 }
