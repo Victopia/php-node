@@ -150,7 +150,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
 
       $value = (array) $value;
 
-      if ( isset($value[Node::FIELD_COLLECTION]) && $value[Node::FIELD_COLLECTION] == self::collectionName() ) {
+      if ( isset($value[Node::FIELD_COLLECTION]) && $value[Node::FIELD_COLLECTION] == static::collectionName() ) {
         unset($value[Node::FIELD_COLLECTION]);
       }
 
@@ -385,7 +385,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       $filter = [ $this->_primaryKey => $filter ];
     }
 
-    $filter[Node::FIELD_COLLECTION] = self::collectionName();
+    $filter[Node::FIELD_COLLECTION] = static::collectionName();
 
     $collection = new ModelCollection(get_called_class(), $filter, [
       'request' => $this->request(),
@@ -421,7 +421,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       $identity = Database::escapeValue($identity);
     }
 
-    $filter = [ Node::FIELD_COLLECTION => self::collectionName() ];
+    $filter = [ Node::FIELD_COLLECTION => static::collectionName() ];
 
     if ( is_scalar($identity) ) {
       $filter[$this->_primaryKey] = $identity;
@@ -477,7 +477,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
         // note; Conflicts here. Virutal fields would love to skip nulls, but real fields would not.
         $res = util::objectToArray($this->data);
 
-        $res[Node::FIELD_COLLECTION] = self::collectionName();
+        $res[Node::FIELD_COLLECTION] = static::collectionName();
 
         $res = Node::set($res);
 
@@ -488,7 +488,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
           // auto_increment fields which are not primary key will also returned
           // here.
           if ( $res ) {
-            $_res = Node::resolveCollection(self::collectionName());
+            $_res = Node::resolveCollection(static::collectionName());
             $_res = Database::getFields($_res, 'PRI', false);
             if ( strpos(@"$_res[Extra]", 'auto_increment') !== false ) {
               $this->identity($res);
@@ -529,7 +529,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    */
   function delete(&$isDeleted = false) {
     $filter =
-      [ Node::FIELD_COLLECTION => self::collectionName()
+      [ Node::FIELD_COLLECTION => static::collectionName()
       , '@limits' => 1
       ];
 
