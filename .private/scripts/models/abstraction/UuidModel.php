@@ -114,7 +114,7 @@ abstract class UuidModel extends JsonSchemaModel {
     $key = $this->primaryKey();
 
     // note; loop until we find a unique uuid
-    while (!$this->identity() || $this->isCreate() && $this->find([ $key => $this->$key ])->count()) {
+    while (!$this->identity() || $this->isCreate() && count($this->find([ $key => $this->$key ]))) {
       $this->$key = Database::fetchField("SELECT LOWER(REPLACE(UUID(), '-', ''))");
     }
   }
