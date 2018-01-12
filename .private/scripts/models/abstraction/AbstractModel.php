@@ -36,12 +36,6 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * @param {?array} $data Designated data to be set into this model object.
    */
   function __construct($data = null, $context = array()) {
-    if ( $data instanceof self ) {
-      $data = $data->data();
-    }
-
-    $this->data($data);
-
     $res = Resolver::getActiveInstance();
 
     if ( array_key_exists('request', $context) ) {
@@ -57,6 +51,12 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     else if ( $res ) {
       $this->_response = $res->response();
     }
+
+    if ( $data instanceof self ) {
+      $data = $data->data();
+    }
+
+    $this->data($data);
   }
 
   //----------------------------------------------------------------------------
