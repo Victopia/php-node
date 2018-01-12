@@ -112,7 +112,7 @@ class CssMinResolver implements \framework\interfaces\IRequestResolver {
     foreach ( $this->srcPath as $srcPath ) {
       // note; Cannot prefix with a dot because createLink() needs absolute URL.
       $srcPath = "/$srcPath$_srcPath";
-// var_dump($response->createLink($srcPath)); die;
+
       // note;dev; Response outputBuffer will mess up parent OB in some PHP versions, don't rely on that.
       \core\Net::httpRequest(
         [ 'url' => $response->createLink($srcPath)
