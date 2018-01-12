@@ -25,9 +25,6 @@ abstract class UserView extends UuidModel {
         if ( Database::hasTable($table) ) {
           $this->_collectionName = $table;
         }
-        else {
-          $this->_collectionName.= 'Master';
-        }
 
         unset($table);
       }
