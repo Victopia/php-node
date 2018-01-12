@@ -7,7 +7,7 @@ use framework\Request;
 class IsLoggedIn implements \framework\interfaces\IAuthenticator {
 
   static function authenticate(Request $r) {
-    return isset($r->user);
+    return isset($r->user) && $r->user->identity();
   }
 
 }
