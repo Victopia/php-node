@@ -93,12 +93,14 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
       throw new CoreException('Invalid filter specified.');
     }
 
+    $filter['table'] = "`$filter[table]`";
+
     if ( $filter['filter'] ) {
       if ( is_string($filter['indexHints']) ) {
         $filter['table'].= " $filter[indexHints]";
       }
       else if ( is_array($filter['indexHints']) && array_key_exists($filter['indexHints'], $filter['table']) ) {
-        $filter['table'] = "`$filter[table]` {$filter['indexHints']['$tableName']}";
+        $filter['table'] = "$filter[table] {$filter['indexHints']['$tableName']}";
       }
     }
     else {
@@ -524,7 +526,7 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
       function($key) use($columns) {
         return in_array($key, $columns) ||
           array_reduce($columns, function($result, $column) use($key) {
-            return $result || strpos($key, "`$column`");
+            return $result || strpos($key, "`$column`") !== false;
           }, false);
       }
     );
@@ -1194,7 +1196,7 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
 
     $res = Database::query('SELECT ' . implode(', ', $fields) . ' FROM ' . $collection);
 
-    $res->setFetchMode(\PDO::FETCH_ASSOC);
+    $res->setFetchMode(PDO::FETCH_ASSOC);
 
     foreach ( $res as $row ) {
       $contents = (array) ContentDecoder::json($row[static::FIELD_VIRTUAL], true);
