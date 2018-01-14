@@ -2,36 +2,7 @@
 
 use core\Utility;
 
-use framework\Configuration as conf;
 use framework\System;
-
-//--------------------------------------------------
-//
-//  Environment definitions
-//
-//--------------------------------------------------
-
-// CRYPT_SHA512
-if ( !constant('CRYPT_SHA512') ) {
-  throw new Exception('CRYPT_SHA512 method is not supported, please enable it on your system.');
-}
-
-// Sets default Timezone, defaults to development locale (Hong Kong).
-date_default_timezone_set(
-  conf::get('system.locale::timezone', 'Asia/Hong_Kong')
-  );
-
-// Allow more nesting for functional programming.
-ini_set('xdebug.max_nesting_level', 1000);
-
-if ( constant('PHP_SAPI') == 'cli' ) {
-  // Turn on garbage collection
-  gc_enable();
-}
-else {
-  // Starts HTTP session for browsers.
-  session_start();
-}
 
 //--------------------------------------------------
 //

@@ -1,12 +1,8 @@
 <?php /*! Initialize.php | Define general methods and setup global usage classes. */
 
-use core\Node;
 use core\Log;
 
 use framework\Configuration as conf;
-use framework\Resolver;
-use framework\Session;
-use framework\Service;
 use framework\System;
 
 use framework\log\processors\BacktraceProcessor;
@@ -45,17 +41,14 @@ if ( !function_exists('spl_autoload_register') ) {
 // Autoloaders and module prefixes are setup here.
 System::bootstrap();
 
-// Error & Exception handling.
-framework\ExceptionsHandler::setHandlers();
-
-// Call this one to check if enviroment is valid.
-System::environment();
-
 // Global system constants
 require_once(__DIR__ . '/framework/constants.php');
 
 // Functional programming
 require_once(__DIR__ . '/framework/functions.php');
+
+// Ugly shims
+require_once(__DIR__ . '/framework/shim.php');
 
 //------------------------------------------------------------------------------
 //
@@ -116,11 +109,3 @@ else {
   Log::getLogger()
     ->pushHandler(new NullHandler());
 }
-
-//------------------------------------------------------------------------------
-//
-//  System shims
-//
-//------------------------------------------------------------------------------
-
-require_once(__DIR__ . '/framework/environment.php');

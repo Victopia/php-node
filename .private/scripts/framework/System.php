@@ -315,6 +315,34 @@ class System {
     foreach ( (array) @conf::get('system::paths.includes') as $file ) {
       include_once($file);
     }
+
+    // Sets default Timezone, defaults to development locale (Hong Kong).
+    date_default_timezone_set(
+      conf::get('system::locale.timezone', 'UTC')
+    );
+
+    // Allow more nesting for functional programming.
+    ini_set(
+      'xdebug.max_nesting_level',
+      conf::get('system::nesting_level', 1000)
+    );
+
+    // Error & Exception handling.
+    ExceptionsHandler::setHandlers();
+
+    // todo; Potentially register PHP session handlers here.
+
+    // Turn on CLI garbage collection
+    if ( constant('PHP_SAPI') == 'cli' ) {
+      gc_enable();
+    }
+    // Starts HTTP session for browsers.
+    else {
+      session_start();
+    }
+
+    // Validate current environment.
+    self::environment();
   }
 
 }
