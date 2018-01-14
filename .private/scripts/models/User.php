@@ -18,7 +18,7 @@ use Intervention\Image\ImageManagerStatic as Image;
 /**
  * error code: 9xx
  */
-class User extends abstraction\UuidModel {
+class User extends abstraction\UuidModel implements abstraction\WebServiceModel {
 
   /**
    * Identifier for Group-User (*:*) relation.

@@ -35,9 +35,13 @@ class _ extends \framework\WebService {
       return;
     }
     else if ( class_exists("models\\$model") ) {
-      $model = "models\\$model";
-      $this->modelClass = new $model();
-      // throw new ResolverException(404, "Model $model does not exist.");
+      if ( is_a("models\\$model", 'models\\abstraction\\WebServiceModel', true) ) {
+        $model = "models\\$model";
+        $this->modelClass = new $model();
+      }
+      else {
+        throw new ServiceException("$model is not a web service.", 19023);
+      }
     }
     else {
       $this->modelClass = new \models\NodeModel($model);
