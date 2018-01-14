@@ -53,7 +53,7 @@ abstract class UuidModel extends JsonSchemaModel {
     return parent::beforeLoad($filter);
   }
 
-  function populate() {
+  protected function populate() {
     foreach ( $this->binaryFields() as $binaryField ) {
       if ( isset($this->$binaryField) ) {
         $this->$binaryField = util::unpackUuid($this->$binaryField);
