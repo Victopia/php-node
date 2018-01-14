@@ -288,7 +288,7 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
     }
     else {
       $count = Database::fetchField(
-        "SELECT COUNT(*) FROM `$context[table]` $context[indexHints]$context[query]",
+        "SELECT COUNT(*) FROM $context[table] $context[indexHints]$context[query]",
         $context['params']);
 
       // note; Since LIMIT in SQL does not restrict COUNT(*), we can only do this.
