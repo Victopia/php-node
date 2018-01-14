@@ -9,10 +9,16 @@ class ContentDecoder {
    */
   public static function json($value, $assoc = true, $depth = 512, $options = 0) {
     // Compress script: comments
-    $value = preg_replace_callback(
+    $_value = preg_replace_callback(
       '/"(?:\\\"|[^"])*?"|(\/\/[^\n]*|\/\*.*?\*\/)/sm',
-      function($matches) { return @$matches[1] ? '' :  $matches[0]; },
+      function($matches) { return @$matches[1]? '': $matches[0]; },
       $value);
+
+    if ( $_value !== null ) {
+      $value = $_value;
+
+      unset($_value);
+    }
 
     return json_decode($value, $assoc, $depth, $options);
   }
