@@ -102,7 +102,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
 
   function collectionName() {
     // Note: Inheriting classes can define the property to override this.
-    if ( !$this->_collectionName ) {
+    if ( !$this->collectionName() ) {
       $this->_collectionName = explode('\\', get_class($this));
       $this->_collectionName = end($this->_collectionName);
     }
@@ -428,7 +428,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    */
   function find(array $filter = array()) {
     if ( $filter && !util::isAssoc($filter) ) {
-      $filter = [ $this->_primaryKey => $filter ];
+      $filter = [ $this->primaryKey() => $filter ];
     }
 
     $filter[Node::FIELD_COLLECTION] = static::collectionName();
@@ -470,7 +470,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     $filter = [ Node::FIELD_COLLECTION => static::collectionName() ];
 
     if ( is_scalar($identity) ) {
-      $filter[$this->_primaryKey] = $identity;
+      $filter[$this->primaryKey()] = $identity;
     }
     else if ( is_array($identity)) {
       $filter+= $identity;
@@ -580,7 +580,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       ];
 
     if ( $this->identity() ) {
-      $filter[$this->_primaryKey] = $this->identity();
+      $filter[$this->primaryKey()] = $this->identity();
     }
     else {
       $filter+= util::objectToArray($this->data());
