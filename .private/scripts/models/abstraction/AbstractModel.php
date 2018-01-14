@@ -82,6 +82,13 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   /**
    * @private
    *
+   * Indicates if this model has acquired a database transaction.
+   */
+  private $_hasTransaction = false;
+
+  /**
+   * @private
+   *
    * (Read-only) Collection name of this data model
    */
   protected $_collectionName;
@@ -364,6 +371,38 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   //  Methods
   //
   //----------------------------------------------------------------------------
+
+  /**
+   * Attempt to start a database transaction if none is in place.
+   */
+  protected function ensureTransaction() {
+    if ( !Database::inTransaction() ) {
+      $this->_hasTransaction = Database::beginTransaction();
+    }
+  }
+
+  protected function inTransaction() {
+    return $this->hasTransaction() || Database::inTransaction();
+  }
+
+  /**
+   * Attempt to rollback the current transaction.
+   */
+  protected function rollbackTransaction() {
+    if ( Database::inTransaction() ) {
+      Database::rollback();
+    }
+  }
+
+  /**
+   * Attempt to commit the current transaction, does nothing if the model did
+   * not start the current trasnaction.
+   */
+  protected function commitTransaction() {
+    if ( $this->hasTransaction() && Database::inTransaction() ) {
+      Database::commit();
+    }
+  }
 
   /**
    * Validate current data inside this model.
