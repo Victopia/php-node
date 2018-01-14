@@ -135,7 +135,7 @@ class User extends abstraction\UuidModel {
     $errors = parent::validate();
 
     if ( $this->isCreate() ) {
-      if ( (new User)->load($this->username)->identity() ) {
+      if ( (new static)->load($this->username)->identity() ) {
         $errors[900] = 'This email has already been registerd.';
       }
       else if (empty($this->password)) {
