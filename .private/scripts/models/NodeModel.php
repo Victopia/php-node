@@ -54,10 +54,4 @@ class NodeModel extends abstraction\UuidModel {
     return parent::find($filter);
   }
 
-  protected function beforeSave(array &$errors = array()) {
-    $this->timestamp = util::formatDate('Y-m-d H:i:s.u');
-
-    return parent::beforeSave($errors);
-  }
-
 }

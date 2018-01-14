@@ -82,6 +82,13 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   /**
    * @private
    *
+   * Automatically generate timestamp with this format, skip when this value is empty().
+   */
+  private $_timestampFormat = 'Y-m-d H:i:s.u';
+
+  /**
+   * @private
+   *
    * Indicates if this model has acquired a database transaction.
    */
   private $_hasTransaction = false;
@@ -626,6 +633,10 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * @return {AbstractModel} Chainable.
    */
   protected function beforeSave(array &$errors = array()) {
+    if ( !empty($this->timestampFormat()) ) {
+      $this->timestamp = util::formatDate($this->timestampFormat());
+    }
+
     $errors+= (array) $this->validate();
     return $this;
   }

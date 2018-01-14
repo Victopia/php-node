@@ -176,8 +176,6 @@ class User extends abstraction\UuidModel implements abstraction\WebServiceModel 
       $this->__groups = $this->groups; unset($this->groups);
     }
 
-    $this->timestamp = util::formatDate('Y-m-d H:i:s.u');
-
     unset($this->name);
 
     return parent::beforeSave($errors);
