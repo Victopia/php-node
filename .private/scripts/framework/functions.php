@@ -174,7 +174,7 @@ function prop($name) {
 }
 
 function pluck($list, $prop) {
-  return array_map(prop($prop), $list);
+  return map($list, prop($prop));
 }
 
 function plucks($prop) {
@@ -392,10 +392,7 @@ function filter($input, $callback = null, $deep = false) {
  * Modified array_map to support ArrayAccess and Iterator interfaces.
  */
 function map($input, callable $callback) {
-  if ( is_array($input) ) {
-    return array_map($callback, $input);
-  }
-  else if ( $input instanceof \Iterator ) {
+  if ( $input instanceof \Iterator ) {
     $result = [];
     foreach ( $input as $key => $value ) {
       $result[$key] = $callback($value, $key, $input);
@@ -403,7 +400,16 @@ function map($input, callable $callback) {
     return $result;
   }
   else {
-    throw new \InvalidArgumentException('Supplied input must be an array or Iterator.');
+    if ( is_scalar($input) ) {
+      $input = [$input];
+    }
+
+    if ( is_array($input) ) {
+      return array_map($callback, $input);
+    }
+    else {
+      throw new \InvalidArgumentException('Supplied input must be an array or Iterator.');
+    }
   }
 }
 
@@ -565,11 +571,6 @@ function append($suffix, $object) {
   if ( is_string($suffix) ) {
     return "$object$suffix";
   }
-
-  else if ( is_array($suffix) ) {
-    return $suffix + $object; // $suffix takes precedence.
-  }
-
   else {
     return $object + $suffix;
   }
@@ -583,7 +584,12 @@ function appends($suffix, $prop = null) {
   }
   else {
     return function($object) use($suffix, $prop) {
-      @$object[$prop] = append($suffix, @$object[$prop]);
+      if ( is_object($object) ) {
+        $object->$prop = append($suffix, @$object->$prop);
+      }
+      else {
+        $object[$prop] = append($suffix, @$object[$prop]);
+      }
 
       return $object;
     };
@@ -955,6 +961,12 @@ if ( !function_exists('array_filter_keys') ) {
 //
 //--------------------------------------------------
 
+function mapsdef($callback, $filter = null) {
+  return function($input) use(&$callback, &$filter) {
+    return mapdef($input, $callback, $filter);
+  };
+}
+
 function mapdef($list, /* callable */ $callback, /* callable */ $filter = null) {
   if ( $filter === null ) {
     $filter = filters(compose('not', 'blank'));
@@ -963,9 +975,14 @@ function mapdef($list, /* callable */ $callback, /* callable */ $filter = null) 
     $filter = filters($filter);
   }
 
-  $function = compose($filter, maps($callback));
+  $λ = compose($filter, maps($callback));
 
-  return $function($list);
+  if ( $keep_index ) {
+    return $λ($list);
+  }
+  else {
+    return array_values($λ($list));
+  }
 }
 
 function seldef(array $keys, $list, /* callable */ $filter = null) {
