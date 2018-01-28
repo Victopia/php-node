@@ -16,7 +16,8 @@
     "natxet/cssmin": "^3.0@dev",
     "peridot-php/object-path": "^1.0",
     "intervention/image": "^2.3",
-    "oyejorge/less.php": "v1.7.0.14"
+    "oyejorge/less.php": "v1.7.0.14",
+    "ramsey/uuid": "^3.7"
   },
   "require-dev": {},
   "license": "WTFPL",

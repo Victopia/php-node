@@ -8,6 +8,8 @@ use core\Utility as util;
 use framework\Configuration as conf;
 use framework\exceptions\FrameworkException;
 
+use Ramsey\Uuid\Uuid;
+
 abstract class UuidModel extends JsonSchemaModel {
 
   //----------------------------------------------------------------------------
@@ -113,10 +115,7 @@ abstract class UuidModel extends JsonSchemaModel {
   protected function generateUuid() {
     $key = $this->primaryKey();
 
-    // note; loop until we find a unique uuid
-    while (!$this->identity() || $this->isCreate() && count($this->find([ $key => $this->$key ]))) {
-      $this->$key = Database::fetchField("SELECT LOWER(REPLACE(UUID(), '-', ''))");
-    }
+    $this->$key = str_replace('-', '', Uuid::uuid4());
   }
 
 }
