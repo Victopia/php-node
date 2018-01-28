@@ -482,10 +482,8 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       $data = (array) Node::getOne($filter);
     }
 
-    if ( !empty($data) ) {
-      $this->data($data);
-      $this->afterLoad();
-    }
+    $this->data($data);
+    $this->afterLoad();
 
     return $this;
   }
