@@ -43,13 +43,17 @@ class UriRewriteResolver implements \framework\interfaces\IRequestResolver {
     $this->rules = array_reduce($rules, function($result, $rule) {
       $rule = array_select($rule, array('source', 'target', 'options'));
 
+      if ( is_string($rule['target']) ) {
+        $rule['target'] = [ 'uri' => $rule['target'] ];
+      }
+
       // note: make sure source is callback
       if ( is_string($rule['source']) ) {
         // regex
         if ( @preg_match($rule['source'], null) !== false ) {
-          if ( is_string($rule['target']) ) {
-            $rule['target'] = compose(
-              replaces($rule['source'], $rule['target']),
+          if ( is_string($rule['target']['uri']) ) {
+            $rule['target']['uri'] = compose(
+              replaces($rule['source'], $rule['target']['uri']),
               invokes('uri', [ 'path' ]));
           }
 
@@ -57,9 +61,9 @@ class UriRewriteResolver implements \framework\interfaces\IRequestResolver {
         }
         // plain string
         else if ( !is_callable($rule['source']) ) {
-          if ( is_string($rule['target']) ) {
-            $rule['target'] = compose(
-                replaces('/^' . preg_quote($rule['source'], '/') . '/', $rule['target']),
+          if ( is_string($rule['target']['uri']) ) {
+            $rule['target']['uri'] = compose(
+                replaces('/^' . preg_quote($rule['source'], '/') . '/', $rule['target']['uri']),
                 invokes('uri', [ 'path' ])
               );
           }
@@ -81,15 +85,14 @@ class UriRewriteResolver implements \framework\interfaces\IRequestResolver {
   public function resolve(Request $request, Response $response) {
     foreach ( $this->rules as $rule ) {
       if ( $rule['source']($request->uri('path')) ) {
-        if ( is_callable(@$rule['target']) ) {
-          $target = call_user_func_array($rule['target'], [$request, $response]);
-        }
-        else {
-          $target = @$rule['target'];
+        $target = @$rule['target'];
+
+        if ( is_callable(@$target['uri']) ) {
+          $target['uri'] = call_user_func_array($target['uri'], [$request, $response]);
         }
 
         // do nothing
-        if ( empty($target) ) {
+        if ( blank($target) ) {
           continue;
         }
 
@@ -104,7 +107,11 @@ class UriRewriteResolver implements \framework\interfaces\IRequestResolver {
             $response->redirect($target['uri'], $target['options']);
           }
           else {
-            $request->setUri($target['uri'] + $request->uri());
+            if ( isset($target['uri']) ) {
+              $target['path'] = $target['uri'];
+            }
+
+            $request->setUri($target + $request->uri());
           }
         }
         break;
