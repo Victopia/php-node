@@ -10,20 +10,9 @@ namespace core;
  */
 final class Database {
 
-  private static $con;
+  private static $currentProfile = 'default';
 
-  private static $preparedStatments = array();
-
-  private static $schemaCache = array();
-
-  private static /*DatabaseOptions*/ $options;
-
-  /**
-   * @private
-   *
-   * Store values specific to transactions.
-   */
-  private static $transactionStore = array();
+  private static $profiles = array();
 
   /**
    * Prevent instantiation
@@ -36,18 +25,23 @@ final class Database {
   //
   //----------------------------------------------------------------------------
 
-  public static function setOptions(DatabaseOptions $options) {
-    self::$options = $options;
-
-    self::$con = null;
-    self::$preparedStatments = array();
+  public static function setOptions(DatabaseOptions $options, $profile = 'default') {
+    static::$profiles[$profile] = [
+      'con' => null,
+      'options' => $options,
+      'statements' => [],
+      'schemas' => [],
+      'autocommit' => null
+    ];
   }
 
   /**
    * Returns the current DatabaseOptions instance.
    */
-  public static function getOptions() {
-    return self::$options;
+  public static function getOptions($profile = 'default') {
+    $profile = static::getProfile($profile);
+
+    return $profile['options'];
   }
 
   //----------------------------------------------------------------------------
@@ -57,13 +51,45 @@ final class Database {
   //----------------------------------------------------------------------------
 
   /**
+   * Specify a profile to use for subsequent queries.
+   */
+  public static function useProfile($profile) {
+    if ( empty(static::$profiles[$profiles]) ) {
+      throw new Exception("Database profile $profile not found.");
+    }
+
+    static::$currentProfile = $profile;
+  }
+
+  /**
+   * Retrieves a database profile.
+   */
+  private static function &getProfile($profile = null) {
+    if ( !$profile ) {
+      $profile = &static::$currentProfile;
+    }
+
+    if ( !$profile ) {
+      $profile = 'default';
+    }
+
+    if ( error_reporting() && empty(static::$profiles[$profile]) ) {
+      throw new Exception("Database profile $profile not found.");
+    }
+
+    return static::$profiles[$profile];
+  }
+
+  /**
    * Create a PDO connection with specified options.
    *
    * @return {?PDO} The PDO object created, or null on exceptions.
    */
   public static function getConnection() {
-    if ( self::$con === null ) {
-      if ( self::$options === null ) {
+    $profile = &static::getProfile();
+
+    if ( empty($profile['con']) ) {
+      if ( empty($profile['options']) ) {
         if ( error_reporting() ) {
           throw new \PDOException('Please specify connection options before connecting database.');
         }
@@ -73,10 +99,10 @@ final class Database {
       }
 
       try {
-        self::$con = new \PDO(self::$options->toPdoDsn()
-          , self::$options->username
-          , self::$options->password
-          , self::$options->options
+        $profile['con'] = new \PDO($profile['options']->toPdoDsn()
+          , $profile['options']->username
+          , $profile['options']->password
+          , $profile['options']->options
           );
       }
       catch(\PDOException $e) {
@@ -84,11 +110,11 @@ final class Database {
           throw new \PDOException("Unable to connect to database, error: " . $e->getMessage(), 0);
         }
 
-        self::$con = null;
+        $profile['con'] = null;
       }
     }
 
-    return self::$con;
+    return $profile['con'];
   }
 
   /**
@@ -97,8 +123,10 @@ final class Database {
    * If there is no active connection, nothing will happen.
    */
   public static function disconnect() {
+    $profile = @static::getProfile();
+
     if ( static::isConnected() ) {
-      self::$con = null;
+      $profile['con'] = null;
     }
   }
 
@@ -129,18 +157,20 @@ final class Database {
    * @return {bool} True on success, false otherwise.
    */
   public static function reconnect($dbOptions = null) {
-    self::$con = null;
+    $profile = &static::getProfile();
+
+    $profile['con'] = null;
 
     // Temporarily apply new options
     if ( $dbOptions && $dbOptions instanceof DatabaseOptions ) {
-      list($dbOptions, self::$options) = array(self::$options, $dbOptions);
+      list($dbOptions, $profile['options']) = array($profile['options'], $dbOptions);
     }
 
     $con = static::getConnection();
 
     // Swap them back afterwards
     if ( $dbOptions && $dbOptions instanceof DatabaseOptions ) {
-      list($dbOptions, self::$options) = array(self::$options, $dbOptions);
+      list($dbOptions, $profile['options']) = array($profile['options'], $dbOptions);
     }
 
     return $con !== null;
@@ -220,7 +250,8 @@ final class Database {
    */
   public static /* Boolean */
   function hasTable($table, $clearCache = false) {
-    $cache = &self::$schemaCache;
+    $cache = &static::getProfile();
+    $cache = &$cache['schemas'];
 
     if ( $clearCache || (isset($cache['timestamp']) && $cache['timestamp'] < strtotime('-30min')) ) {
       unset($cache['collections']);
@@ -249,7 +280,8 @@ final class Database {
   public static function getFields($tables, $key = null, $nameOnly = true) {
     $tables = Utility::wrapAssoc($tables);
 
-    $cache = &self::$schemaCache;
+    $cache = &static::getProfile();
+    $cache = &$cache['schemas'];
 
     // Clear the cache on expire
     if ( @$cache['timestamp'] < strtotime('-30min') ) {
@@ -328,7 +360,9 @@ final class Database {
    * @see PDOStatement#prepare
    */
   public static function prepare($query, $driver_options = array()) {
-    $stmt = &$preparedStatments[$query][serialize($driver_options)];
+    $profile = &static::getProfile();
+
+    $stmt = &$profile['statements'][$query][serialize($driver_options)];
 
     if (!$stmt instanceof PDOStatement) {
       $con = static::getConnection();
@@ -504,9 +538,9 @@ final class Database {
    * Begin transaction, lock table.
    */
   public static function beginTransaction() {
-    $res = static::fetchRow('SHOW VARIABLES LIKE ?', ['autocommit']);
+    $profile = &static::getProfile();
 
-    self::$transactionStore['autocommit'] = $res['Value'];
+    $profile['autocommit'] = static::fetchField('SHOW VARIABLES LIKE ?', ['autocommit']);
 
     // Must switch autocommit to off in transactions.
     static::query('SET autocommit = ?', 0);
@@ -528,12 +562,14 @@ final class Database {
    * @see PDO::commit()
    */
   public static function commit() {
+    $profile = &static::getProfile();
+
     // Restore whatever value it was when transaction ends.
-    if ( isset(self::$transactionStore['autocommit']) ) {
-      static::query('SET autocommit = ?', self::$transactionStore['autocommit']);
+    if ( isset($profile['autocommit']) ) {
+      static::query('SET autocommit = ?', $profile['autocommit']);
     }
 
-    unset(self::$transactionStore['autocommit']);
+    unset($profile['autocommit']);
 
     return static::getConnection()->commit();
   }
@@ -545,12 +581,14 @@ final class Database {
    * @see PDO::rollback()
    */
   public static function rollback() {
+    $profile = &static::getProfile();
+
     // Restore whatever value it was when transaction ends.
-    if ( isset(self::$transactionStore['autocommit']) ) {
-      static::query('SET autocommit = ?', self::$transactionStore['autocommit']);
+    if ( isset($profile['autocommit']) ) {
+      static::query('SET autocommit = ?', $profile['autocommit']);
     }
 
-    unset(self::$transactionStore['autocommit']);
+    unset($profile['autocommit']);
 
     return static::getConnection()->rollBack();
   }
