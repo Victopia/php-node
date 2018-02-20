@@ -52,7 +52,7 @@ class sessions extends \framework\WebService {
 
   function invalidate($sid = null) {
     if ( $sid === null ) {
-      $sid = $this->request()->meta('sid');
+      $sid = Session::current('sid');
     }
 
     return Session::invalidate($sid);
