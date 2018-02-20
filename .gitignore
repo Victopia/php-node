@@ -45,5 +45,4 @@ $RECYCLE.BIN/
 # Composer related files
 #
 composer.phar
-composer.lock
 .private/scripts/vendor/

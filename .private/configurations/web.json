@@ -96,15 +96,6 @@
     //     "prefix": "/"
     //   }
     // },
-    // // Css Minifier
-    // {
-    //   "class": "CssMinResolver",
-    //   "options": {
-    //     "source": ".private/src/stylesheets",
-    //     "output": "assets/css",
-    //     "prefix": "/"
-    //   }
-    // },
     // // Js Minifier
     // {
     //   "class": "JsMinResolver",

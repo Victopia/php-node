@@ -70,18 +70,36 @@ class ScssResolver implements \framework\interfaces\IRequestResolver {
       return;
     }
 
-    // also takes care of .min requests
-    $pathInfo['filename'] = preg_replace('/\.min$/', '', $pathInfo['filename']);
+    $buildPath = compose(
+      partial('implode', DIRECTORY_SEPARATOR),
+      'filter',
+      partial('explode', DIRECTORY_SEPARATOR)
+    );
 
-    $_srcPath = "$pathInfo[dirname]/$pathInfo[filename].scss";
-    $dstPath = "./$this->dstPath/$pathInfo[dirname]/$pathInfo[filename].css";
+    $compiler = new Compiler();
+
+    // Request for minified version.
+    if ( preg_match('/\.min$/', $pathInfo['filename']) ) {
+      $compiler->setFormatter('Leafo\ScssPhp\Formatter\Compressed');
+
+      $_srcPath = preg_replace('/\.min$/', '', $pathInfo['filename']);
+    }
+    else {
+      $_srcPath = $pathInfo['filename'];
+    }
+
+    $_srcPath = $buildPath("$pathInfo[dirname]/$_srcPath.scss");
+    $dstPath = $buildPath("$this->dstPath/$pathInfo[dirname]/$pathInfo[filename].css");
 
     foreach ( $this->srcPath as $srcPath ) {
-      $srcPath = "./$srcPath$_srcPath";
+      $srcPath = $buildPath("./$srcPath/$_srcPath");
+
+      $compiler->setImportPaths(dirname($srcPath));
 
       // compile when: target file not exists, or source is newer
-      if ( !file_exists($dstPath) || @filemtime($srcPath) > @filemtime($dstPath) ) {
-        $result = @trim((new Compiler)->compile(file_get_contents($srcPath)));
+      if ( file_exists($srcPath) && !file_exists($dstPath) || @filemtime($srcPath) > @filemtime($dstPath) ) {
+        $result = @trim($compiler->compile(file_get_contents($srcPath)));
+
         // note; write empty file if target exists
         if ( $result || file_exists($dstPath) ) {
           if ( !@file_put_contents($dstPath, $result) ) {

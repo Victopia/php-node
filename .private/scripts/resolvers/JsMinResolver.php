@@ -42,17 +42,17 @@ class JsMinResolver implements \framework\interfaces\IRequestResolver {
    * @param {string} $options[output] (Optional) directory for minified Javascript files, web root if omitted.
    */
   public function __construct(array $options) {
-    $options['source'] = (array) @$options['source'];
-    if ( !$options['source'] ||
+    // $options['source'] = (array) @$options['source'];
+    if ( empty($options['source']) ||
       array_filter(
         array_map(
           compose('not', funcAnd('is_string', 'is_dir', 'is_readable')),
-          $options['source']
+          (array) $options['source']
           )
         )
       )
     {
-      throw new ResolverException("Source directory '$options[source]' is invalid.");
+      throw new ResolverException(500, sprintf("Source directory %s is invalid.", implode(', ', (array) $options['source'])));
     }
 
     $this->srcPath = array_map(function($path) {
@@ -61,14 +61,14 @@ class JsMinResolver implements \framework\interfaces\IRequestResolver {
       }
 
       return $path;
-    }, $options['source']);
+    }, (array) $options['source']);
 
     if ( !empty($options['output']) ) {
       $this->dstPath = $options['output'];
     }
 
     if ( !is_string($this->dstPath) || !is_dir($this->dstPath) || !is_writable($this->dstPath) ) {
-      throw new ResolverException("Output directory '$this->dstPath' is invalid.");
+      throw new ResolverException(500, "Output directory '$this->dstPath' is invalid.");
     }
 
     if ( $this->dstPath == '.' ) {
