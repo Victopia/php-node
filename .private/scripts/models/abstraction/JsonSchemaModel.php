@@ -7,7 +7,8 @@ use core\Utility as util;
 
 use framework\Configuration as conf;
 
-use Jsv4;
+use JsonSchema\Validator;
+use JsonSchema\Constraints\Constraint;
 
 abstract class JsonSchemaModel extends AbstractRelationModel {
 
@@ -16,7 +17,15 @@ abstract class JsonSchemaModel extends AbstractRelationModel {
    *
    * Schema array.
    */
-  protected $schema = array();
+  protected $_schema = array();
+
+  //----------------------------------------------------------------------------
+  //
+  //  Methods
+  //
+  //----------------------------------------------------------------------------
+
+  protected $_arrayWorkaroundFields = [];
 
   //----------------------------------------------------------------------------
   //
@@ -30,15 +39,26 @@ abstract class JsonSchemaModel extends AbstractRelationModel {
     // note; remove previous errors to prevent serialization of error objects.
     unset($this->{'$errors'});
 
-    $result = Jsv4::coerce($this->data(), $this->schema());
-    if ( $result->valid ) {
-      $this->data($result->value);
+    $validator = new Validator();
+
+    $data = $this->data();
+
+    $validator->validate(
+      $data,
+      $this->schema(),
+      Constraint::CHECK_MODE_COERCE_TYPES |
+      Constraint::CHECK_MODE_APPLY_DEFAULTS
+    );
+
+    // $result = Jsv4::coerce($this->data(), $this->schema());
+    if ( $validator->isValid() ) {
+      $this->data($data);
     }
     else {
       $errors+= array_reduce(
-        $result->errors,
+        $validator->getErrors(),
         function($errors, $e) {
-          $errors[$e->getCode()] = $e->dataPath . ': ' . $e->getMessage();
+          $errors[] = $e['message'];
           return $errors;
         },
         array()
@@ -52,44 +72,77 @@ abstract class JsonSchemaModel extends AbstractRelationModel {
     // note; remove previous errors to prevent serialization of error objects.
     unset($this->{'$errors'});
 
-    $result = Jsv4::coerce($this->data(), $this->schema());
-    if ($result->valid) {
-      $this->data($result->value);
+    $validator = new Validator();
+
+    $data = $this->data();
+
+    $validator->validate(
+      $data,
+      $this->schema(),
+      Constraint::CHECK_MODE_COERCE_TYPES |
+      Constraint::CHECK_MODE_APPLY_DEFAULTS
+    );
+
+    if ( $validator->isValid() ) {
+      $this->data($data);
     }
     else {
-      $this->{'$errors'} = $result->errors;
+      $this->{'$errors'} = array_reduce(
+        $validator->getErrors(),
+        function($errors, $e) {
+          $errors[] = $e['message'];
+          return $errors;
+        },
+        array()
+      );
     }
 
     return parent::populate();
   }
 
-  public function schema($type = 'data') {
-    if ( !$this->schema ) {
+  public function schema() {
+    if ( !$this->_schema ) {
       $className = substr(strrchr(get_class($this), '\\'), 1);
 
-      $this->schema = util::arrayToObject(
-        (array) conf::get("schema.$className")->getContents()
-      );
+      $this->_schema = (array) conf::get("schema.$className")->getContents();
 
       unset($className);
     }
 
-    switch ( $type ) {
-      case 'form':
-        $default = array('*');
-        break;
+    return $this->_schema;
+  }
 
-      default:
-        $default = null;
-        break;
+  protected function beforeSave(array &$errors = array()) {
+    // note;workaround; Must remove blank objects because schema form tends to create them.
+    foreach ( $this->arrayWorkaroundFields() as $field ) {
+      if ( isset($this->$field) && is_array($this->$field) ) {
+        $this->$field = filter($this->$field, compose('not', 'blank'));
+      }
     }
 
-    $ret = @$this->schema->$type;
-    if ( !$ret ) {
-      $ret = $default;
+    parent::beforeSave($errors);
+
+    if ( !$errors ) {
+      // note;workaround; Unwraps plain strings in array with object { $: "string" }
+      foreach ( $this->arrayWorkaroundFields() as $field ) {
+        if ( isset($this->$field) && is_array($this->$field) ) {
+          $this->$field = pluck($this->$field, '$');
+        }
+      }
     }
 
-    return $ret;
+    return $this;
+  }
+
+  protected function afterSave(array &$result = null) {
+    // note;workaround; Wrapping plain strings in array with object { $: "string" }
+    foreach ( $this->arrayWorkaroundFields() as $field ) {
+      if ( isset($this->$field) && is_array($this->$field) ) {
+        $this->$field = array_map(wraps('$'), $this->$field);
+      }
+    }
+
+    return parent::afterSave($result);
   }
 
 }

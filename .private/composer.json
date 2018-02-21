@@ -8,7 +8,6 @@
     "mtdowling/cron-expression": "~1",
     "erusev/parsedown": "~1.5",
     "symfony/yaml": "~3.0",
-    "geraintluff/jsv4": "~1.0",
     "psr/log": "^1.0@dev",
     "monolog/monolog": "^1.15@dev",
     "leafo/scssphp": "dev-master",
@@ -16,7 +15,8 @@
     "intervention/image": "^2.3",
     "oyejorge/less.php": "v1.7.0.14",
     "ramsey/uuid": "^3.7",
-    "matthiasmullie/minify": "^1.3"
+    "matthiasmullie/minify": "^1.3",
+    "justinrainbow/json-schema": "^5.2"
   },
   "require-dev": {},
   "license": "WTFPL",
