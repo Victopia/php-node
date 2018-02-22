@@ -9,8 +9,6 @@ use framework\Response;
 
 use framework\exceptions\ResolverException;
 
-use JSMin;
-
 class JsMinResolver implements \framework\interfaces\IRequestResolver {
 
   /**
@@ -112,7 +110,8 @@ class JsMinResolver implements \framework\interfaces\IRequestResolver {
       // compile when: target file not exists, or source is newer
       if ( file_exists($srcPath) && @filemtime($srcPath) > @filemtime($dstPath) ) {
         // empty results are ignored
-        $result = @trim(JSMin::minify(file_get_contents($srcPath)));
+        // $result = @trim(JSMin::minify(file_get_contents($srcPath)));
+        $result = (new \MatthiasMullie\Minify\Js($srcPath))->minify();
         if ( $result ) {
           // note; reuse variable $srcPath
           $srcPath = dirname($dstPath);
