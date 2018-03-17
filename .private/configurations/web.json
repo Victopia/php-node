@@ -1,18 +1,20 @@
 {
   "resolvers": [
-    {
-      "class": "CorsResolver",
-      "options": {
-        "domains": [ "*" ],
-        "headers": "Content-Type"
-      }
-    },
     // note; Uncomment this section for maintenance mode
     // {
     //   "class": "MaintenanceResolver",
     //   "options": {
     //     "templatePath": "/assets/templates/maintenance.html",
     //     "whitelist": []
+    //   }
+    // },
+    // note; Uncomment this section to allow CORS
+    // {
+    //   "class": "CorsResolver",
+    //   "options": {
+    //     "domains": [ "*" ],
+    //     "headers": "Content-Type",
+    //     "methods": [ "GET", "POST", "DELETE", "OPTIONS", "PUT", "HEAD" ]
     //   }
     // },
     // Session authentication
