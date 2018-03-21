@@ -564,6 +564,8 @@ final class Database {
   public static function commit() {
     $profile = &static::getProfile();
 
+    $ret = static::getConnection()->commit()
+
     // Restore whatever value it was when transaction ends.
     if ( isset($profile['autocommit']) ) {
       static::query('SET autocommit = ?', $profile['autocommit']);
@@ -571,7 +573,7 @@ final class Database {
 
     unset($profile['autocommit']);
 
-    return static::getConnection()->commit();
+    return $ret;
   }
 
   /**
@@ -583,6 +585,8 @@ final class Database {
   public static function rollback() {
     $profile = &static::getProfile();
 
+    $ret = static::getConnection()->rollBack();
+
     // Restore whatever value it was when transaction ends.
     if ( isset($profile['autocommit']) ) {
       static::query('SET autocommit = ?', $profile['autocommit']);
@@ -590,7 +594,7 @@ final class Database {
 
     unset($profile['autocommit']);
 
-    return static::getConnection()->rollBack();
+    return $ret;
   }
 
   /**
