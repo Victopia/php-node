@@ -105,12 +105,11 @@ class JsMinResolver implements \framework\interfaces\IRequestResolver {
     $dstPath = "./$this->dstPath$pathInfo[dirname]/$pathInfo[filename].min.js";
 
     foreach ( $this->srcPath as $srcPath ) {
-      $srcPath = "./$srcPath$_srcPath";
+      $srcPath = preg_replace('/(\/{2,})/', '/', "./$srcPath$_srcPath");
 
       // compile when: target file not exists, or source is newer
       if ( file_exists($srcPath) && @filemtime($srcPath) > @filemtime($dstPath) ) {
         // empty results are ignored
-        // $result = @trim(JSMin::minify(file_get_contents($srcPath)));
         $result = (new \MatthiasMullie\Minify\Js($srcPath))->minify();
         if ( $result ) {
           // note; reuse variable $srcPath
