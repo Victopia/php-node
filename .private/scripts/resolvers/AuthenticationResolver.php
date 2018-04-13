@@ -22,9 +22,7 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
    *
    * Authentication paths.
    */
-  protected $paths = array(
-      '*' => true
-    );
+  protected $paths = [ '*' => true ];
 
   /**
    * @protected
@@ -48,7 +46,7 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
    * @param {int} $options[statusCode] HTTP status code to send when access is
    *                                   denied, defaults to 401 Unauthorized.
    */
-  public function __construct(array $options = array()) {
+  public function __construct(array $options = []) {
     if ( !empty($options['paths']) ) {
       $this->paths = (array) $options['paths'];
     }
@@ -110,6 +108,10 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
       }
     }
 
+    if ( isset($auth['*']) ) {
+      $lastWildcard = $auth['*'];
+    }
+
     if ( !isset($auth) || !is_bool($auth) && (!is_array($auth) || util::isAssoc($auth)) ) {
       if ( empty($lastWildcard) ) {
         throw new FrameworkException('Unable to resolve authentication chain from request URI.');
@@ -120,6 +122,10 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
     }
 
     unset($pathNodes, $lastWildcard);
+
+    if ( is_string($auth) ) {
+      $auth = [ $auth ];
+    }
 
     // Numeric array
     if ( is_array($auth) && !util::isAssoc($auth) ) {
