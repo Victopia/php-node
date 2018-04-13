@@ -279,15 +279,17 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
 
     // Special methods are ignored
     if ( $name[0] == '_' ) {
-      // Internal force invoke. i.e. __afterLoad() -> afterLoad()
       if ( preg_match('/^__([^_]+)$/', $name, $matches) ) {
-        return $this->{$matches[1]}($args);
-      }
-      // Request authentication shortcut
-      else if ( preg_match('/^__(is\w+)$/', $name, $matches) ) {
-        $authenticator = 'authenticators\\' . ucfirst($matches[1]);
-        if ( !method_exists($this, $name) && class_exists($authenticator) ) {
-          return call_user_func("$authenticator::authenticate", $this->request());
+        // Internal force invoke. i.e. __afterLoad() -> afterLoad()
+        if ( method_exists($this, $matches[1])) {
+          return $this->{$matches[1]}($args);
+        }
+        // Request authentication shortcut
+        else if ( preg_match('/^__(is\w+)$/', $name, $matches) ) {
+          $authenticator = 'authenticators\\' . ucfirst($matches[1]);
+          if ( !method_exists($this, $name) && class_exists($authenticator) ) {
+            return call_user_func("$authenticator::authenticate", $this->request());
+          }
         }
       }
 
