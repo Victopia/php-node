@@ -11,6 +11,10 @@
     }
   },
 
+  "locale": {
+    "timezone": "Asia/Hong_Kong"
+  },
+
   "database": {
     "default": {
       "driver": "mysql",
