@@ -166,7 +166,10 @@ class Request {
           break;
 
         default:
-          $this->headers = getallheaders();
+          $this->headers = reduce(getallheaders(), function($result, $value, $key) {
+            $result[trim(strtolower($key))] = $value;
+            return $result;
+          }, []);
 
           if ( !empty($_SERVER['HTTP_AUTHORIZATION']) ) {
             $this->headers['Authorization'] = $_SERVER['HTTP_AUTHORIZATION'];
@@ -317,7 +320,7 @@ class Request {
       return $this->headers;
     }
     else {
-      return @$this->headers[$name];
+      return @$this->headers[trim(strtolower($name))];
     }
   }
 
@@ -492,7 +495,7 @@ class Request {
       // remove meta keys and sensitive values
       $result = array_filter_keys($result,
         funcAnd(
-          notIn([ ini_get('session.name') ]),
+          notIn([ ini_get('session.name') ], true),
           compose('not', startsWith($this->metaPrefix))
         )
       );
