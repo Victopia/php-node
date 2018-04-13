@@ -223,11 +223,14 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   //----------------------------------------------------------------------------
 
   /**
-   * Property names starts with "@" or "__" will be treated directly as object
+   * Property names starts with "__" will be treated directly as object
    * properties and does not proxy into internal data.
    */
   function &__get($name) {
-    if ( strpos($name, '__') !== 0 ) {
+    if ( property_exists($this, $name) || strpos($name, '__') === 0 ) {
+      return $this->$name;
+    }
+    else {
       if ( blank($this->data) ) {
         // note;dev; variable for reference returning.
         $null = NULL;
@@ -239,40 +242,24 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       }
     }
 
-    if ( strpos($name, '__is') === 0 ) {
-      $auth = '\authenticators\\Is' . ucfirst(substr($name, 4));
-
-      // "__isSuperUser" into "__is_super_user"
-      $name = preg_replace('/(?<!^)([A-Z])/', '_\\1', $name);
-
-      if ( class_exists($auth) ) {
-        // note; Make a variable for reference returning.
-        $result = call_user_func("$auth::authenticate", $this->request());
-
-        return $result;
-      }
-
-      unset($auth);
-    }
-
     return $this->$name;
   }
 
   /**
-   * Property names starts with "@" or "__" will be assigned directly to the
+   * Property names starts with "__" will be assigned directly to the
    * class instance instead of internal data array, this enables some dynamic
    * contextual assignment and avoid polluting the data.
    */
   function __set($name, $value) {
-    if ( strpos($name, '__') !== 0 ) {
+    if ( property_exists($this, $name) || strpos($name, '__') === 0 ) {
+      $this->$name = $value;
+    }
+    else {
       if ( !$this->data ) {
         $this->data = new \stdClass;
       }
 
       $this->data->$name = $value;
-    }
-    else {
-      $this->$name = $value;
     }
   }
 
@@ -288,7 +275,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * Generic accessors
    */
   function __call($name, $args) {
-    // Note: public methods are called directly, we don't need to take care of methods here.
+    // Note: public methods are called directly, we don't need to take care of calling context here.
 
     // Special methods are ignored
     if ( $name[0] == '_' ) {
@@ -296,15 +283,21 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
       if ( preg_match('/^__([^_]+)$/', $name, $matches) ) {
         return $this->{$matches[1]}($args);
       }
-      else {
-        throw new \BadMethodCallException('Method does not exist.');
+      // Request authentication shortcut
+      else if ( preg_match('/^__(is\w+)$/', $name, $matches) ) {
+        $authenticator = 'authenticators\\' . ucfirst($matches[1]);
+        if ( !method_exists($this, $name) && class_exists($authenticator) ) {
+          return call_user_func("$authenticator::authenticate", $this->request());
+        }
       }
+
+      throw new \BadMethodCallException(sprintf('Invalid call to method %s::%s.', get_class($this), $name));
     }
 
     // Read-Write properties takes precedence
-    if ( isset($this->$name) ) {
+    if ( property_exists($this, $name) ) {
       if ( !$args ) {
-        return $this->data->$name;
+        return $this->$name;
       }
 
       if ( count($args) == 1 ) {
@@ -483,7 +476,10 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     }
 
     $this->data($data);
-    $this->afterLoad();
+
+    if ( !empty($data) ) {
+      $this->afterLoad();
+    }
 
     return $this;
   }
