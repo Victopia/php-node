@@ -45,6 +45,21 @@ abstract class UuidModel extends JsonSchemaModel {
     return parent::find($filter);
   }
 
+  function validate() {
+    $isCreate = !$this->identity();
+    if ( $isCreate ) {
+      $this->generateUuid();
+    }
+
+    $errors = parent::validate();
+
+    if ( $isCreate ) {
+      unset($this->{$this->primaryKey()});
+    }
+
+    return $errors;
+  }
+
   protected function beforeLoad(array &$filter) {
     foreach ( $this->binaryFields() as $binaryField ) {
       if ( isset($filter[$binaryField]) ) {
@@ -66,7 +81,9 @@ abstract class UuidModel extends JsonSchemaModel {
   }
 
   protected function beforeSave(array &$errors = array()) {
-    $this->generateUuid();
+    if ( $this->isCreate() || !$this->identity() ) {
+      $this->generateUuid();
+    }
 
     foreach ( $this->binaryFields() as $binaryField ) {
       if ( isset($this->$binaryField) ) {
