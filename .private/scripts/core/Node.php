@@ -126,7 +126,6 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
 
     $filter['indexMap'] = [];
 
-    // note; virtual only affects context limit, it does not
     $this->statement = Database::query($query, $filter['params'],
       [ PDO::ATTR_CURSOR => PDO::CURSOR_SCROLL
       ]);
@@ -505,11 +504,17 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
           }
           else
           if ( is_string($key) ) {
+            $operator = strtolower(trim(@$value['@options']['operator']));
+            if ( !in_array($operator, [ 'and', 'or' ]) ) {
+              $operator = 'or';
+            }
+            unset($value['@options']);
+
             $values = Utility::wrapAssoc($value);
 
             if ( $values ) {
               $subQuery = array_fill(0, count($values), "$key");
-              $subQuery = '(' . implode(' OR ', $subQuery) . ')';
+              $subQuery = '(' . implode(" $operator ", $subQuery) . ')';
 
               $query[] = $subQuery;
               $params = array_merge($params, $values);
@@ -533,13 +538,12 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
 
     /* Merge $filter into SQL statement. */
       array_walk($columnsFilter, function(&$contents, $field) use(&$query, &$params, $tableName) {
-        $queryOptions = [
-          'operator' => 'OR'
-        ];
+        $operator = 'or';
 
         if ( is_array($contents) && array_key_exists('@options', $contents) ) {
-          // note; Pick up query options before processing
-          $queryOptions = (array) @$contents['@options'] + $queryOptions;
+          if ( in_array(@$contents['@options']['operator'], [ 'and', 'or' ]) ) {
+            $operator = $contents['@options']['operator'];
+          }
 
           unset($contents['@options']);
         }
@@ -648,7 +652,12 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
 
             if ( preg_match('/^(!|=)=?\'([^\']*)\'$/', $content, $matches) ) {
               if ( $matches[1] == '!' ) {
-                $subQuery[] = "NOT $operator ?";
+                if ( $operator == '=' ) {
+                  $subQuery[] = "!= ?";
+                }
+                else {
+                  $subQuery[] = "NOT $operator ?";
+                }
               }
               else {
                 $subQuery[] = "$operator ?";
@@ -686,7 +695,7 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
            Inclusive search in real columns, within the same column.
         */
         if ( $subQuery ) {
-          $query[] = '(' . implode(" $queryOptions[operator] ", $subQuery) . ')';
+          $query[] = '(' . implode(" $operator ", $subQuery) . ')';
         }
       });
 
