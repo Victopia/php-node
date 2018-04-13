@@ -391,25 +391,20 @@ function filter($input, $callback = null, $deep = false) {
 /**
  * Modified array_map to support ArrayAccess and Iterator interfaces.
  */
-function map($input, callable $callback) {
-  if ( $input instanceof \Iterator ) {
+function map($input, $callback) {
+  if ( is_scalar($input) && !($input instanceof \Iterator) ) {
+    $input = [$input];
+  }
+
+  if ( $input instanceof \Iterator || is_array($input) ) {
     $result = [];
     foreach ( $input as $key => $value ) {
-      $result[$key] = $callback($value, $key, $input);
+      $result[$key] = call_user_func($callback, $value, $key, $input);
     }
     return $result;
   }
   else {
-    if ( is_scalar($input) ) {
-      $input = [$input];
-    }
-
-    if ( is_array($input) ) {
-      return array_map($callback, $input);
-    }
-    else {
-      throw new \InvalidArgumentException('Supplied input must be an array or Iterator.');
-    }
+    throw new \InvalidArgumentException('Supplied input must be an array or Iterator.');
   }
 }
 
@@ -776,8 +771,10 @@ function endsWith($suffixes, $ignoreCase = false) {
 function filters() {
   $args = func_get_args();
   return function($input) use(&$args) {
-    return call_user_func_array('filter',
-      array_merge(array($input), $args));
+    return call_user_func_array(
+      'filter',
+      array_merge(array($input), $args)
+    );
   };
 }
 
@@ -811,9 +808,9 @@ function removes($name) {
 /**
  * Factory of array_map($list, $callback);
  */
-function maps(/* callable */ $callback) {
+function maps($callback) {
   return function($list) use($callback) {
-    return array_map($callback, $list);
+    return map($list, $callback);
   };
 }
 
@@ -967,7 +964,7 @@ function mapsdef($callback, $filter = null) {
   };
 }
 
-function mapdef($list, /* callable */ $callback, /* callable */ $filter = null) {
+function mapdef($list, /* callable */ $callback, /* callable */ $filter = null, $keep_index = false) {
   if ( $filter === null ) {
     $filter = filters(compose('not', 'blank'));
   }
