@@ -52,6 +52,10 @@ function compose($funcs) {
   };
 }
 
+function identity($input) {
+  return $input;
+}
+
 function partial() {
   return call_user_func_array('unshiftsArg', func_get_args());
 }
