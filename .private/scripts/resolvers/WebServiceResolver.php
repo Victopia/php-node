@@ -171,7 +171,15 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
     // this favors file download and non-JSON outputs.
     if ( $serviceResponse !== null ) {
       // JSON encode the result and response to client.
-      $response->header('Content-Type', 'application/json');
+      if ( empty($response->header('Content-Type')) ) {
+        if ( $serviceResponse instanceof \SplFileObject ) {
+          $response->header('Content-Type', Utility::getInfo($serviceResponse->getRealpath(), FILEINFO_MIME_TYPE));
+        }
+        else {
+          $response->header('Content-Type', 'application/json');
+        }
+      }
+
       $response->send($serviceResponse, $response->status() ? null : 200);
     }
     else if ( !$response->status() ) {
