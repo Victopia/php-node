@@ -22,9 +22,7 @@ trait Timestamped {
       $this->created_at = $this->timestamp;
     }
 
-    parent::beforeSave($errors);
-
-    return $this;
+    return parent::beforeSave($errors);
   }
 
 }
