@@ -390,7 +390,7 @@ class Response {
       http_response_code($this->status());
     }
     else {
-      $statusMessage = static::getStatusMessage($this->status());
+      $statusMessage = $this->parseStatus($this->status());
       if ( $statusMessage ) {
         // FastCGI and CGI expects "Status:" instead of "HTTP/1.X" for status code.
         $statusMessage =
@@ -572,11 +572,7 @@ class Response {
     return $message;
   }
 
-  /**
-   * Retrieves HTTP status message depends on the given code, also removes message
-   * body on statuses that do not allows it.
-   */
-  public static function getStatusMessage($statusCode) {
+  protected function parseStatus($statusCode) {
     switch ( $statusCode ) {
       // 1xx
       case 100: return 'Continue';
@@ -657,6 +653,14 @@ class Response {
       case 598: return 'Network read timeout error';
       case 599: return 'Network connect timeout error'; // Unknown
     }
+  }
+
+  /**
+   * Retrieves HTTP status message depends on the given code, also removes message
+   * body on statuses that do not allows it.
+   */
+  public static function getStatusMessage($statusCode) {
+    return (new static)->parseStatus($statusCode);
   }
 
 }
