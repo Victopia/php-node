@@ -60,8 +60,8 @@ Assume we have the following data structure,
 +----------------------+-------------+---------------------------------------+---------------------+
 | ID                   | @collection | @contents                             | timestamp           |
 +----------------------+-------------+---------------------------------------+---------------------+
-| 00000000000000000001 | User        | {"username":"root","password":"..."}  | 2012-03-01 11:59:55 |
-| 00000000000000000002 | User        | {"username":"Peter","password":"..."} | 2012-03-01 12:00:10 |
+| 00000000000000000001 | users       | {"username":"root","password":"..."}  | 2012-03-01 11:59:55 |
+| 00000000000000000002 | users       | {"username":"Peter","password":"..."} | 2012-03-01 12:00:10 |
 +----------------------+-------------+---------------------------------------+---------------------+
 ```
 
@@ -73,7 +73,7 @@ We can search the database with these code,
 //          They are meant to be optional in later time.
 
 $filter = Array(
-  Node::FIELD_COLLECTION => 'User',
+  Node::FIELD_COLLECTION => 'users',
   'username' => 'root'
 );
 
@@ -87,7 +87,7 @@ And the result will be look like this,
 ```PHP
 Array(
   [0] => Array(
-    '@collection' => 'User',
+    '@collection' => 'users',
     'ID' => '00000000000000000001',
     'username' => 'root',
     'password' => '...',
