@@ -14,18 +14,6 @@ use framework\Resolver;
 
 use framework\exceptions\ValidationException;
 
-/**
- * Base class for all data models.
- *
- * Data access will be catered by ArrayAccess, and Magic Methods __get, __set, __isset and __unset.
- *
- * Property access will be served by __invoke() with the following rules:
- * 1. Public properties are directly accessible, this will bypass all generic methods.
- * 2. Properties starting with an underscore will be treated as read-only.
- *    i.e. `protected $_foo;` can be accessed via `$obj->foo()`;
- * 3. Normal properties will take precedence of 2) and reads with the same way as 2).
- * 4. Normal properties can also be written with `$obj->foo($value);` which is chainable.
- */
 abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Countable, \JsonSerializable {
 
   /**
@@ -78,13 +66,6 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * (Read-only) Response context.
    */
   protected $_response;
-
-  /**
-   * @private
-   *
-   * Automatically generate timestamp with this format, skip when this value is empty().
-   */
-  private $_timestampFormat = 'Y-m-d H:i:s.u';
 
   /**
    * @private
@@ -365,7 +346,15 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
   //----------------------------------------------------------------------------
 
   function jsonSerialize() {
-    return $this->data;
+    $data = clone $this->data;
+
+    walk($data, function(&$item) {
+      if ( $item instanceof static ) {
+        $item = $item->data();
+      }
+    });
+
+    return $data;
   }
 
   //----------------------------------------------------------------------------
@@ -629,10 +618,6 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * @return {AbstractModel} Chainable.
    */
   protected function beforeSave(array &$errors = array()) {
-    if ( !empty($this->timestampFormat()) ) {
-      $this->timestamp = util::formatDate($this->timestampFormat());
-    }
-
     $errors+= (array) $this->validate();
     return $this;
   }
