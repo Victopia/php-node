@@ -4,7 +4,7 @@ namespace resolvers;
 
 use core\Node;
 
-use models\User;
+use models\users;
 
 use framework\Request;
 use framework\Response;
@@ -32,7 +32,7 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
   }
 
   public function resolve(Request $req, Response $res) {
-    $req->user = new User(null, [ 'request' => null, 'response' => null ]);
+    $req->user = new users(null, [ 'request' => null, 'response' => null ]);
 
     // User from CLI
     switch ( $req->client('type') ) {
@@ -97,7 +97,7 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
         // When no user is set, add a default user
         else if ( $this->setupSession ) {
           try {
-            $count = Node::getCount('User');
+            $count = (new users(null, [ 'request'=> null ]))->find()->count();
           }
           catch (\Exception $ex) {
             $count = 0;
