@@ -170,12 +170,12 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
     // Return nothing when the service function returns nothing,
     // this favors file download and non-JSON outputs.
     if ( $serviceResponse !== null ) {
-      // JSON encode the result and response to client.
       if ( empty($response->header('Content-Type')) ) {
         if ( $serviceResponse instanceof \SplFileObject ) {
           $response->header('Content-Type', Utility::getInfo($serviceResponse->getRealpath(), FILEINFO_MIME_TYPE));
         }
         else {
+          // Defaults to JSON response.
           $response->header('Content-Type', 'application/json');
         }
       }
