@@ -125,9 +125,9 @@ CREATE TABLE `Translations` (
 # Dump of table User
 # ------------------------------------------------------------
 
-DROP TABLE IF EXISTS `User`;
+DROP TABLE IF EXISTS `users`;
 
-CREATE TABLE `User` (
+CREATE TABLE `users` (
   `uuid` binary(16) NOT NULL,
   `username` char(255) NOT NULL,
   `password` char(119) NOT NULL,

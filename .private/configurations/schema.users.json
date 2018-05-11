@@ -1,0 +1,107 @@
+{
+  "$schema": "http://json-schema.org/draft-04/schema#",
+  "id": "https://victopia.org/php-node/service/_/users/schema",
+  "type": "object",
+  "description": "Users of the system.",
+  "properties": {
+    "uuid": {
+      "type": "string",
+      "minLength": 32,
+      "maxLength": 32,
+      "pattern": "^[a-fA-F0-9]{32}$",
+      "description": "User instance identity key."
+    },
+    "status": {
+      "description": "User status.",
+      "type": "string",
+      "enum": [ "pending", "normal", "suspended" ]
+    },
+    "username": {
+      "description": "Unique identifier for the user acconut",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "format": "email",
+          "minLength": 4,
+          "maxLength": 254
+        }
+      ]
+    },
+    "password": {
+      "title": "Password",
+      "description": "Password is encrypted after save.",
+      "oneOf": [
+        {
+          "type": "null"
+        },
+        {
+          "type": "string",
+          "minLength": 8,
+          "maxLength": 255
+        }
+      ]
+    },
+    "name": {
+      "title": "Full Name",
+      "type": "string"
+    },
+    "avatar": {
+      "description": "User avatar image.",
+      "type": "string",
+      "format": "uri"
+    },
+    "groups": {
+      "title": "User Groups",
+      "type": "array",
+      "items": {
+        "type": "string",
+        "minLength": 2,
+        "maxLength": 255
+      },
+      "uniqueItems": true,
+      "default": []
+    },
+    "integrations": {
+      "description": "Account relation with external platforms such as OAuth/OpenID login.",
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "platform": {
+            "description": "Target platform of integration. e.g. google, facebook, taobao, wechat... etc.",
+            "type": "string",
+            "minLength": 1
+          },
+          "identity": {
+            "description": "The unique identifier received during the moment of integration. e.g. OpenID, UserID, URI... etc.",
+            "type": "string",
+            "minLength": 1
+          }
+        },
+        "additionalProperties": true,
+        "required": [
+          "platform",
+          "identity"
+        ]
+      },
+      "default": []
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "timestamp": {
+      "type": "string",
+      "format": "date-time"
+    }
+  },
+  "additionalProperties": false,
+  "required": [
+    "integrations",
+    "created_at",
+    "timestamp"
+  ]
+}

@@ -27,7 +27,7 @@ use core\Node;
 use core\Log;
 use core\Utility as util;
 
-use models\User;
+use models\users;
 
 class Session {
 
@@ -107,7 +107,7 @@ class Session {
    */
   static function validate($username, $password, $fingerprint = null) {
     // Search by username
-    $user = new User(null, [ 'request' => null, 'response' => null ]);
+    $user = new users(null, [ 'request' => null, 'response' => null ]);
 
     $user->load($username);
     if ( !$user->identity() ) {
@@ -208,7 +208,7 @@ class Session {
    * Logout all sessions of specified user.
    */
   static function invalidateUser($username) {
-    $user = (new User)->load($username);
+    $user = (new users)->load($username);
 
     if ( $user->identity() ) {
       Database::query('DELETE FROM `'.FRAMEWORK_COLLECTION_SESSION.'` WHERE `username` = ?', array($user->username));
@@ -301,7 +301,7 @@ class Session {
    * Returns user object associated with current session.
    */
   static function getUser() {
-    return (new User)->load(static::current('username'));
+    return (new users)->load(static::current('username'));
   }
 
 }

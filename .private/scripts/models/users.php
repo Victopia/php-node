@@ -1,4 +1,4 @@
-<?php /*! User.php | The user data model. */
+<?php /*! users.php | The user data model. */
 
 namespace models;
 
@@ -18,7 +18,7 @@ use Intervention\Image\ImageManagerStatic as Image;
 /**
  * error code: 9xx
  */
-class User extends abstraction\UuidModel implements abstraction\WebServiceModel {
+class users extends abstraction\UuidModel implements abstraction\WebServiceModel {
 
   /**
    * Identifier for Group-User (*:*) relation.
