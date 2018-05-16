@@ -28,7 +28,7 @@ class Request {
    * @constructor
    *
    * @param {?string|array} $options An array of request options, or the URI string.
-   * @param {?string} $options['prefix'] Parameters keys start with this prefix
+   * @param {?string} $options[prefix] Parameters keys start with this prefix
    *                                     will be treated as meta-parameters and
    *                                     not returned in param() related functions.
    *
@@ -38,18 +38,18 @@ class Request {
    *
    *                                     This defaults to the "@" character.
    *
-   * @param {?string} $options['uri'] The request uri, defaults to $_SERVER['REQUEST_URI'].
-   * @param {?string} $options['method'] Request method, defaults to $_SERVER['REQUEST_METHOD'].
-   * @param {?array} $options['headers'] Request headers, defaults to the contents of getallhheaders()
+   * @param {?string} $options[uri] The request uri, defaults to $_SERVER[REQUEST_URI].
+   * @param {?string} $options[method] Request method, defaults to $_SERVER[REQUEST_METHOD].
+   * @param {?array} $options[headers] Request headers, defaults to the contents of getallhheaders()
    *                                     if the function is available.
-   * @param {?array} $options['client'] Request client details, defaults to everything from $_SERVER.
-   * @param {?array} $options['get'] GET parameters in array format.
-   * @param {?array} $options['post'] POST parameters in array format.
-   * @param {?array} $options['cookies'] COOKIES in array format.
-   * @param {?array} $options['files'] Upload files along with this request. (Use with care)
+   * @param {?array} $options[client] Request client details, defaults to everything from $_SERVER.
+   * @param {?array} $options[get] GET parameters in array format.
+   * @param {?array} $options[post] POST parameters in array format.
+   * @param {?array} $options[cookies] COOKIES in array format.
+   * @param {?array} $options[files] Upload files along with this request. (Use with care)
    *                                   When doing CURL requests, files array must compatible with CURL.
    *                                   Otherwise this must obey the resolver-request format.
-   * @param {?string} $options['locale'] Requesting locale, defaults to en_US.
+   * @param {?string} $options[locale] Requesting locale, defaults to en_US.
    */
   public function __construct($options = array()) {
     global $argv;
@@ -61,108 +61,108 @@ class Request {
 
     if ( @$options ) {
       if ( is_string($options) ) {
-        $options = array('uri' => $options);
+        $options = array("uri" => $options);
       }
 
       // Special parameter prefix
-      if ( !empty($options['prefix']) ) {
-        $this->metaPrefix = $options['prefix'];
+      if ( !empty($options["prefix"]) ) {
+        $this->metaPrefix = $options["prefix"];
       }
 
       // Request URI
-      if ( empty($options['uri']) ) {
-        throw new FrameworkException('Request URI is required.');
+      if ( empty($options["uri"]) ) {
+        throw new FrameworkException("Request URI is required.");
       }
       else {
-        $this->setUri($options['uri']);
+        $this->setUri($options["uri"]);
       }
 
       // Request method
-      if ( isset($options['method']) ) {
-        $this->method = strtolower($options['method']);
+      if ( isset($options["method"]) ) {
+        $this->method = strtolower($options["method"]);
       }
       else {
-        $this->method = 'get';
+        $this->method = "get";
       }
 
       // Request headers
-      if ( isset($options['headers']) ) {
-        $this->headers = (array) $options['headers'];
+      if ( isset($options["headers"]) ) {
+        $this->headers = (array) $options["headers"];
       }
 
       // Request client
-      if ( !empty($options['client']) ) {
-        $this->client = (array) $options['client'];
+      if ( !empty($options["client"]) ) {
+        $this->client = (array) $options["client"];
       }
 
       // Request parameters GET
-      if ( isset($options['get']) ) {
-        $this->paramCache['get'] = (array) $options['get'];
+      if ( isset($options["get"]) ) {
+        $this->paramCache["get"] = (array) $options["get"];
       }
 
       // Request parameters POST
-      if ( !empty($options['post']) ) {
-        $this->paramCache['post'] = (array) $options['post'];
+      if ( !empty($options["post"]) ) {
+        $this->paramCache["post"] = (array) $options["post"];
       }
 
       // Cookies
-      if ( isset($options['cookies']) ) {
-        $this->paramCache['cookies'] = (array) $options['cookies'];
+      if ( isset($options["cookies"]) ) {
+        $this->paramCache["cookies"] = (array) $options["cookies"];
       }
 
       // File uploads
-      if ( isset($options['files']) ) {
-        $this->paramCache['files'] = (array) $options['files'];
+      if ( isset($options["files"]) ) {
+        $this->paramCache["files"] = (array) $options["files"];
       }
 
       // Request locale
-      if ( !empty($options['locale']) ) {
-        $this->locale = (string) $options['locale'];
+      if ( !empty($options["locale"]) ) {
+        $this->locale = (string) $options["locale"];
       }
     }
     else {
       // Request client
-      switch ( constant('PHP_SAPI') ) {
-        case 'cli':
+      switch ( constant("PHP_SAPI") ) {
+        case "cli":
           $this->client = array(
-              'type' => 'cli'
-            , 'host' => gethostname()
-            , 'user' => get_current_user()
+              "type" => "cli"
+            , "host" => gethostname()
+            , "user" => get_current_user()
             );
           break;
 
         default:
           $this->client = array_filter(array(
-              'type' => 'http'
-            , 'secure' => @$_SERVER['HTTPS'] && strtolower($_SERVER['HTTPS']) != 'off'
-            , 'address' => @$_SERVER['REMOTE_ADDR']
-            , 'host' => @$_SERVER['REMOTE_HOST']
-            , 'port' => @$_SERVER['REMOTE_PORT']
-            , 'user' => @$_SERVER['REMOTE_USER']
-            , 'origin' => @$_SERVER['HTTP_ORIGIN']
-            , 'referer' => @$_SERVER['HTTP_REFERER']
-            , 'version' => @$_SERVER['SERVER_PROTOCOL']
-            , 'userAgent' => @$_SERVER['HTTP_USER_AGENT']
-            , 'forwarder' => @$_SERVER['HTTP_X_FORWARDED_FOR']
-            , 'isAjax' => strtolower(@$_SERVER['HTTP_X_REQUESTED_WITH']) == 'xmlhttprequest'
-            ), compose('not', 'is_null'));
+              "type" => "http"
+            , "secure" => @$_SERVER["HTTPS"] && strtolower($_SERVER["HTTPS"]) != "off"
+            , "address" => @$_SERVER["REMOTE_ADDR"]
+            , "host" => @$_SERVER["REMOTE_HOST"]
+            , "port" => @$_SERVER["REMOTE_PORT"]
+            , "user" => @$_SERVER["REMOTE_USER"]
+            , "origin" => @$_SERVER["HTTP_ORIGIN"]
+            , "referer" => @$_SERVER["HTTP_REFERER"]
+            , "version" => @$_SERVER["SERVER_PROTOCOL"]
+            , "userAgent" => @$_SERVER["HTTP_USER_AGENT"]
+            , "forwarder" => @$_SERVER["HTTP_X_FORWARDED_FOR"]
+            , "isAjax" => strtolower(@$_SERVER["HTTP_X_REQUESTED_WITH"]) == "xmlhttprequest"
+            ), compose("not", "is_null"));
           break;
       }
 
       // Request method
-      switch ( $this->client('type') ) {
-        case 'cli':
-          $this->method = 'cli';
+      switch ( $this->client("type") ) {
+        case "cli":
+          $this->method = "cli";
           break;
 
         default:
-          $this->method = strtolower(@$_SERVER['REQUEST_METHOD']);
+          $this->method = strtolower(@$_SERVER["REQUEST_METHOD"]);
           break;
       }
 
       // Request headers
-      switch ( $this->client('type') ) {
-        case 'cli':
+      switch ( $this->client("type") ) {
+        case "cli":
           break;
 
         default:
@@ -171,8 +171,8 @@ class Request {
             return $result;
           }, []);
 
-          if ( !empty($_SERVER['HTTP_AUTHORIZATION']) ) {
-            $this->headers['Authorization'] = $_SERVER['HTTP_AUTHORIZATION'];
+          if ( !empty($_SERVER["HTTP_AUTHORIZATION"]) ) {
+            $this->headers["Authorization"] = $_SERVER["HTTP_AUTHORIZATION"];
           }
           break;
       }
@@ -182,13 +182,13 @@ class Request {
 
       // Request URI
       // CLI requires request parameters
-      switch ( $this->client('type') ) {
-        case 'cli':
+      switch ( $this->client("type") ) {
+        case "cli":
           /*! Note @ 9 May, 2015
            *  Usage: node-cli [OPTIONS] COMMAND
            *  Only one command is supported, simply shift it out.
            */
-          $this->uri = @$this->paramCache['cli']['_'][0];
+          $this->uri = @$this->paramCache["cli"]["_"][0];
           if ( !$this->uri ) {
             $this->uri = $argv[1];
           }
@@ -196,18 +196,18 @@ class Request {
 
         default:
           $uri = array(
-              'scheme' => $this->client('secure') ? 'https' : 'http'
-            , 'user' => @$_SERVER['REMOTE_USER']
-            , 'host' => @$_SERVER['SERVER_NAME']
-            , 'port' => @$_SERVER['SERVER_PORT']
-            , 'query' => $_GET
+              "scheme" => $this->client("secure") ? "https" : "http"
+            , "user" => @$_SERVER["REMOTE_USER"]
+            , "host" => @$_SERVER["SERVER_NAME"]
+            , "port" => @$_SERVER["SERVER_PORT"]
+            , "query" => $_GET
             );
 
           // note; REQUEST_URI may contains query string, we use $_GET instead of that.
-          $uri+= parse_url(@$_SERVER['REQUEST_URI']);
+          $uri+= parse_url(@$_SERVER["REQUEST_URI"]);
 
-          if ( empty($uri['user']) ) {
-            $uri['user'] = @$_SERVER['PHP_AUTH_USER'];
+          if ( empty($uri["user"]) ) {
+            $uri["user"] = @$_SERVER["PHP_AUTH_USER"];
           }
 
           $this->setUri(array_filter($uri));// = parse_url(http_build_url($this->uri));
@@ -215,7 +215,7 @@ class Request {
       }
 
       // Request timestamp
-      $this->timestamp = (float) @$_SERVER['REQUEST_TIME_FLOAT'];
+      $this->timestamp = (float) @$_SERVER["REQUEST_TIME_FLOAT"];
     }
 
     // Failover in case of request time not exists.
@@ -235,7 +235,7 @@ class Request {
    *
    * Parameters prefixed with this will be parsed as special.
    */
-  protected $metaPrefix = '__';
+  protected $metaPrefix = "__";
 
   //-------------------------------------
   //  Resolver
@@ -267,13 +267,16 @@ class Request {
   public function setUri($uri) {
     if ( is_string($uri) ) {
       $uri = parse_url($uri);
-
       $uri = parse_url(http_build_url($uri));
     }
 
+    if ( @$uri["path"][0] === "/" ) {
+      $uri["path"] = ".$uri[path]";
+    }
+
     // note; fallback to system default hostname
-    if ( empty($uri['host']) ) {
-      $uri['host'] = System::getHostname();
+    if ( empty($uri["host"]) ) {
+      $uri["host"] = System::getHostname();
     }
 
     $this->uri = $uri;
@@ -312,7 +315,7 @@ class Request {
   public function header($name = null) {
     static $_headers = array();
 
-    if ( $this->client('type') == 'cli' ) {
+    if ( $this->client("type") == "cli" ) {
       return null;
     }
 
@@ -357,16 +360,16 @@ class Request {
    * @return {string} Fingerprint hash from current request, or null when no such info is available.
    */
   public function fingerprint() {
-    $fingerprint = $this->meta('fingerprint');
+    $fingerprint = $this->meta("fingerprint");
     if ( $fingerprint ) {
       return $fingerprint;
     }
 
-    $fingerprint = array_select($this->client, array('address', 'userAgent'));
+    $fingerprint = array_select($this->client, array("address", "userAgent"));
     $fingerprint = array_filter($fingerprint);
-    $fingerprint = implode(':', $fingerprint);
+    $fingerprint = implode(":", $fingerprint);
     if ( $fingerprint ) {
-      return sha1($fingerprint);
+      return md5($fingerprint);
     }
   }
 
@@ -405,7 +408,7 @@ class Request {
   /**
    * @private
    */
-  protected $locale = 'en_US';
+  protected $locale = "en_US";
 
   /**
    * (readonly) Accessor to locale value.
@@ -438,21 +441,21 @@ class Request {
    */
   private function _param($type = null) {
     switch ( strtolower($type) ) {
-      case 'request':
+      case "request":
       default:
-        switch ( $this->client('type') ) {
-          case 'cli':
-            return @$this->paramCache['cli']->argv;
+        switch ( $this->client("type") ) {
+          case "cli":
+            return @$this->paramCache["cli"]->argv;
 
           default:
-            return @$this->paramCache['request'];
+            return @$this->paramCache["request"];
         }
 
-      case 'get':
-      case 'post':
-      case 'cookies':
-      case 'files':
-      case 'cli':
+      case "get":
+      case "post":
+      case "cookies":
+      case "files":
+      case "cli":
         return @$this->paramCache[$type];
     }
   }
@@ -495,8 +498,8 @@ class Request {
       // remove meta keys and sensitive values
       $result = array_filter_keys($result,
         funcAnd(
-          notIn([ ini_get('session.name') ], true),
-          compose('not', startsWith($this->metaPrefix))
+          notIn([ ini_get("session.name") ], true),
+          compose("not", startsWith($this->metaPrefix))
         )
       );
     }
@@ -514,21 +517,21 @@ class Request {
    * Get parameters
    */
   public function get($name = null) {
-    return $this->param($name, 'get');
+    return $this->param($name, "get");
   }
 
   /**
    * Post parameters
    */
   public function post($name = null) {
-    return $this->param($name, 'post');
+    return $this->param($name, "post");
   }
 
   /**
    * Cookies
    */
   public function cookie($name = null) {
-    return $this->param($name, 'cookies');
+    return $this->param($name, "cookies");
   }
 
   /**
@@ -541,7 +544,7 @@ class Request {
    *                            returns a file stream.
    */
   public function file($name = null) {
-    return $this->param($name, 'files');
+    return $this->param($name, "files");
   }
 
   /**
@@ -551,7 +554,7 @@ class Request {
    * @return If $name is omitted, the Optimist object will the returned.
    */
   public function cli($name = null) {
-    return $this->param($name, 'cli');
+    return $this->param($name, "cli");
   }
 
   //----------------------------------------------------------------------------
@@ -561,51 +564,51 @@ class Request {
   //----------------------------------------------------------------------------
 
   public function updateParamCache() {
-    if ( $this->client('type') == 'cli' ) {
-      $this->paramCache['cli'] = new Optimist();
+    if ( $this->client("type") == "cli" ) {
+      $this->paramCache["cli"] = new Optimist();
     }
-    else if ( $this->client('type') == 'http' ) {
+    else if ( $this->client("type") == "http" ) {
       // Request parameters GET
       // note; PHP replaces several characters into underscore,
       //       parse the RAW query string if available. #stupidity #legacy
-      if ( isset($_SERVER['QUERY_STRING']) ) {
-        $this->paramCache['get'] = $this->parse($_SERVER['QUERY_STRING']);
+      if ( isset($_SERVER["QUERY_STRING"]) ) {
+        $this->paramCache["get"] = $this->parse($_SERVER["QUERY_STRING"]);
       }
       else {
-        $this->paramCache['get'] = $_GET;
+        $this->paramCache["get"] = $_GET;
       }
 
       // Request parameters POST
-      $postString = @file_get_contents('php://input');
-      if ( preg_match('/^application\/json/', $this->header('Content-Type')) ) {
-        $this->paramCache['post'] = ContentDecoder::json($postString, true);
+      $postString = @file_get_contents("php://input");
+      if ( preg_match('/^application\/json/', $this->header("Content-Type")) ) {
+        $this->paramCache["post"] = ContentDecoder::json($postString, true);
       }
-      else if ( preg_match('/^text\/xml/', $this->header('Content-Type')) ) {
-        $this->paramCache['postXML'] = XMLConverter::fromXML($postString);
-        $this->paramCache['post'] = [];
+      else if ( preg_match('/^text\/xml/', $this->header("Content-Type")) ) {
+        $this->paramCache["postXML"] = XMLConverter::fromXML($postString);
+        $this->paramCache["post"] = [];
       }
-      else if ( preg_match('/^application\/x-www-form-urlencoded/', $this->header('Content-Type')) ) {
-        $this->paramCache['post'] = $this->parse($postString);
+      else if ( preg_match('/^application\/x-www-form-urlencoded/', $this->header("Content-Type")) ) {
+        $this->paramCache["post"] = $this->parse($postString);
       }
       else {
-        $this->paramCache['post'] = $_POST;
+        $this->paramCache["post"] = $_POST;
       }
       unset($postString);
 
       // Cookies
 
       // note; Cookie string is separated by "; " instead of "&", parse_str() doesn't work.
-      // if ( isset($_SERVER['HTTP_COOKIE']) ) {
-      //   $this->paramCache['cookies'] = $this->parse($_SERVER['HTTP_COOKIE']);
+      // if ( isset($_SERVER[HTTP_COOKIE]) ) {
+      //   $this->paramCache[cookies] = $this->parse($_SERVER[HTTP_COOKIE]);
       // }
       // else {
-      //   $this->paramCache['cookies'] = $_COOKIE;
+      //   $this->paramCache[cookies] = $_COOKIE;
       // }
-      $this->paramCache['cookies'] = $_COOKIE;
+      $this->paramCache["cookies"] = $_COOKIE;
 
       // File uploads
-      if ( $this->method() == 'put' ) {
-        $this->paramCache['files'] = new RequestPutFile($this->header('Content-Type'));
+      if ( $this->method() == "put" ) {
+        $this->paramCache["files"] = new RequestPutFile($this->header("Content-Type"));
       }
       else {
         util::filesFix();
@@ -615,8 +618,8 @@ class Request {
             return $file;
           }
 
-          if ( util::isAssoc($file) && array_key_exists('error', $file) && array_key_exists('tmp_name', $file) ) {
-            switch ( $file['error'] ) {
+          if ( util::isAssoc($file) && array_key_exists("error", $file) && array_key_exists("tmp_name", $file) ) {
+            switch ( $file["error"] ) {
               case UPLOAD_ERR_OK:
                 return new RequestPostFile($file);
 
@@ -625,7 +628,7 @@ class Request {
                 break;
 
               default:
-                return $file['error'];
+                return $file["error"];
             }
           }
           else {
@@ -633,7 +636,7 @@ class Request {
           }
         };
 
-        $this->paramCache['files'] = array_mapdef(array_filter_keys($_FILES, compose('not', startsWith($this->metaPrefix))), $parseFile);
+        $this->paramCache["files"] = array_mapdef(array_filter_keys($_FILES, compose("not", startsWith($this->metaPrefix))), $parseFile);
 
         unset($parseFile);
       }
@@ -643,11 +646,11 @@ class Request {
         if ( is_string($value) && strpos($value, $this->metaPrefix) === 0 ) {
           $_value = substr($value, strlen($this->metaPrefix));
           switch ( strtolower($_value) ) {
-            case 'true':
+            case "true":
               $value = true;
               break;
 
-            case 'false':
+            case "false":
               $value = false;
               break;
 
@@ -660,22 +663,22 @@ class Request {
         }
       });
 
-      $this->paramCache['request'] = array_merge(
+      $this->paramCache["request"] = array_merge(
         // note; Cookies might pollute the expected result in ->param()
-        // (array) @$this->paramCache['cookies'],
-        (array) @$this->paramCache['get'],
-        (array) @$this->paramCache['post']
+        // (array) @$this->paramCache[cookies],
+        (array) @$this->paramCache["get"],
+        (array) @$this->paramCache["post"]
       );
 
       // note; Reset meta cache
       $this->metaCache = array_merge(
-        (array) @$this->paramCache['cookies'],
-        (array) @$this->paramCache['get'],
-        (array) @$this->paramCache['post']
+        (array) @$this->paramCache["cookies"],
+        (array) @$this->paramCache["get"],
+        (array) @$this->paramCache["post"]
       );
 
       $this->metaCache = array_combine(
-        array_map(replaces('/^'.preg_quote($this->metaPrefix).'/', ''), array_keys($this->metaCache)),
+        array_map(replaces('/^'.preg_quote($this->metaPrefix).'/', ""), array_keys($this->metaCache)),
         array_values($this->metaCache)
       );
     }
@@ -693,19 +696,19 @@ class Request {
   protected function parse($query) {
     parse_str(
       implode(
-        '&',
+        "&",
         array_map(function($pair) {
-          $pair = explode('=', $pair);
+          $pair = explode("=", $pair);
           $pair[0] = preg_replace_callback('/^(.*?)(\[.*?\])?$/', function($matches) {
             return bin2hex($matches[1]) . @$matches[2];
           }, urldecode($pair[0]));
-          return implode('=', $pair);
-        }, explode('&', $query))
+          return implode("=", $pair);
+        }, explode("&", $query))
       ),
       $query
     );
 
-    return array_combine(array_map('hex2bin', array_keys($query)), $query);
+    return array_combine(array_map("hex2bin", array_keys($query)), $query);
   }
 
   /**
@@ -721,7 +724,7 @@ class Request {
    */
   public function send(Resolver $resolver = null, Response $response = null) {
     if ( $this->resolver ) {
-      trigger_error('Active request cannot be fired again.', E_USER_WARNING);
+      trigger_error("Active request cannot be fired again.", E_USER_WARNING);
       return;
     }
 
@@ -737,22 +740,22 @@ class Request {
 
     // Creates a CURL request upon current request context.
     Net::httpRequest(array(
-      'url' => http_build_url($this->uri()),
-      'data' => array_replace_recursive((array) $this->param(), (array) $this->file()),
-      'type' => $this->method(),
-      'headers' => $this->header(),
-        'success' => function($responseText, $options) use(&$response) {
+      "url" => http_build_url($this->uri()),
+      "data" => array_replace_recursive((array) $this->param(), (array) $this->file()),
+      "type" => $this->method(),
+      "headers" => $this->header(),
+        "success" => function($responseText, $options) use(&$response) {
           if ( $response === null ) {
             $response = new Response();
           }
 
-          foreach ( array_filter(preg_split('/\r?\n/', @$options['response']['headers'])) as $value ) {
+          foreach ( array_filter(preg_split('/\r?\n/', @$options["response"]["headers"])) as $value ) {
             $response->header($value);
           }
 
-          $response->send($responseText, (int) @$options['response']['status']);
+          $response->send($responseText, (int) @$options["response"]["status"]);
         },
-        'failure' => function($errNum, $errMsg, $options) {
+        "failure" => function($errNum, $errMsg, $options) {
           throw new FrameworkException($errMsg, $errNum);
         }
       ));
