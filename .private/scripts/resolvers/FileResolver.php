@@ -24,10 +24,6 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
    * @constructor
    */
   public function __construct($options) {
-    if ( !empty($options['prefix']) ) {
-      $this->pathPrefix($options['prefix']);
-    }
-
     if ( !empty($options['directoryIndex']) ) {
       $this->directoryIndex($options['directoryIndex']);
     }
@@ -38,24 +34,6 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
   //  Properties
   //
   //----------------------------------------------------------------------------
-
-  //------------------------------
-  //  pathPrefix
-  //------------------------------
-  protected $pathPrefix = '/';
-
-  /**
-   * Target path to serve.
-   */
-  public function pathPrefix($value = null) {
-    $pathPrefix = $this->pathPrefix;
-
-    if ( $value !== null ) {
-      $this->pathPrefix = '/' . trim(trim($value), '/');
-    }
-
-    return $pathPrefix;
-  }
 
   //------------------------------
   //  directoryIndex
@@ -98,10 +76,6 @@ class FileResolver implements \framework\interfaces\IRequestResolver {
     // Store original request
     if ( empty($request->__directoryIndex) ) {
       $request->__uri = $request->uri();
-    }
-
-    if ( stripos($path, $this->pathPrefix()) === 0 ) {
-      $path = substr($path, strlen($this->pathPrefix()));
     }
 
     if ( strpos($path, '?') !== false ) {

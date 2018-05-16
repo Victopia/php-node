@@ -54,7 +54,7 @@
     {
       "class": "WebServiceResolver",
       "options": {
-        "prefix": "/service"
+        "prefix": "service"
       }
     },
     // Post Processers
@@ -85,8 +85,7 @@
     //   "class": "ScssResolver",
     //   "options": {
     //     "source": ".private/src/stylesheets",
-    //     "output": "assets/css",
-    //     "prefix": "/"
+    //     "output": "assets/css"
     //   }
     // },
     // // LESS Compiler
@@ -94,8 +93,7 @@
     //   "class": "LessResolver",
     //   "options": {
     //     "source": ".private/src/stylesheets",
-    //     "output": "assets/css",
-    //     "prefix": "/"
+    //     "output": "assets/css"
     //   }
     // },
     // // Js Minifier
@@ -103,8 +101,7 @@
     //   "class": "JsMinResolver",
     //   "options": {
     //     "source": ".private/src/javascripts",
-    //     "output": "assets/js",
-    //     "prefix": "/"
+    //     "output": "assets/js"
     //   }
     // },
 
@@ -118,9 +115,7 @@
             "enable": false,
             "size": 1024
           }
-        },
-        // note; This usually in sync with RewriteBase in .htaccess
-        "prefix": "/"
+        }
       }
     },
     // HTTP error pages in HTML or JSON

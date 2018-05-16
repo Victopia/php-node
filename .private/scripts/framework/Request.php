@@ -270,9 +270,7 @@ class Request {
       $uri = parse_url(http_build_url($uri));
     }
 
-    if ( @$uri["path"][0] === "/" ) {
-      $uri["path"] = ".$uri[path]";
-    }
+    $uri["path"] = ltrim($uri["path"], " \0\t\n\r\x0B/");
 
     // note; fallback to system default hostname
     if ( empty($uri["host"]) ) {

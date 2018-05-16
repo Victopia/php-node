@@ -28,13 +28,6 @@ class LessResolver implements \framework\interfaces\IRequestResolver {
   protected $dstPath = '.';
 
   /**
-   * @protected
-   *
-   * Request path prefix for minified js
-   */
-  protected $prefix = '/';
-
-  /**
    * @constructor
    *
    * @param {array} $options Options
@@ -74,24 +67,16 @@ class LessResolver implements \framework\interfaces\IRequestResolver {
     if ( $this->dstPath == '.' ) {
       $this->dstPath = '';
     }
-
-    if ( !empty($options['prefix']) ) {
-      $this->prefix = $options['prefix'];
-    }
-
-    if ( !preg_match('/\/$/', $this->prefix) ) {
-      $this->prefix.= '/';
-    }
   }
 
   public function resolve(Request $request, Response $response) {
     $pathInfo = $request->uri('path');
 
-    if ( strpos($pathInfo, $this->prefix . $this->dstPath) !== 0 ) {
+    if ( strpos($pathInfo, $this->dstPath) !== 0 ) {
       return;
     }
     else {
-      $pathInfo = substr($pathInfo, strlen($this->prefix . $this->dstPath));
+      $pathInfo = substr($pathInfo, strlen($this->dstPath));
     }
 
     $pathInfo = pathinfo($pathInfo);
@@ -140,6 +125,7 @@ class LessResolver implements \framework\interfaces\IRequestResolver {
             Log::warn('Permission denied, unable to write LESS output.');
           }
         }
+
         break;
       }
     }

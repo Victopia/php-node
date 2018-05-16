@@ -38,7 +38,7 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
   //------------------------------
   //  pathPrefix
   //------------------------------
-  protected $pathPrefix = '/';
+  protected $pathPrefix = '';
 
   /**
    * Target path to serve.
@@ -47,7 +47,7 @@ class WebServiceResolver implements \framework\interfaces\IRequestResolver {
     $pathPrefix = $this->pathPrefix;
 
     if ( $value !== null ) {
-      $this->pathPrefix = '/' . trim(trim($value), '/');
+      $this->pathPrefix = trim(trim($value), '/');
     }
 
     return $pathPrefix;
