@@ -88,7 +88,7 @@ class MaintenanceResolver implements \framework\interfaces\IRequestResolver {
       return;
     }
 
-    $request->setUri($this->template);
+    $response->send($this->template, 200);
   }
 
 }
