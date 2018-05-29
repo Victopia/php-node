@@ -349,7 +349,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     $data = clone $this->data;
 
     walk($data, function(&$item) {
-      if ( $item instanceof static ) {
+      if ( $item instanceof self ) {
         $item = $item->data();
       }
     });
