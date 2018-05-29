@@ -628,7 +628,7 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
    * @return {AbstractModel} Chainable.
    */
   protected function afterSave(array &$result = null) {
-    return $this;
+    return $this->commitTransaction();
   }
 
   /**

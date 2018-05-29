@@ -564,7 +564,7 @@ final class Database {
   public static function commit() {
     $profile = &static::getProfile();
 
-    $ret = static::getConnection()->commit()
+    $ret = static::getConnection()->commit();
 
     // Restore whatever value it was when transaction ends.
     if ( isset($profile['autocommit']) ) {
