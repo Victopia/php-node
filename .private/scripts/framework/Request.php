@@ -555,6 +555,13 @@ class Request {
     return $this->param($name, "cli");
   }
 
+  /**
+   * Best-effort hostname from the request context.
+   */
+  public function hostname() {
+    return $this->client("origin")?? $this->client("host")?? $this->uri("host");
+  }
+
   //----------------------------------------------------------------------------
   //
   //  Methods
