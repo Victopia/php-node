@@ -559,7 +559,9 @@ class Request {
    * Best-effort hostname from the request context.
    */
   public function hostname() {
-    return $this->client("origin")?? $this->client("host")?? $this->uri("host");
+    $host = $this->client("origin")?? $this->client("host")?? $this->uri("host");
+
+    return parse_url($host, PHP_URL_HOST);
   }
 
   //----------------------------------------------------------------------------
