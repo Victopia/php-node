@@ -134,7 +134,7 @@ class Request {
         default:
           $this->client = array_filter(array(
               "type" => "http"
-            , "secure" => @$_SERVER["HTTPS"] && strtolower($_SERVER["HTTPS"]) != "off"
+            , "secure" => (@$_SERVER["HTTPS"] && strtolower($_SERVER["HTTPS"]) !== "off") || @$_SERVER["HTTP_X_FORWARDED_PROTO"] === "https"
             , "address" => @$_SERVER["REMOTE_ADDR"]
             , "host" => @$_SERVER["REMOTE_HOST"]
             , "port" => @$_SERVER["REMOTE_PORT"]
@@ -560,8 +560,9 @@ class Request {
    */
   public function hostname() {
     $host = $this->client("origin")?? $this->client("host")?? $this->uri("host");
+    $host = parse_url($host);
 
-    return parse_url($host, PHP_URL_HOST);
+    return $host["host"]?? $host["path"];
   }
 
   //----------------------------------------------------------------------------
