@@ -61,38 +61,21 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
 
       default:
         // Session ID provided, validate it.
-        $sid = $req->meta('sid');
-        if ( !$sid ) {
-          $sid = $req->header('Authorization');
-          if ( preg_match('/^Session ([a-zA-Z0-9]{32})$/', $sid, $matches) ) {
-            $sid = $matches[1];
-          }
-          else {
-            $sid = '';
-          }
-
-          unset($matches);
+        if ( preg_match("/^Session ([a-zA-Z0-9]{32})$/", $req->header("Authorization"), $matches) ) {
+          $sessionId = $matches[1];
+        }
+        else {
+          $sessionId = $req->meta("sid");
         }
 
-        if ( $sid ) {
-          $ret = Session::ensure($sid, $req->meta('token'), $req->fingerprint());
+        unset($matches);
 
-          // Session doesn't exist, delete the cookie.
-          if ( $ret === false || $ret === Session::ERR_EXPIRED ) {
-            $res->cookie('__sid', '', time() - 3600);
-          }
-          else if ( is_integer($ret) ) {
-            switch ( $ret ) {
-              // note: System should treat as public user.
-              case Session::ERR_INVALID:
-                break;
-            }
-          }
-          else {
-            // Success, proceed.
-            $req->user->load(Session::current('username'));
-            unset($req->user->password);
-          }
+        if ( $sessionId ) {
+          Session::ensure($sessionId, $req->meta('token'), $req->fingerprint());
+
+          $req->user = Session::getUser();
+
+          unset($req->user->password);
         }
         // When no user is set, add a default user
         else if ( $this->setupSession ) {
@@ -105,7 +88,7 @@ class UserContextResolver implements \framework\interfaces\IRequestResolver {
 
           if ( !$count ) {
             $req->user->data(
-              [ 'id' => 0
+              [ 'uuid' => "\0"
               , 'groups' => ['Administrators']
               , 'username' => '__default'
               ]);
