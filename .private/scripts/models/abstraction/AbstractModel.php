@@ -370,6 +370,8 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     if ( !Database::inTransaction() ) {
       $this->_hasTransaction = Database::beginTransaction();
     }
+
+    return $this;
   }
 
   protected function inTransaction() {
@@ -383,6 +385,8 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     if ( Database::inTransaction() ) {
       Database::rollback();
     }
+
+    return $this;
   }
 
   /**
@@ -393,6 +397,8 @@ abstract class AbstractModel implements \ArrayAccess, \IteratorAggregate, \Count
     if ( $this->hasTransaction() && Database::inTransaction() ) {
       Database::commit();
     }
+
+    return $this;
   }
 
   /**
