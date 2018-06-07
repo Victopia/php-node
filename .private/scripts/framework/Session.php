@@ -6,7 +6,7 @@
  * - 2.1 Server returns static::ERR_MISMATCH if login failure.
  * - 2.2 Server returns static::ERR_EXISTS if an existing session hasn't been invalidated.
  * - 3.  Client stores the session id.
- * - 4.  Services should call Session::ensure($sid) in most requests.
+ * - 4.  Services should call Session::ensure($session_id) in most requests.
  *       Client is responsible to requests along with session ID.
  * - 4.1 Client can explicitly request a one-time request token for extended security.
  *       If this token is not provided in next request, Session::ensure() will fail.
@@ -28,6 +28,8 @@ use core\Log;
 use core\Utility as util;
 
 use models\users;
+
+use Ramsey\Uuid\Uuid;
 
 class Session {
 
@@ -53,10 +55,10 @@ class Session {
   const ERR_TOKEN_INVALID = 4;
 
   // Session expire time relative to current time.
-  const EXPIRE_TIME = '+30 min';
+  const EXPIRE_TIME = "+30 min";
 
   // Sessions this old will be deleted.
-  const DELETE_TIME = '-1 week';
+  const DELETE_TIME = "-1 week";
 
   //----------------------------------------------------------------------------
   //
@@ -93,109 +95,141 @@ class Session {
   //----------------------------------------------------------------------------
 
   /**
-   * Login function, application commencement point.
+   * Acquire a session from specified user UUID.
    *
-   * @param $username Username of the user.
-   * @param $password SHA1 hash of the password.
-   * @param $fingerprint Fingerprint extracted from current request, identifies
-   *                     a requesting host as uniquely as possible.
-   *
-   * @return Possible return values are:
-   *         1. Session identifier string on success,
-   *         2. Empty string on session exists without override, or
-   *         3. false on login mismatch.
+   * @param models\user $user Target user model.
+   * @param string $fingerprint Client fingerprint for multiple login support,
+   *               omitting this implies single sign-on mode.
+   * @return array Acquired session object.
+   *               + [uuid] Session identity.
+   *               + [user_uuid] User identity.
+   *               + [expire_at] Expiration time in RFC3339 format.
+   * @throws framework\exceptions\FrameworkException When in single sign-on mode,
+   *         throws when another session already exists.
    */
-  static function validate($username, $password, $fingerprint = null) {
-    // Search by username
-    $user = new users(null, [ 'request' => null, 'response' => null ]);
-
-    $user->load($username);
+  static function fromUser(user $user, $fingerprint = null) {
     if ( !$user->identity() ) {
-      throw new exceptions\FrameworkException('Username and password mismatch.', static::ERR_MISMATCH);
+      throw new framework\exceptions\FrameworkException("Invalid user provided.", static::ERR_INVALID);
     }
 
-    // Password crypt matching
-    if ( !$user->verifyPassword($password) ) {
-      throw new exceptions\FrameworkException('Username and password mismatch.', static::ERR_MISMATCH);
-    }
+    $fingerprint = strtolower(trim($fingerprint));
 
-    // Can login, generate sid and stores to PHP session.
     $session =
       [ Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION
-      , 'username' => $user->username
+      , "user_uuid" => util::packUuid($user->identity())
       ];
 
-    if ( trim($fingerprint) ) {
-      $session['fingerprint'] = trim($fingerprint);
+    if ( $fingerprint ) {
+      $session["fingerprint"] = util::packUuid($fingerprint);
     }
 
     $res = Node::getOne($session);
 
-    if ( !$fingerprint && $res ) {
-      $res = util::unpackUuid($res['sid']);
-      throw new exceptions\FrameworkException('Session already exists.', static::ERR_EXISTS, null,
-        [ 'sid' => $res ]);
+    if ( $fingerprint === null && $res ) {
+      throw new exceptions\FrameworkException(
+        "Session already exists.",
+        static::ERR_EXISTS,
+        null,
+        [ "uuid" => util::unpackUuid($res["uuid"]) ]
+      );
+    }
 
-      return $res;
+    if ( $res ) {
+      $session = $res;
     }
     else {
-      if ( isset($res['sid'] ) ) {
-        $session['sid'] = $res['sid'];
-
-        $session['timestamp'] = util::formatDate('Y-m-d H:i:s.u');
-      }
-      else {
-        do {
-          $session['sid'] = Database::fetchField("SELECT UNHEX(REPLACE(UUID(), '-', ''))");
-        }
-        while ( Node::getCount($session) );
-      }
+      $session["uuid"] = util::packUuid(preg_replace("/-/", "", Uuid::uuid4()));
     }
 
-    // Store session into database
-    $res = Node::set($session);
+    $session["timestamp"] = util::formatDate("Y-m-d H:i:s.u");
 
-    if ( is_int($res) ) {
-      $session = Node::getOne(
-        [ Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION
-        , 'sid' => $session['sid']
-        ]);
-    }
+    Node::set($session);
 
-    $session['sid'] = util::unpackUuid($session['sid']);
+    $session = [
+      "uuid" => util::unpackUuid($session["uuid"]),
+      "user_uuid" => util::unpackUuid($session["user_uuid"]),
+      "expire_at" => util::formatDate("c", $session["timestamp"] . static::EXPIRE_TIME)
+    ];
 
-    // Reference to current session
     static::$currentSession = $session;
 
-    // Log the sign in action.
-    Log::debug('Session validated', $session);
+    Log::debug("Session validated.", $session);
 
-    return
-      [ 'sid' => util::unpackUuid($session['sid'])
-      , 'username' => $session['username']
-      , 'expires' => util::formatDate('Y-m-d H:i:s.u', $session['timestamp'] . static::EXPIRE_TIME)
-      ];
+    return $session;
+  }
+
+  /**
+   * Acquire user session from external integrations such as OAuth, OIDC... etc.
+   *
+   * @param string $platform google, facebook, wechat, instragram ... etc.
+   * @param string $identity User's unique identity from target platform, usually open id.
+   * @param string $secret Optional. Secret from target platform.
+   * @param string $fingerprint Optional. Uniquely identifies the connecting
+   *                            client, identical fingerprints will override
+   *                            existing sessions. Ommiting this implies single
+   *                            sign-on mode.
+   * @return array The acquired session.
+   * @throws framework\exceptions\FrameworkException Invalid credentials provided.
+   */
+  static function fromIntegration($platform, $identity, $secret = "", $fingerprint = null) {
+    $user = (new user(null, [ "request"=> null ]))->loadByIntegration($platform, $identity, $secret);
+
+    if ( !$user->identity() ) {
+      throw new exceptions\FrameworkException("Invalid credentials.", static::ERR_MISMATCH);
+    }
+
+    return static::fromUser($user->identity(), $fingerprint);
+  }
+
+  /**
+   * Acquire user session from local username and password.
+   *
+   * @param string $username Username of the user signing in.
+   * @param string $password Password of the user signing in.
+   * @param string $fingerprint Optional. Uniquely identifies the connecting
+   *                            client, identical fingerprints will override
+   *                            existing sessions. Ommiting this implies single
+   *                            sign-on mode.
+   * @return array The acquired session.
+   * @throws framework\exceptions\FrameworkException Invalid credentials provided.
+   */
+  static function fromCredential($username, $password, $fingerprint = null) {
+    $user = (new user(null, [ "request"=> null ]))->load($username);
+
+    if ( !$user->identity() || !$user->verifyPassword($password) ) {
+      throw new exceptions\FrameworkException("Invalid credentials.", static::ERR_MISMATCH);
+    }
+
+    return static::fromUser($user, $fingerprint);
+  }
+
+  /**
+   * Alias of fromCredentials().
+   * @see Session::fromCredentials();
+   */
+  static function validate($username, $password, $fingerprint = null) {
+    return static::fromCredential($username, $password, $fingerprint);
   }
 
   /**
    * Logout function, application terminating point.
    */
-  static function invalidate($sid = null) {
-    if ( $sid === null ) {
-      $sid = static::$currentSession['sid'];
+  static function invalidate($session_id = null) {
+    if ( $session_id === null ) {
+      $session_id = static::current("uuid");
     }
 
-    $sid = util::packUuid($sid);
+    $session_id = util::packUuid($session_id);
 
     $session = Node::getOne(array(
         Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION,
-        'sid' => $sid
+        "uuid" => $session_id
       ));
 
-    $res = Database::query('DELETE FROM `'.FRAMEWORK_COLLECTION_SESSION.'` WHERE `sid` = ?', array($sid));
+    $res = Database::query("DELETE FROM `".FRAMEWORK_COLLECTION_SESSION."` WHERE `uuid` = ?", array($session_id));
 
     if ( $res->rowCount() ) {
-      Log::info(sprintf('Session invalidated', $session));
+      Log::info(sprintf("Session invalidated", $session));
 
       /* Clear reference */
       static::$currentSession = null;
@@ -208,10 +242,10 @@ class Session {
    * Logout all sessions of specified user.
    */
   static function invalidateUser($username) {
-    $user = (new users)->load($username);
+    $user = (new user)->load($username);
 
     if ( $user->identity() ) {
-      Database::query('DELETE FROM `'.FRAMEWORK_COLLECTION_SESSION.'` WHERE `username` = ?', array($user->username));
+      Database::query("DELETE FROM `".FRAMEWORK_COLLECTION_SESSION."` WHERE `user_uuid` = ?", array($user->identity()));
     }
   }
 
@@ -222,53 +256,40 @@ class Session {
    * CAUTION: When $token is specified, extended security is performed on the current session.
    *          Current session can expire with constant Session::ERR_EXPIRED after 30 minutes of inactivity.
    *
-   * @param $token Optional, decided as a one-time key to have advanced security over AJAX calls.
-   *        This token string should be get from function requestToken.
-   *
-   * @return true on access permitted, false otherwise.
+   * @return boolean true on success, false otherwise.
    */
-  static function ensure($sid, $token = null, $fingerprint = null) {
-    if ( !$sid ) {
-      throw new exceptions\FrameworkException('Invalid session identifier.', static::ERR_INVALID);
-      return false;
-    }
-
-    $session = Node::getOne(array(
-        Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION,
-        'sid' => util::packUuid($sid),
-        'fingerprint' => $fingerprint
-      ));
+  static function ensure($uuid, $token = null, $fingerprint = null) {
+    $session = Node::getOne([
+      Node::FIELD_COLLECTION => FRAMEWORK_COLLECTION_SESSION,
+      "uuid" => util::packUuid($uuid),
+      "fingerprint" => $fingerprint
+    ]);
 
     if ( !$session ) {
-      throw new exceptions\FrameworkException('Invalid session identifier.', static::ERR_INVALID);
-      return false;
-    }
-
-    // One-time token mismatch
-    if ( ($token || $session['token']) && util::packUuid($token) != $session['token'] ) {
-      throw new exceptions\FrameworkException('Invalid one-time token.', static::ERR_INVALID);
-      return false;
+      throw new exceptions\FrameworkException("Invalid session identifier.", static::ERR_INVALID);
     }
 
     // Session expired
-    if ( strtotime($session['timestamp'] . static::EXPIRE_TIME) < time() ) {
-      throw new exceptions\FrameworkException('Session expired, please login again.', static::ERR_EXPIRED);
+    if ( strtotime($session["timestamp"] . static::EXPIRE_TIME) < time() ) {
+      throw new exceptions\FrameworkException("Session expired, please login again.", static::ERR_EXPIRED);
       return false;
     }
 
-    $session['token'] = null;
-    $session['timestamp'] = util::formatDate('Y-m-d H:i:s.u');
+    $session["token"] = null;
+    $session["timestamp"] = util::formatDate("Y-m-d H:i:s.u");
 
     // Update timestamp
     Node::set($session);
 
+    $session = [
+      "uuid" => util::unpackUuid($session["uuid"]),
+      "user_uuid" => util::unpackUuid($session["user_uuid"]),
+      "expire_at" => util::formatDate("c", $session["timestamp"] . static::EXPIRE_TIME)
+    ];
+
     static::$currentSession = $session;
 
-    return
-      [ 'sid' => util::unpackUuid($session['sid'])
-      , 'username' => $session['username']
-      , 'expires' => util::formatDate('Y-m-d H:i:s.u', $session['timestamp'] . static::EXPIRE_TIME)
-      ];;
+    return $session;
   }
 
   /**
@@ -277,31 +298,31 @@ class Session {
    *
    * Each additional call to this function overwrites the token generated last time.
    *
-   * @return One-time token string, or null on invalid session.
+   * @return string One-time token string, or null on invalid session.
    */
-  static function generateToken($sid = null) {
-    $res = static::ensure($sid);
+  static function generateToken($session_id = null) {
+    $res = static::ensure($session_id);
     if ( $res !== true ) {
       return $res;
     }
 
     $res = &static::$currentSession;
 
-    $res['token'] = Database::fetchField("SELECT UNHEX(REPLACE(UUID(),'-',''));");
-    $res['timestamp'] = util::formatDate('Y-m-d H:i:s.u');
+    $res["token"] = Database::fetchField("SELECT UNHEX(REPLACE(UUID(),'-',''));");
+    $res["timestamp"] = util::formatDate("Y-m-d H:i:s.u");
 
     if ( Node::set($res) === false ) {
       return null;
     }
 
-    return util::unpackUuid($res['token']);
+    return util::unpackUuid($res["token"]);
   }
 
   /**
    * Returns user object associated with current session.
    */
   static function getUser() {
-    return (new users)->load(static::current('username'));
+    return (new user)->load(static::current("user_uuid"));
   }
 
 }

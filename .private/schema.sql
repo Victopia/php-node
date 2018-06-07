@@ -17,7 +17,7 @@ CREATE TABLE `Configurations` (
   `@contents` longtext CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   PRIMARY KEY (`@key`),
   FULLTEXT KEY `@contents` (`@contents`)
-) ENGINE=MyISAM;
+) ENGINE=InnoDB;
 
 
 
@@ -36,7 +36,7 @@ CREATE TABLE `Logs` (
   `timestamp` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`id`),
   KEY `type` (`type`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='This table should not have update actions performed upon.';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='This table should not have update actions performed upon.';
 
 
 
@@ -51,7 +51,7 @@ CREATE TABLE `NodeRelations` (
   `child` varchar(40) NOT NULL,
   PRIMARY KEY (`@collection`,`parent`,`child`),
   KEY `key_collection_object` (`@collection`,`child`)
-) ENGINE=InnoDB DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
 
@@ -67,7 +67,7 @@ CREATE TABLE `Nodes` (
   `timestamp` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`uuid`),
   FULLTEXT KEY `content` (`@contents`)
-) ENGINE=MyISAM DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='Data nodes';
+) ENGINE=InnoDB DEFAULT CHARSET=utf8 COMMENT='Data nodes';
 
 
 
@@ -87,7 +87,7 @@ CREATE TABLE `Processes` (
   `@contents` longtext NOT NULL,
   `timestamp` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8;
 
 
 
@@ -97,13 +97,13 @@ CREATE TABLE `Processes` (
 DROP TABLE IF EXISTS `Sessions`;
 
 CREATE TABLE `Sessions` (
-  `sid` binary(16) NOT NULL COMMENT 'UUID',
-  `username` varchar(255) NOT NULL,
+  `uuid` binary(16) NOT NULL COMMENT 'UUID',
+  `user_uuid` varchar(255) NOT NULL,
   `token` varchar(40) DEFAULT NULL,
   `fingerprint` varchar(255) DEFAULT NULL,
   `timestamp` timestamp(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6) ON UPDATE CURRENT_TIMESTAMP(6),
-  PRIMARY KEY (`sid`)
-) ENGINE=MEMORY DEFAULT CHARSET=latin1 COLLATE=latin1_general_cs;
+  PRIMARY KEY (`uuid`)
+) ENGINE=MEMORY DEFAULT CHARSET=utf8;
 
 
 
