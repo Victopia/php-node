@@ -37,7 +37,7 @@ abstract class UuidModel extends JsonSchemaModel {
 
   function find(array $filter = []) {
     foreach ( $this->binaryFields() as $binaryField ) {
-      if ( isset($filter[$binaryField]) ) {
+      if ( isset($filter[$binaryField]) && (is_string($filter[$binaryField]) || is_array($filter[$binaryField])) ) {
         $filter[$binaryField] = array_map('core\Utility::packUuid', (array) $filter[$binaryField]);
       }
     }
@@ -81,7 +81,7 @@ abstract class UuidModel extends JsonSchemaModel {
   }
 
   protected function beforeSave(array &$errors = array()) {
-    if ( $this->isCreate() || !$this->identity() ) {
+    if ( $this->isCreate() && !$this->identity() ) {
       $this->generateUuid();
     }
 
@@ -129,7 +129,11 @@ abstract class UuidModel extends JsonSchemaModel {
     return [ $this->primaryKey() ];
   }
 
-  protected function generateUuid() {
+  protected function generateUuid($forceRenew = false) {
+    if ( !$forceRenew && (!$this->isCreate() || $this->identity()) ) {
+      return;
+    }
+
     $key = $this->primaryKey();
 
     $this->$key = str_replace('-', '', Uuid::uuid4());
