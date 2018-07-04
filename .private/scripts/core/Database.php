@@ -391,8 +391,6 @@ final class Database {
     array_walk($param, function($param, $index) use(&$stmt, &$paramIndex) {
       switch ( gettype($param) ) {
         case 'integer':
-        case 'double':
-        case 'float':
           $parmType = \PDO::PARAM_INT;
           break;
 
@@ -404,6 +402,8 @@ final class Database {
           $parmType = \PDO::PARAM_NULL;
           break;
 
+        case 'double':
+        case 'float':
         default:
           $parmType = \PDO::PARAM_STR;
           break;
