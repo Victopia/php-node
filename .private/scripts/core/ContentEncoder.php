@@ -10,7 +10,7 @@ class ContentEncoder {
    * @param {void*} $value Any arbitrary PHP value.
    * @return {string} JSON representation of specified PHP value.
    */
-  public static function json($value, $options = JSON_PRETTY_PRINT | JSON_BIGINT_AS_STRING | JSON_FORCE_OBJECT | JSON_PRESERVE_ZERO_FRACTION) {
+  public static function json($value, $options = JSON_PRETTY_PRINT | JSON_BIGINT_AS_STRING | JSON_PRESERVE_ZERO_FRACTION) {
     // note: binary strings will fuck up the encoding process, remove them.
     static::maskBinary($value);
 
