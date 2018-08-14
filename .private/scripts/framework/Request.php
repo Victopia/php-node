@@ -172,7 +172,7 @@ class Request {
           }, []);
 
           if ( !empty($_SERVER["HTTP_AUTHORIZATION"]) ) {
-            $this->headers["Authorization"] = $_SERVER["HTTP_AUTHORIZATION"];
+            $this->headers["authorization"] = $_SERVER["HTTP_AUTHORIZATION"];
           }
           break;
       }
