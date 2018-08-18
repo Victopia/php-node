@@ -54,8 +54,8 @@ class LocaleResolver implements \framework\interfaces\IRequestResolver {
 
     // note; Default settings only updates when cookie is not set.
     // User preference
-    if ( empty($locale) ) {
-      $locale = @$request->user['locale'];
+    if ( empty($locale) && isset($request->user->locale) ) {
+      $locale = $request->user->locale;
     }
 
     // Default locale
