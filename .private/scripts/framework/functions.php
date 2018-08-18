@@ -323,8 +323,13 @@ function walk(&$input, $callback, $deep = false) {
   }
   else {
     $walker = function(&$value) use(&$callback) {
-      if ( is_array($value) || $value instanceof \Iterator ) {
+      if ( is_array($value) ) {
         foreach ( $value as $k => &$v ) {
+          $callback($v, $k, $value);
+        }
+      }
+      else if ($value instanceof \Iterator) {
+        foreach ( $value as $k => $v ) {
           $callback($v, $k, $value);
         }
       }
@@ -353,16 +358,9 @@ function walk(&$input, $callback, $deep = false) {
  * @param {void*} Can be any value which will be passed as the $result parameter in the first iteration.
  */
 function reduce($input, $callback, $initial = null) {
-  if ( is_object($input) ) {
-    $input = get_object_vars($input);
-  }
-  else {
-    $input = (array) $input;
-  }
-
-  foreach ( $input as $key => $value ) {
-    $initial = $callback($initial, $value, $key);
-  }
+  walk($input, function($value, $key, $input) use(&$initial, &$callback) {
+    $initial = call_user_func($callback, $initial, $value, $key, $input);
+  });
 
   return $initial;
 }
@@ -448,12 +446,17 @@ function find(array $input, $filter) {
 /**
  * Return the first matching item of supplied array.
  */
-function findOne(array $input, $filter) {
-  foreach ( $input as $item ) {
-    if ( (array) array_select($item, array_keys($filter)) === (array) $filter ) {
-      return $item;
+function &findOne(array &$input, array $filter) {
+  $result = null;
+
+  foreach ( $input as &$item ) {
+    if ( (array) select($item, array_keys($filter)) == $filter ) {
+      $result = $item;
+      break;
     }
   }
+
+  return $result;
 }
 
 //--------------------------------------------------
@@ -897,17 +900,35 @@ if ( !function_exists('array_sort') ) {
 
 if ( !function_exists('array_select') ) {
   /**
-   * @param {array} $list Array to be selected.
-   * @param {array} $keys Array of keys to select.
-   * @param {?bool} $preserveKeys Will preserve original key ordering when TRUE.
+   * @param array $list Array to be selected.
+   * @param array $keys Array of keys to select.
    */
-  function array_select($list, array $keys) {
-    $result = array();
-
-    return filter($list, function($value, $key) use($keys) {
-      return in_array($key, $keys);
-    });
+  function array_select(array $list, array $keys): array {
+    return select($list, $keys);
   }
+}
+
+/**
+ * Builds an array without unspecified keys from an array or object.
+ *
+ * @param array|object $value Array of object to be selected.
+ * @param array $keys The keys to be included in exists.
+ * @return array|object An array containing the specified keys.
+ */
+function select($value, array $keys) {
+  if ( !is_array($value) && !is_object($value) ) {
+    return $value;
+  }
+
+  $type = gettype($value);
+
+  $value = filter($value, function($value, $key) use($keys) {
+    return in_array($key, $keys);
+  });
+
+  settype($value, $type);
+
+  return $value;
 }
 
 if ( !function_exists('array_remove') ) {
