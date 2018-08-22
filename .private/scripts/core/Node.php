@@ -504,11 +504,16 @@ class Node implements \Iterator, \ArrayAccess, \Countable {
           }
           else
           if ( is_string($key) ) {
-            $operator = strtolower(trim(@$value['@options']['operator']));
-            if ( !in_array($operator, [ 'and', 'or' ]) ) {
+            if ( is_array($value) ) {
+              $operator = strtolower(trim(@$value['@options']['operator']));
+              if ( !in_array($operator, [ 'and', 'or' ]) ) {
+                $operator = 'or';
+              }
+              unset($value['@options']);
+            }
+            else {
               $operator = 'or';
             }
-            unset($value['@options']);
 
             $values = Utility::wrapAssoc($value);
 
