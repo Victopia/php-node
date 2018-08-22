@@ -83,27 +83,7 @@ class System {
 
     $domain = &$domains[$type];
     if ( !$domain ) {
-      switch ( strtolower($type) ) {
-        case 'cookies':
-          $domain = conf::get('system::domains.cookies');
-          break;
-
-        case 'secure':
-          $domain = conf::get('system::domains.secure');
-          break;
-
-        case 'service':
-          $domain = conf::get('system::domains.service');
-          break;
-
-        case 'local':
-          $domain = conf::get('system::domains.local', 'localhost');
-          break;
-
-        default:
-          $domain = conf::get("system::domains.default", gethostname());
-          break;
-      }
+      $domain = conf::get("system::domains.$type", gethostname());
     }
 
     if ( !$domain && $fallback && $type != $fallback ) {
@@ -326,6 +306,8 @@ class System {
       'xdebug.max_nesting_level',
       conf::get('system::nesting_level', 1000)
     );
+
+    ignore_user_abort(true);
 
     // Error & Exception handling.
     ExceptionsHandler::setHandlers();
