@@ -773,7 +773,7 @@ class Utility {
    * and also takes a string which originally needs an extra call to strtotime().
    */
   public static /* string */
-  function formatDate($pattern, $date = 'now') {
+  function formatDate($pattern, $date = 'now', $timezone = null) {
     // todo; microseconds should only appears on now or relative dates, which counts from now.
 
     // note; ->modify() does not alter microseconds, thus we must know whether
@@ -793,7 +793,11 @@ class Utility {
       $date = new \DateTime($date);
     }
 
-    $date->setTimezone(new \DateTimeZone(date_default_timezone_get()));
+    if ( $timezone === null ) {
+      $timezone = date_default_timezone_get();
+    }
+
+    $date->setTimezone(new \DateTimeZone($timezone));
 
     return $date->format($pattern);
   }
