@@ -294,13 +294,20 @@ function funcIn($name, array $values, array $args = array(), $strict = false) {
  */
 function walk(&$input, $callback, $deep = false) {
   if ( !is_array($input) && !is_object($input) ) {
-    throw new \InvalidArgumentException(sprintf('walk() expects parameter 1 to be array or object, %s given.', gettype($value)));
+    throw new \InvalidArgumentException(sprintf('walk() expects parameter 1 to be array or object, %s given.', gettype($input)));
   }
 
   if ( $deep ) {
     $walker = function(&$value, $key, &$parent) use(&$walker, &$callback) {
-      if ( is_array($value) || $value instanceof \Iterator ) {
+      if ( is_array($value) ) {
         foreach ( $value as $k => &$v ) {
+          $walker($v, $k, $value);
+        }
+
+        $callback($value, $key, $parent);
+      }
+      else if ( $value instanceof \Traversable ) {
+        foreach ( $value as $k => $v ) {
           $walker($v, $k, $value);
         }
 
@@ -328,7 +335,7 @@ function walk(&$input, $callback, $deep = false) {
           $callback($v, $k, $value);
         }
       }
-      else if ($value instanceof \Iterator) {
+      else if ($value instanceof \Traversable) {
         foreach ( $value as $k => $v ) {
           $callback($v, $k, $value);
         }
@@ -391,14 +398,14 @@ function filter($input, $callback = null, $deep = false) {
 }
 
 /**
- * Modified array_map to support ArrayAccess and Iterator interfaces.
+ * Modified array_map to support ArrayAccess and Traversable interfaces.
  */
 function map($input, $callback) {
-  if ( is_scalar($input) && !($input instanceof \Iterator) ) {
+  if ( is_scalar($input) && !($input instanceof \Traversable) ) {
     $input = [$input];
   }
 
-  if ( $input instanceof \Iterator || is_array($input) ) {
+  if ( $input instanceof \Traversable || is_array($input) ) {
     $result = [];
     foreach ( $input as $key => $value ) {
       $result[$key] = call_user_func($callback, $value, $key, $input);
@@ -406,7 +413,7 @@ function map($input, $callback) {
     return $result;
   }
   else {
-    throw new \InvalidArgumentException('Supplied input must be an array or Iterator.');
+    throw new \InvalidArgumentException('Supplied input must be an array or Traversable.');
   }
 }
 
