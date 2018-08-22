@@ -184,20 +184,20 @@ class Response {
   /**
    * Create redirection link based on server configurations.
    *
-   * @param {string} $target  The redirection target, can be either relative
+   * @param string $target  The redirection target, can be either relative
    *                          or absolute. If an array of URIs are given,
    *                          the first truthy value will be used, this is
    *                          handy for a list of fallback URI.
-   * @param {boolean} $secure Use secure connection when available.
+   * @param string? $hostname System hostname type, defaults to secure.
    */
-  public function createLink($target, $secure = null) {
-    if ( $secure === null ) {
-      $secure = (bool) System::getHostname('secure', null);
-    }
-
+  public function createLink($target, $hostname = "secure") {
     // Normalize redirection target
     if ( is_string($target) ) {
       $target = parse_url($target);
+    }
+
+    if ( empty($target["path"]) ) {
+      $target["path"] = "";
     }
 
     // note; Ignore path building on relative redirections,
@@ -206,7 +206,7 @@ class Response {
       // note; Prepend path prefix if exists.
       $target['path'] = conf::get('system::domains.path_prefix') . $target['path'];
 
-      if ( $secure && System::getHostname('secure') ) {
+      if ( $hostname === "secure" && System::getHostname("secure", null) ) {
         $target['scheme'] = 'https';
 
         if ( empty($target['host']) ) {
