@@ -82,7 +82,7 @@ class AuthenticationResolver implements \framework\interfaces\IRequestResolver {
     $pathNodes = trim($pathNodes, '/');
 
     if ( $pathNodes ) {
-      $pathNodes = explode('/', $pathNodes);
+      $pathNodes = preg_split('/\/+/', $pathNodes);
     }
     else {
       $pathNodes = [ '/' ];
