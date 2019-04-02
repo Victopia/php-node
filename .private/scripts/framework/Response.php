@@ -265,7 +265,7 @@ class Response {
       return $this->headers;
     }
     else if ( $value === null ) {
-      if ( preg_match('/^([\w-_]+)\s*:\s*(.+)$/', trim($key), $matches) ) {
+      if ( preg_match('/^([\w\-_]+)\s*:\s*(.+)$/', trim($key), $matches) ) {
         $key = $matches[1];
         $value = $matches[2];
       }
